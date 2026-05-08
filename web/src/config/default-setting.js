@@ -1,0 +1,53 @@
+export default {
+  title: 'N-Admin',
+  theme: 'inverted',
+  // theme: 'light',
+  logo: '/logo.svg',
+  collapsed: false,
+  drawerVisible: false,
+  colorPrimary: '#1677FF',
+  // layout: 'mix',
+  layout: 'side',
+  contentWidth: 'Fluid',
+  fixedHeader: false,
+  fixedSider: true,
+  splitMenus: false,
+  header: true,
+  menu: true,
+  watermark: true,
+  menuHeader: true,
+  footer: true,
+  colorWeak: false,
+  colorGray: false,
+  multiTab: true,
+  multiTabFixed: false,
+  keepAlive: true,
+  accordionMode: false,
+  leftCollapsed: true,
+  compactAlgorithm: false,
+  headerHeight: 48,
+  copyright: 'Go-NuNu Team 2025',
+  animationName: 'slide-fadein-right',
+}
+export const animationNameList = [
+  {
+    label: 'None',
+    value: 'none',
+  },
+  {
+    label: 'Fadein Up',
+    value: 'slide-fadein-up',
+  },
+  {
+    label: 'Fadein Right',
+    value: 'slide-fadein-right',
+  },
+  {
+    label: 'Zoom Fadein',
+    value: 'zoom-fadein',
+  },
+  {
+    label: 'Fadein',
+    value: 'fadein',
+  },
+]
