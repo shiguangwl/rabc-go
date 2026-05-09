@@ -4,3 +4,5 @@ storage/logs
 deploy/docker-compose/conf
 deploy/docker-compose/data
 .omc/
+
+.ace-tool/

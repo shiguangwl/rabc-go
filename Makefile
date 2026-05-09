@@ -23,9 +23,15 @@ test:
 	go tool cover -html=./coverage.out -o coverage.html
 
 .PHONY: build
-build:
-	go build -ldflags="-s -w" -o ./bin/server ./cmd/server
+build: web-build server-build
+
+.PHONY: web-build
+web-build:
 	cd web && npm run build
+
+.PHONY: server-build
+server-build:
+	go build -ldflags="-s -w" -o ./bin/server ./cmd/server
 
 .PHONY: docker
 docker:
