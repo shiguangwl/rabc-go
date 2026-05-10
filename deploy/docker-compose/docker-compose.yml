@@ -1,8 +1,6 @@
-version: '3'
-
 services:
   user-db:
-    image: mysql:8.0.31-debian
+    image: mysql:8.0
     hostname: user-db
     container_name: user-db
     ports:
@@ -11,15 +9,31 @@ services:
       - MYSQL_ROOT_PASSWORD=123456
       - MYSQL_ROOT_HOST=%
       - MYSQL_DATABASE=user
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      # 容器初始化时自动跑 SQL：创建 atlas_dev 库供 atlas migrate diff 使用，
+      # 与业务库 user 隔离，避免 atlas DROP/CREATE 误及业务表
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     # volumes:
     #   - ./data/mysql/user:/var/lib/mysql
     #   - ./conf/mysql/conf.d:/etc/mysql/conf.d
+
   cache-redis:
     image: redis:6-alpine
     hostname: cache-redis
+    container_name: cache-redis
+    ports:
+      - 6350:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     # volumes:
     #   - ./data/redis/cache/:/data
     #   - ./conf/redis/cache/redis.conf:/etc/redis/redis.conf
-    ports:
-      - 6350:6379
-    command: ["redis-server","/etc/redis/redis.conf"]
+    command: ["redis-server", "--appendonly", "yes"]
