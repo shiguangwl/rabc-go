@@ -11,20 +11,18 @@ import (
 	"github.com/spf13/viper"
 	"nunu-layout-admin/internal/repository"
 	"nunu-layout-admin/internal/server"
-	"nunu-layout-admin/pkg/app"
 	"nunu-layout-admin/pkg/log"
 	"nunu-layout-admin/pkg/sid"
 )
 
 // Injectors from wire.go:
 
-func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), error) {
+func NewWire(viperViper *viper.Viper, logger *log.Logger) (*server.SeedServer, func(), error) {
 	db := repository.NewDB(viperViper, logger)
 	sidSid := sid.NewSid()
 	syncedEnforcer := repository.NewCasbinEnforcer(viperViper, logger, db)
-	migrateServer := server.NewMigrateServer(db, logger, sidSid, syncedEnforcer)
-	appApp := newApp(migrateServer)
-	return appApp, func() {
+	seedServer := server.NewSeedServer(db, logger, sidSid, syncedEnforcer, viperViper)
+	return seedServer, func() {
 	}, nil
 }
 
@@ -32,11 +30,4 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 
 var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repository.NewCasbinEnforcer)
 
-var serverSet = wire.NewSet(server.NewMigrateServer)
-
-// build App
-func newApp(
-	migrateServer *server.MigrateServer,
-) *app.App {
-	return app.NewApp(app.WithServer(migrateServer), app.WithName("demo-migrate"))
-}
+var serverSet = wire.NewSet(server.NewSeedServer)

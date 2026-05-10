@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 	"nunu-layout-admin/internal/repository"
 	"nunu-layout-admin/internal/server"
-	"nunu-layout-admin/pkg/app"
 	"nunu-layout-admin/pkg/log"
 	"nunu-layout-admin/pkg/sid"
 )
@@ -20,24 +19,16 @@ var repositorySet = wire.NewSet(
 	repository.NewCasbinEnforcer,
 )
 var serverSet = wire.NewSet(
-	server.NewMigrateServer,
+	server.NewSeedServer,
 )
 
-// build App
-func newApp(
-	migrateServer *server.MigrateServer,
-) *app.App {
-	return app.NewApp(
-		app.WithServer(migrateServer),
-		app.WithName("demo-migrate"),
-	)
-}
-
-func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
+// NewWire 直接返回 *SeedServer，不再包成 app.App。
+// 原因：app.Run 是常驻服务模型（spawn goroutine + 阻塞等信号），与 cmd/seed
+// "写完即退出"的一次性 CLI 语义不匹配，外面套 App 会让 make seed 永远挂起。
+func NewWire(*viper.Viper, *log.Logger) (*server.SeedServer, func(), error) {
 	panic(wire.Build(
 		repositorySet,
 		serverSet,
 		sid.NewSid,
-		newApp,
 	))
 }
