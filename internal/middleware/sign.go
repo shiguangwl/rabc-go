@@ -1,14 +1,16 @@
 package middleware
 
 import (
-	"github.com/duke-git/lancet/v2/cryptor"
+	"crypto/md5"
+	"crypto/subtle"
+	"fmt"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"net/http"
+
 	v1 "nunu-layout-admin/api/v1"
 	"nunu-layout-admin/pkg/log"
-	"sort"
-	"strings"
 )
 
 func SignMiddleware(logger *log.Logger, conf *viper.Viper) gin.HandlerFunc {
@@ -18,33 +20,30 @@ func SignMiddleware(logger *log.Logger, conf *viper.Viper) gin.HandlerFunc {
 		for _, header := range requiredHeaders {
 			value, ok := ctx.Request.Header[header]
 			if !ok || len(value) == 0 {
-				v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+				v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 				ctx.Abort()
 				return
 			}
 		}
 
-		data := map[string]string{
-			"AppKey":     conf.GetString("security.api_sign.app_key"),
-			"Timestamp":  ctx.Request.Header.Get("Timestamp"),
-			"Nonce":      ctx.Request.Header.Get("Nonce"),
-			"AppVersion": ctx.Request.Header.Get("App-Version"),
-		}
+		appSecret := conf.GetString("security.api_sign.app_security")
+		// 固定 4 字段按 key 字典序拼接：AppKey < AppVersion < Nonce < Timestamp
+		var sb strings.Builder
+		sb.WriteString("AppKey")
+		sb.WriteString(conf.GetString("security.api_sign.app_key"))
+		sb.WriteString("AppVersion")
+		sb.WriteString(ctx.Request.Header.Get("App-Version"))
+		sb.WriteString("Nonce")
+		sb.WriteString(ctx.Request.Header.Get("Nonce"))
+		sb.WriteString("Timestamp")
+		sb.WriteString(ctx.Request.Header.Get("Timestamp"))
+		sb.WriteString(appSecret)
 
-		var keys []string
-		for k := range data {
-			keys = append(keys, k)
-		}
-		sort.Slice(keys, func(i, j int) bool { return strings.ToLower(keys[i]) < strings.ToLower(keys[j]) })
+		expected := strings.ToUpper(fmt.Sprintf("%x", md5.Sum([]byte(sb.String()))))
+		actual := ctx.Request.Header.Get("Sign")
 
-		var str string
-		for _, k := range keys {
-			str += k + data[k]
-		}
-		str += conf.GetString("security.api_sign.app_security")
-
-		if ctx.Request.Header.Get("Sign") != strings.ToUpper(cryptor.Md5String(str)) {
-			v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+		if subtle.ConstantTimeCompare([]byte(expected), []byte(actual)) != 1 {
+			v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 			ctx.Abort()
 			return
 		}

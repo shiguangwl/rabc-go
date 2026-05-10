@@ -3,8 +3,8 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"net/http"
-	"nunu-layout-admin/api/v1"
+
+	v1 "nunu-layout-admin/api/v1"
 	"nunu-layout-admin/pkg/jwt"
 	"nunu-layout-admin/pkg/log"
 )
@@ -17,24 +17,24 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 				"url":    ctx.Request.URL,
 				"params": ctx.Params,
 			}))
-			v1.HandleError(ctx, http.StatusUnauthorized, v1.ErrUnauthorized, nil)
+			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
 		}
 
 		claims, err := j.ParseToken(tokenString)
 		if err != nil {
-			logger.WithContext(ctx).Error("token error", zap.Any("data", map[string]interface{}{
+			logger.WithContext(ctx).Warn("token parse failed", zap.Any("data", map[string]interface{}{
 				"url":    ctx.Request.URL,
 				"params": ctx.Params,
 			}), zap.Error(err))
-			v1.HandleError(ctx, http.StatusUnauthorized, v1.ErrUnauthorized, nil)
+			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
 		}
 
 		ctx.Set("claims", claims)
-		recoveryLoggerFunc(ctx, logger)
+		injectClaimsToLogger(ctx, logger)
 		ctx.Next()
 	}
 }
@@ -55,18 +55,29 @@ func NoStrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 
 		claims, err := j.ParseToken(tokenString)
 		if err != nil {
+			logger.WithContext(ctx).Warn("NoStrictAuth: token parse failed, continuing without auth", zap.Error(err))
 			ctx.Next()
 			return
 		}
 
 		ctx.Set("claims", claims)
-		recoveryLoggerFunc(ctx, logger)
+		injectClaimsToLogger(ctx, logger)
 		ctx.Next()
 	}
 }
 
-func recoveryLoggerFunc(ctx *gin.Context, logger *log.Logger) {
-	if userInfo, ok := ctx.MustGet("claims").(*jwt.MyCustomClaims); ok {
-		logger.WithValue(ctx, zap.Any("UserId", userInfo.UserId))
+// injectClaimsToLogger 把 JWT claims 中的 UserID 注入到 logger 上下文，
+// 后续日志会自动带上 UserID 字段，便于排查。
+//
+// 使用 ctx.Get（而非 MustGet）避免缺失 claims 时 panic——
+// 调用方必须保证仅在 ctx.Set("claims", ...) 之后调用，但即便上游遗漏，
+// 这里也不会把缺失上下文升级成 500。
+func injectClaimsToLogger(ctx *gin.Context, logger *log.Logger) {
+	v, exists := ctx.Get("claims")
+	if !exists {
+		return
+	}
+	if userInfo, ok := v.(*jwt.MyCustomClaims); ok {
+		logger.WithValue(ctx, zap.Any("UserID", userInfo.UserID))
 	}
 }

@@ -1,21 +1,33 @@
 package server
 
 import (
+	nethttp "net/http"
+	"regexp"
+	"time"
+
 	"github.com/casbin/casbin/v2"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	nethttp "net/http"
+
 	"nunu-layout-admin/docs"
 	"nunu-layout-admin/internal/handler"
 	"nunu-layout-admin/internal/middleware"
+	"nunu-layout-admin/pkg/config"
 	"nunu-layout-admin/pkg/jwt"
 	"nunu-layout-admin/pkg/log"
 	"nunu-layout-admin/pkg/server/http"
 	"nunu-layout-admin/web"
 )
+
+// devOriginRe 限定 dev CORS 仅放通本机环回（localhost / 127.0.0.1 / [::1]）任意端口。
+// 不再使用 AllowOriginFunc 一律 return true，避免开发机上其他本地服务（Storybook、
+// 内部工具页面）借同主机域信任带 cookie 调本服务（CSRF 风险）。
+// 加入 [::1] 是为了覆盖 OS 默认监听 IPv6 loopback 时浏览器走 [::1]:port 的来源。
+var devOriginRe = regexp.MustCompile(`^https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$`)
 
 func NewHTTPServer(
 	logger *log.Logger,
@@ -25,13 +37,18 @@ func NewHTTPServer(
 	adminHandler *handler.AdminHandler,
 	userHandler *handler.UserHandler,
 ) *http.Server {
-	gin.SetMode(gin.DebugMode)
+	if config.IsProd(conf) {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
 	s := http.NewServer(
-		gin.Default(),
+		gin.New(),
 		logger,
 		http.WithServerHost(conf.GetString("http.host")),
 		http.WithServerPort(conf.GetInt("http.port")),
 	)
+	s.Use(gin.Recovery())
 	// 设置前端静态资源
 	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))
 	s.NoRoute(func(c *gin.Context) {
@@ -51,10 +68,31 @@ func NewHTTPServer(
 		ginSwagger.PersistAuthorization(true),
 	))
 
+	// 非 prod 启用宽松 CORS，便于本地前端开发联调；
+	// prod 由 Nginx/Ingress 反代统一处理 CORS，应用层不下发任何 CORS 头。
+	//
+	// AllowOriginFunc + AllowCredentials 组合：浏览器禁止 Access-Control-Allow-Origin=*
+	// 与 Allow-Credentials=true 共存，因此用 OriginFunc 反射回请求 Origin，
+	// 既保留宽松联调体验，又支持前端 withCredentials=true（cookie/JWT 透传）。
+	if !config.IsProd(conf) {
+		s.Use(cors.New(cors.Config{
+			AllowOriginFunc:  devOriginRe.MatchString,
+			AllowCredentials: true,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders: []string{
+				"Origin", "Content-Type", "Accept",
+				"Authorization", "X-Requested-With",
+			},
+			ExposeHeaders: []string{"Content-Length", "Content-Disposition"},
+			MaxAge:        12 * time.Hour,
+		}))
+	}
+
+	logBody := conf.GetBool("log.body.enabled")
+	maxBodyBytes := conf.GetInt("log.body.max_bytes")
 	s.Use(
-		middleware.CORSMiddleware(),
-		middleware.ResponseLogMiddleware(logger),
-		middleware.RequestLogMiddleware(logger),
+		middleware.RequestLogMiddleware(logger, logBody, maxBodyBytes),
+		middleware.ResponseLogMiddleware(logger, logBody, maxBodyBytes),
 		//middleware.SignMiddleware(log),
 	)
 
