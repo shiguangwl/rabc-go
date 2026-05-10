@@ -1,25 +1,27 @@
 env: local
+
 http:
-  #  host: 0.0.0.0
   host: 127.0.0.1
   port: 8000
+
 security:
+  # 本地开发用占位值，仅供本地启动；勿用于生产
   api_sign:
-    app_key: 123456
-    app_security: 123456
+    app_key: local-dev-app-key
+    app_security: local-dev-app-secret
   jwt:
-    key: QQYnRFerJTSEcrfB89fw8prOaObmrch8
+    key: local-dev-jwt-key-change-me
+
 data:
+  # 本地默认数据库，与 deploy/docker-compose/docker-compose.yml 中 user-db 容器对齐；
+  # driver 可选 mysql/postgres/sqlite/sqlserver；迁移命令会自动按 driver 选择 schema 方言。
+  # 启动方式: cd deploy/docker-compose && docker compose up -d user-db
   db:
+    # 本地默认开 SQL 日志便于排查；非 local 必须显式设置才打开，避免 staging 把 PII 写日志
+    debug: true
     user:
-      driver: sqlite
-      dsn: storage/nunu-test.db?_busy_timeout=5000
-  #    user:
-  #      driver: mysql
-  #      dsn: root:123456@tcp(127.0.0.1:3380)/user?charset=utf8mb4&parseTime=True&loc=Local
-  #    user:
-  #      driver: postgres
-  #      dsn: host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=Asia/Shanghai
+      driver: mysql
+      dsn: root:123456@tcp(127.0.0.1:3380)/user?charset=utf8mb4&parseTime=True&loc=Local
   redis:
     addr: 127.0.0.1:6350
     password: ""
@@ -27,11 +29,21 @@ data:
     read_timeout: 0.2s
     write_timeout: 0.2s
 
+# seed 命令初始密码，仅 local 默认 "123456"，
+# 非 local 必须显式设置 APP_SEED_INITIAL_PASSWORD
+seed:
+  initial_password: ""
+
 log:
   log_level: debug
-  encoding: console           # json or console
+  encoding: console
   log_file_name: "./storage/logs/server.log"
   max_backups: 30
   max_age: 7
   max_size: 1024
   compress: true
+  body:
+    # 本地开发打开方便调试请求/响应；prod 关闭以避免 PII 泄露与日志膨胀
+    enabled: true
+    # 单条 body 写入日志的字节上限；超出时记 [truncated ...] 占位，不写原文
+    max_bytes: 8192

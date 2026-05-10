@@ -4,7 +4,7 @@ import "gorm.io/gorm"
 
 const (
 	AdminRole          = "admin"
-	AdminUserID        = "1"
+	AdminUserID        = "1" // casbin policy subject 必须为 string，统一在此声明
 	MenuResourcePrefix = "menu:"
 	ApiResourcePrefix  = "api:"
 	PermSep            = ","
@@ -12,11 +12,11 @@ const (
 
 type AdminUser struct {
 	gorm.Model
-	Username string `gorm:"type:varchar(50);not null;uniqueIndex;comment:'用户名'"`
-	Nickname string `gorm:"type:varchar(50);not null;comment:'昵称'"`
-	Password string `gorm:"type:varchar(255);not null;comment:'密码'"`
-	Email    string `gorm:"type:varchar(100);not null;comment:'电子邮件'"`
-	Phone    string `gorm:"type:varchar(20);not null;comment:'手机号'"`
+	Username string `gorm:"type:varchar(50);not null;uniqueIndex;comment:用户名"`
+	Nickname string `gorm:"type:varchar(50);not null;comment:昵称"`
+	Password string `gorm:"type:varchar(255);not null;comment:密码"`
+	Email    string `gorm:"type:varchar(100);not null;comment:电子邮件"`
+	Phone    string `gorm:"type:varchar(20);not null;comment:手机号"`
 }
 
 func (m *AdminUser) TableName() string {
@@ -35,10 +35,11 @@ func (m *Role) TableName() string {
 
 type Api struct {
 	gorm.Model
-	Group  string `gorm:"type:varchar(100);not null;comment:'API分组'"`
-	Name   string `gorm:"type:varchar(100);not null;comment:'API名称'"`
-	Path   string `gorm:"type:varchar(255);not null;comment:'API路径'"`
-	Method string `gorm:"type:varchar(20);not null;comment:'HTTP方法'"`
+	// group 是 SQL 保留字，落库使用 group_name，避免多方言查询依赖手写引用符。
+	Group  string `gorm:"column:group_name;type:varchar(100);not null;comment:API分组"`
+	Name   string `gorm:"type:varchar(100);not null;comment:API名称"`
+	Path   string `gorm:"type:varchar(255);not null;comment:API路径"`
+	Method string `gorm:"type:varchar(20);not null;comment:HTTP方法"`
 }
 
 func (m *Api) TableName() string {

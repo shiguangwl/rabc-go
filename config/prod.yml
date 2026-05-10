@@ -1,37 +1,55 @@
 env: prod
+
 http:
   host: 0.0.0.0
-  #  host: 127.0.0.1
   port: 8000
+
+# 所有敏感配置必须经环境变量注入，yml 仅留占位（空字符串）防止 viper 报"key 缺失"。
+# 启动时若缺失，应用将在使用处 panic（IsProd 路径已加显式校验）。
+#
+# 环境变量映射（前缀 APP，点号 → 下划线）：
+#   APP_SECURITY_JWT_KEY               JWT 签名密钥
+#   APP_DATA_DB_USER_DRIVER            业务库驱动（默认 mysql，可选 postgres/sqlite/sqlserver）
+#   APP_DATA_DB_USER_DSN               业务库 DSN
+#   APP_DATA_REDIS_ADDR                Redis 地址
+#   APP_DATA_REDIS_PASSWORD            Redis 密码
+#   APP_SEED_INITIAL_PASSWORD          首次 seed 写入的 admin 初始密码
 security:
   api_sign:
-    app_key: 123456
-    app_security: 123456
+    app_key: ""
+    app_security: ""
   jwt:
-    key: QQYnRFerJTSEcrfB89fw8prOaObmrch8
+    key: ""
+
 data:
   db:
+    # 生产默认关闭 SQL 调试日志，避免把含 PII 的 SQL/参数无差别落盘；
+    # 排查时可临时通过 APP_DATA_DB_DEBUG=true 注入开启
+    debug: false
     user:
-      driver: sqlite
-      dsn: storage/nunu-test.db?_busy_timeout=5000
-  #    user:
-  #      driver: mysql
-  #      dsn: root:123456@tcp(127.0.0.1:3380)/user?charset=utf8mb4&parseTime=True&loc=Local
-  #    user:
-  #      driver: postgres
-  #      dsn: host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=Asia/Shanghai
+      driver: mysql
+      dsn: ""
   redis:
-    addr: 127.0.0.1:6350
+    addr: ""
     password: ""
     db: 0
     read_timeout: 0.2s
     write_timeout: 0.2s
 
+seed:
+  initial_password: ""
+
 log:
-  log_level: info
-  encoding: json           # json or console
+  log_level: info          # debug | info | warn | error
+  encoding: json           # json | console
   log_file_name: "./storage/logs/server.log"
-  max_backups: 30
-  max_age: 7
-  max_size: 1024
+  max_backups: 30          # 保留旧日志文件数
+  max_age: 7               # 日志保留天数
+  max_size: 1024           # 单文件大小上限（MB）
   compress: true
+  body:
+    # 生产关闭请求/响应 body 打印，避免 PII 与日志膨胀；
+    # 调试需要时可临时通过 APP_LOG_BODY_ENABLED=true 注入
+    enabled: false
+    # 启用时单条 body 写入日志的字节上限；超出时记 [truncated ...] 占位，不写原文
+    max_bytes: 8192

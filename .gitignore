@@ -6,3 +6,7 @@ deploy/docker-compose/data
 .omc/
 
 .ace-tool/
+
+# ralph 工作流工件，不入版本控制
+prd.json
+progress.txt
