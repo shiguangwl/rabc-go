@@ -22,12 +22,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     // paths
-    "baseUrl": ".",
     "paths": {
-      "~@/*": ["src/*"],
-      "~/*": ["src/*"],
-      "@/*": ["src/*"],
-      "~#/*": ["src/enums/*"],
+      "~@/*": ["./src/*"],
+      "~/*": ["./src/*"],
+      "@/*": ["./src/*"],
+      "~#/*": ["./src/enums/*"]
     }
   },
   "include": [

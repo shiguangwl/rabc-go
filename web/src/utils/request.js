@@ -116,7 +116,7 @@ export function usePut(url, data, config) {
 export function useDelete(url, data, config) {
   const options = {
     url,
-    data,
+    params: data,
     method: RequestEnum.DELETE,
     ...config,
   }

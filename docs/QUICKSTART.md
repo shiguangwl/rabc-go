@@ -10,7 +10,7 @@
 
 - **Gin** Web 框架 + **GORM** ORM + **Casbin** 权限引擎
 - **Wire** 编译期依赖注入
-- 三个独立可执行入口：HTTP 服务、数据迁移、定时任务
+- 三个独立可执行入口：HTTP 服务、初始数据 Seed、定时任务
 - 默认账号：`admin/123456`（超管）、`user/123456`（运营）
 
 ---
@@ -21,7 +21,7 @@
 nunu-layout-admin/
 ├── cmd/                    # 三个程序入口（每个生成一个二进制）
 │   ├── server/             # HTTP 服务主入口
-│   ├── migration/          # 数据初始化（建表 + 灌默认数据）
+│   ├── seed/               # 初始业务数据写入（不建表）
 │   └── task/               # 定时任务调度
 │       └── wire/           # 每个 cmd 都有自己的 Wire 装配清单
 │
@@ -52,7 +52,7 @@ nunu-layout-admin/
 ├── config/                 # YAML 配置（local.yml / prod.yml）
 ├── docs/                   # Swagger 生成产物（勿手改）
 ├── deploy/                 # Dockerfile + docker-compose
-├── storage/                # 运行时数据（SQLite + 日志文件）
+├── storage/                # 运行时日志等本地文件
 └── Makefile                # init/bootstrap/build/test/swag
 ```
 
@@ -157,7 +157,7 @@ func NewWire(v *viper.Viper, l *log.Logger) (*app.App, func(), error) {
 ```bash
 go install github.com/google/wire/cmd/wire@latest   # 装工具
 wire ./cmd/server/wire                               # 重新生成 wire_gen.go
-wire ./cmd/migration/wire
+wire ./cmd/seed/wire
 wire ./cmd/task/wire
 ```
 
@@ -254,17 +254,22 @@ func (m *AdminUser) TableName() string { return "admin_users" }
 
 > **Go 概念**：`gorm.Model` 通过结构体嵌入达到类似继承的效果。
 
-#### 多驱动连接（`internal/repository/repository.go:70`）
+#### 多驱动连接（`internal/repository/repository.go:77`）
 
 ```go
 switch driver {
-case "mysql":    db, err = gorm.Open(mysql.Open(dsn), ...)
-case "postgres": db, err = gorm.Open(postgres.New(...), ...)
-case "sqlite":   db, err = gorm.Open(sqlite.Open(dsn), ...)
+case "mysql":
+    return mysql.Open(dsn), nil
+case "postgres", "postgresql":
+    return postgres.Open(dsn), nil
+case "sqlite", "sqlite3":
+    return sqlite.Open(dsn), nil
+case "sqlserver", "mssql":
+    return sqlserver.Open(dsn), nil
 }
 ```
 
-切数据库只改 `config/local.yml` 的 `data.db.user.driver` 和 `dsn`。
+切运行时连接只改 `config/local.yml` 的 `data.db.user.driver` 和 `dsn`。Schema migration 按方言隔离在 `db/migrations/mysql` 与 `db/migrations/postgres`，迁移命令默认按配置里的 driver 选择方言。
 
 #### 常用查询模式
 
@@ -300,14 +305,20 @@ s.tm.Transaction(ctx, func(txCtx context.Context) error {
 
 巧妙之处：`*gorm.DB` 通过 `context.WithValue` 塞进 ctx，下层 `r.DB(ctx)` 取出，事务内外代码完全一致。
 
-#### 自动建表
+#### Schema 迁移
 
-```go
-// internal/server/migration.go
-m.db.AutoMigrate(&model.AdminUser{}, &model.Menu{}, &model.Role{}, &model.Api{})
+```bash
+# 修改 internal/model/*.go 后生成新 migration
+make migrate-diff name=add_xxx
+
+# 应用到本地数据库
+make migrate-apply
+
+# 首次写入业务初始数据
+make seed
 ```
 
-跑 `go run cmd/migration/main.go` 一次完成建表 + 默认数据。**注意**：会先 DropTable，重跑会清空数据。
+应用启动不执行 `AutoMigrate`。Schema 由 Atlas migration 管理，初始账号、菜单、API 与 Casbin 策略由 `cmd/seed` 写入。
 
 ---
 
@@ -361,7 +372,7 @@ const (
 ```go
 func AuthMiddleware(e *casbin.SyncedEnforcer) gin.HandlerFunc {
     return func(ctx *gin.Context) {
-        uid := ctx.MustGet("claims").(*jwt.MyCustomClaims).UserId
+        uid := ctx.MustGet("claims").(*jwt.MyCustomClaims).UserID
         if convertor.ToString(uid) == model.AdminUserID {  // 防呆：超管 ID=1 直接放行
             ctx.Next(); return
         }
@@ -429,7 +440,7 @@ token, _ := j.GenToken(userId, time.Now().Add(time.Hour*24*90))
 
 // 解析
 claims, err := j.ParseToken(tokenString)
-userId := claims.UserId
+userId := claims.UserID
 ```
 
 密钥来自 `config/local.yml` 的 `security.jwt.key`。
@@ -492,7 +503,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 | ⑥ 路由 | `internal/server/http.go` | 在 `strictAuthRouter` 加路由 |
 | ⑦ Wire 注入 | `cmd/server/wire/wire.go` | 加 `NewProductRepository/Service/Handler` |
 | ⑧ 重生成 | shell | `wire ./cmd/server/wire` |
-| ⑨ 建表 | `internal/server/migration.go` | 在 `AutoMigrate` 加 `&model.Product{}` |
+| ⑨ 建表 | `db/atlas/main.go` + `db/migrations/` | 在 `models()` 登记模型并执行 `make migrate-diff name=add_product` |
 | ⑩ 配权限 | 后台界面 | API 管理新增 → 角色管理分配权限 |
 
 ### 模板代码（参照 admin 模块）
@@ -579,15 +590,18 @@ make bootstrap
 # 仅启动 HTTP 服务（开发模式）
 go run cmd/server/main.go
 
-# 数据初始化（首次部署执行；重跑会清表）
-go run cmd/migration/main.go
+# 应用 schema migration
+make migrate-apply
+
+# 写入初始业务数据（首次部署执行）
+make seed
 
 # 启动定时任务进程
 go run cmd/task/main.go
 
 # 重新生成 Wire 装配代码（改完 wire.go 必须执行）
 wire ./cmd/server/wire
-wire ./cmd/migration/wire
+wire ./cmd/seed/wire
 wire ./cmd/task/wire
 
 # 生成 Swagger 文档
@@ -601,11 +615,11 @@ make build
 
 ## 七、推荐学习路径
 
-1. **跑起来**：`make init` → `go run cmd/migration/main.go` → `go run cmd/server/main.go` → 浏览器访问 `http://localhost:8000`，admin/123456 登录。
+1. **跑起来**：`make init` → `make bootstrap` → 浏览器访问 `http://localhost:8000`，admin/123456 登录。
 2. **跟一遍 Login 全链路**：从 `internal/handler/admin.go:Login` → `internal/service/admin.go:Login` → `internal/repository/admin.go:GetAdminUserByUsername`，理解三层是怎么传 ctx、传错误的。
 3. **看懂 Wire**：对照 `cmd/server/wire/wire.go`（清单）和 `cmd/server/wire/wire_gen.go`（生成产物），看每个 `New*` 函数的入参从哪儿来。
 4. **照葫芦画瓢**：仿照 admin 写一个简单 CRUD（比如 Article 文章），跑通"新增 API → 配权限 → 调通"完整流程。
-5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/repository/repository.go:NewCasbinEnforcer` + `internal/server/migration.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
+5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/repository/repository.go:NewCasbinEnforcer` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
 
 掌握以上 + 三层调用链，就能在这个项目上独立做 80% 业务开发。
 
