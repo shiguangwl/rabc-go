@@ -3,15 +3,18 @@ package service
 import (
 	"context"
 	"errors"
-	"github.com/duke-git/lancet/v2/convertor"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
 	v1 "nunu-layout-admin/api/v1"
 	"nunu-layout-admin/internal/model"
 	"nunu-layout-admin/internal/repository"
-	"strings"
-	"time"
 )
 
 type AdminService interface {
@@ -58,12 +61,20 @@ type adminService struct {
 	adminRepository repository.AdminRepository
 }
 
+const dummyPasswordHash = "$2a$10$C6UzMDM.H6dfI/f/IKcEeO6DGw4ZSLiZUj2Ip7yUpfI2KI2Zg7W6e"
+
 func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdminUserResponseData, error) {
 	user, err := s.adminRepository.GetAdminUser(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
-	roles, _ := s.adminRepository.GetUserRoles(ctx, uid)
+	// 详情页查不到角色不阻塞主信息返回，但记录 warn 让 SRE 能感知到 Casbin 异常；
+	// 静默 _ 忽略会让前端永远不知道角色查询挂掉。
+	roles, err := s.adminRepository.GetUserRoles(ctx, uid)
+	if err != nil {
+		s.logger.WithContext(ctx).Warn("GetUserRoles failed in GetAdminUser", zap.Uint("uid", uid), zap.Error(err))
+		roles = []string{}
+	}
 
 	return &v1.GetAdminUserResponseData{
 		Email:     user.Email,
@@ -80,25 +91,34 @@ func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdmin
 func (s *adminService) Login(ctx context.Context, req *v1.LoginRequest) (string, error) {
 	user, err := s.adminRepository.GetAdminUserByUsername(ctx, req.Username)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 用户名不存在时仍对固定 dummy hash 跑一次 bcrypt 比较，
+			// 统一耗时，消除用户名是否存在的时序侧信道。
+			_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(req.Password))
 			return "", v1.ErrUnauthorized
 		}
-		return "", v1.ErrInternalServerError
+		return "", v1.ErrInternalServerError.WithCause(err)
 	}
 
+	// 密码不匹配语义上等同于"账号或密码错误"，对外返回 401（与 RecordNotFound 保持一致），
+	// 不能裸返 bcrypt 错让 WriteResponse 兜底成 500——前端会误以为是服务异常。
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
-		return "", err
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return "", v1.ErrUnauthorized
+		}
+		return "", v1.ErrInternalServerError.WithCause(err)
 	}
 	token, err := s.jwt.GenToken(user.ID, time.Now().Add(time.Hour*24*90))
 	if err != nil {
-		return "", err
+		return "", v1.ErrInternalServerError.WithCause(err)
 	}
 
 	return token, nil
 }
 
 func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersRequest) (*v1.GetAdminUsersResponseData, error) {
+	req.Normalize()
 	list, total, err := s.adminRepository.GetAdminUsers(ctx, req)
 	if err != nil {
 		return nil, err
@@ -108,10 +128,12 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 		Total: total,
 	}
 	for _, user := range list {
+		// 任一用户的角色查询失败都整体返回错误：
+		// 之前的 continue 会让 List 长度小于 Total，前端分页错位、漏行难定位。
 		roles, err := s.adminRepository.GetUserRoles(ctx, user.ID)
 		if err != nil {
-			s.logger.Error("GetUserRoles error", zap.Error(err))
-			continue
+			s.logger.WithContext(ctx).Error("GetUserRoles error", zap.Uint("uid", user.ID), zap.Error(err))
+			return nil, err
 		}
 		data.List = append(data.List, v1.AdminUserDataItem{
 			Email:     user.Email,
@@ -128,30 +150,25 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 }
 
 func (s *adminService) AdminUserUpdate(ctx context.Context, req *v1.AdminUserUpdateRequest) error {
-	old, _ := s.adminRepository.GetAdminUser(ctx, req.ID)
+	// 密码为空 = 不修改密码列。空密码不在这里读旧值回写：
+	// 旧实现会在事务外做 read-modify-write，并发更新会丢密码（A 不改密码读到 H1，
+	// B 改密码写入 H2，A 把 H1 写回会把 H2 静默覆盖）。空密码下不写 password 列
+	// 的语义改在 repo 层按字段动态构造 map 实现。
 	if req.Password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
 		req.Password = string(hash)
-	} else {
-		req.Password = old.Password
 	}
-	err := s.adminRepository.UpdateUserRoles(ctx, req.ID, req.Roles)
-	if err != nil {
-		return err
-	}
-	return s.adminRepository.AdminUserUpdate(ctx, &model.AdminUser{
-		Model: gorm.Model{
-			ID: req.ID,
-		},
+	return s.adminRepository.AdminUserUpdateAtomic(ctx, &model.AdminUser{
+		Model:    gorm.Model{ID: req.ID},
 		Email:    req.Email,
 		Nickname: req.Nickname,
+		Password: req.Password,
 		Phone:    req.Phone,
 		Username: req.Username,
-	})
-
+	}, req.Roles) // req.Roles 为 *[]string：nil 跳过角色同步，非 nil 全量覆盖
 }
 
 func (s *adminService) AdminUserCreate(ctx context.Context, req *v1.AdminUserCreateRequest) error {
@@ -160,50 +177,57 @@ func (s *adminService) AdminUserCreate(ctx context.Context, req *v1.AdminUserCre
 		return err
 	}
 	req.Password = string(hash)
-	err = s.adminRepository.AdminUserCreate(ctx, &model.AdminUser{
+	return s.adminRepository.AdminUserCreateAtomic(ctx, &model.AdminUser{
 		Email:    req.Email,
 		Nickname: req.Nickname,
 		Phone:    req.Phone,
 		Username: req.Username,
 		Password: req.Password,
-	})
-	if err != nil {
-		return err
-	}
-	user, err := s.adminRepository.GetAdminUserByUsername(ctx, req.Username)
-	if err != nil {
-		return err
-	}
-	err = s.adminRepository.UpdateUserRoles(ctx, user.ID, req.Roles)
-	if err != nil {
-		return err
-	}
-	return err
-
+	}, req.Roles)
 }
 
 func (s *adminService) AdminUserDelete(ctx context.Context, id uint) error {
-	// 删除用户角色
-	err := s.adminRepository.DeleteUserRoles(ctx, id)
-	if err != nil {
-		return err
-	}
-	return s.adminRepository.AdminUserDelete(ctx, id)
+	return s.adminRepository.AdminUserDeleteAtomic(ctx, id)
 }
 
 func (s *adminService) UpdateRolePermission(ctx context.Context, req *v1.UpdateRolePermissionRequest) error {
 	permissions := map[string]struct{}{}
 	for _, v := range req.List {
-		perm := strings.Split(v, model.PermSep)
-		if len(perm) == 2 {
-			permissions[v] = struct{}{}
+		if !isValidPermission(v) {
+			return v1.ErrBadRequest
 		}
-
+		permissions[v] = struct{}{}
 	}
 	return s.adminRepository.UpdateRolePermission(ctx, req.Role, permissions)
 }
 
+// 校验权限串格式：API 权限必须携带 HTTP method，菜单权限只接受 read。
+func isValidPermission(raw string) bool {
+	parts := strings.Split(raw, model.PermSep)
+	if len(parts) != 2 {
+		return false
+	}
+	resource, action := parts[0], parts[1]
+	if resource == "" || action == "" {
+		return false
+	}
+	switch {
+	case strings.HasPrefix(resource, model.ApiResourcePrefix):
+		switch action {
+		case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions, http.MethodHead:
+			return true
+		default:
+			return false
+		}
+	case strings.HasPrefix(resource, model.MenuResourcePrefix):
+		return action == "read"
+	default:
+		return false
+	}
+}
+
 func (s *adminService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1.GetApisResponseData, error) {
+	req.Normalize()
 	list, total, err := s.adminRepository.GetApis(ctx, req)
 	if err != nil {
 		return nil, err
@@ -232,17 +256,22 @@ func (s *adminService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1
 }
 
 func (s *adminService) ApiUpdate(ctx context.Context, req *v1.ApiUpdateRequest) error {
-	return s.adminRepository.ApiUpdate(ctx, &model.Api{
+	old, err := s.adminRepository.GetApi(ctx, req.ID)
+	if err != nil {
+		return err
+	}
+	// path/method 变更时事务内清旧 Casbin 策略；新策略由管理员重新分配
+	return s.adminRepository.ApiUpdateAtomic(ctx, &model.Api{
 		Group:  req.Group,
 		Method: req.Method,
 		Name:   req.Name,
 		Path:   req.Path,
-		Model: gorm.Model{
-			ID: req.ID,
-		},
-	})
+		Model:  gorm.Model{ID: req.ID},
+	}, old.Path, old.Method)
 }
 
+// ApiCreate 不需要事务：新登记的 API 资源默认无任何 Casbin 策略绑定，
+// 需要管理员通过"角色权限管理"页面显式分配。直接走 repo 单写即可。
 func (s *adminService) ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) error {
 	return s.adminRepository.ApiCreate(ctx, &model.Api{
 		Group:  req.Group,
@@ -253,7 +282,11 @@ func (s *adminService) ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) 
 }
 
 func (s *adminService) ApiDelete(ctx context.Context, id uint) error {
-	return s.adminRepository.ApiDelete(ctx, id)
+	old, err := s.adminRepository.GetApi(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.adminRepository.ApiDeleteAtomic(ctx, id, old.Path, old.Method)
 }
 
 func (s *adminService) GetUserPermissions(ctx context.Context, uid uint) (*v1.GetUserPermissionsData, error) {
@@ -288,7 +321,11 @@ func (s *adminService) GetRolePermissions(ctx context.Context, role string) (*v1
 }
 
 func (s *adminService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest) error {
-	return s.adminRepository.MenuUpdate(ctx, &model.Menu{
+	old, err := s.adminRepository.GetMenu(ctx, req.ID)
+	if err != nil {
+		return err
+	}
+	return s.adminRepository.MenuUpdateAtomic(ctx, &model.Menu{
 		Component:  req.Component,
 		Icon:       req.Icon,
 		KeepAlive:  req.KeepAlive,
@@ -304,7 +341,7 @@ func (s *adminService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest
 		Model: gorm.Model{
 			ID: req.ID,
 		},
-	})
+	}, old.Path)
 }
 
 func (s *adminService) MenuCreate(ctx context.Context, req *v1.MenuCreateRequest) error {
@@ -325,7 +362,11 @@ func (s *adminService) MenuCreate(ctx context.Context, req *v1.MenuCreateRequest
 }
 
 func (s *adminService) MenuDelete(ctx context.Context, id uint) error {
-	return s.adminRepository.MenuDelete(ctx, id)
+	old, err := s.adminRepository.GetMenu(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.adminRepository.MenuDeleteAtomic(ctx, id, old.Path)
 }
 
 func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuResponseData, error) {
@@ -337,6 +378,29 @@ func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuRespo
 	data := &v1.GetMenuResponseData{
 		List: make([]v1.MenuDataItem, 0),
 	}
+	isAdmin := strconv.FormatUint(uint64(uid), 10) == model.AdminUserID
+	if isAdmin {
+		for _, menu := range menuList {
+			data.List = append(data.List, v1.MenuDataItem{
+				ID:         menu.ID,
+				Name:       menu.Name,
+				Title:      menu.Title,
+				Path:       menu.Path,
+				Component:  menu.Component,
+				Redirect:   menu.Redirect,
+				KeepAlive:  menu.KeepAlive,
+				HideInMenu: menu.HideInMenu,
+				Locale:     menu.Locale,
+				Weight:     menu.Weight,
+				Icon:       menu.Icon,
+				ParentID:   menu.ParentID,
+				UpdatedAt:  menu.UpdatedAt.Format("2006-01-02 15:04:05"),
+				URL:        menu.URL,
+			})
+		}
+		return data, nil
+	}
+
 	// 获取权限的菜单
 	permissions, err := s.adminRepository.GetUserPermissions(ctx, uid)
 	if err != nil {
@@ -344,14 +408,18 @@ func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuRespo
 	}
 	menuPermMap := map[string]struct{}{}
 	for _, permission := range permissions {
-		// 防呆设置，超管可以看到所有菜单
-		if convertor.ToString(uid) == model.AdminUserID {
-			menuPermMap[strings.TrimPrefix(permission[1], model.MenuResourcePrefix)] = struct{}{}
-		} else {
-			if len(permission) == 3 && strings.HasPrefix(permission[1], model.MenuResourcePrefix) {
-				menuPermMap[strings.TrimPrefix(permission[1], model.MenuResourcePrefix)] = struct{}{}
-			}
+		// permission 格式预期为 [sub, obj, act]；任何长度<2 的脏数据直接跳过，避免越界。
+		if len(permission) < 2 {
+			continue
 		}
+		obj := permission[1]
+		if !strings.HasPrefix(obj, model.MenuResourcePrefix) {
+			continue
+		}
+		if len(permission) != 3 {
+			continue
+		}
+		menuPermMap[strings.TrimPrefix(obj, model.MenuResourcePrefix)] = struct{}{}
 	}
 
 	for _, menu := range menuList {
@@ -406,10 +474,12 @@ func (s *adminService) GetAdminMenus(ctx context.Context) (*v1.GetMenuResponseDa
 	return data, nil
 }
 
+// RoleUpdate 仅更新角色显示名 Name；Sid 是 Casbin 策略的关联键，
+// 一旦修改会让所有 g/p 行指向不存在的 role，导致权限静默失效，因此禁止变更。
+// repo 层用 UpdateColumn("name", ...) 显式只写一列，即使 req.Sid 非空也不会落库。
 func (s *adminService) RoleUpdate(ctx context.Context, req *v1.RoleUpdateRequest) error {
 	return s.adminRepository.RoleUpdate(ctx, &model.Role{
 		Name: req.Name,
-		Sid:  req.Sid,
 		Model: gorm.Model{
 			ID: req.ID,
 		},
@@ -417,18 +487,9 @@ func (s *adminService) RoleUpdate(ctx context.Context, req *v1.RoleUpdateRequest
 }
 
 func (s *adminService) RoleCreate(ctx context.Context, req *v1.RoleCreateRequest) error {
-	_, err := s.adminRepository.GetRoleBySid(ctx, req.Sid)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return s.adminRepository.RoleCreate(ctx, &model.Role{
-				Name: req.Name,
-				Sid:  req.Sid,
-			})
-		} else {
-			return err
-		}
-	}
-	return nil
+	// 唯一约束冲突由 repo 反查精确翻译为 ErrRoleSidExists / ErrRoleNameExists；
+	// service 层只透传业务错误，不再依赖 affected 行数语义。
+	return s.adminRepository.RoleCreateIfAbsent(ctx, &model.Role{Name: req.Name, Sid: req.Sid})
 }
 
 func (s *adminService) RoleDelete(ctx context.Context, id uint) error {
@@ -436,13 +497,11 @@ func (s *adminService) RoleDelete(ctx context.Context, id uint) error {
 	if err != nil {
 		return err
 	}
-	if err := s.adminRepository.CasbinRoleDelete(ctx, old.Sid); err != nil {
-		return err
-	}
-	return s.adminRepository.RoleDelete(ctx, id)
+	return s.adminRepository.RoleDeleteAtomic(ctx, id, old.Sid)
 }
 
 func (s *adminService) GetRoles(ctx context.Context, req *v1.GetRoleListRequest) (*v1.GetRolesResponseData, error) {
+	req.Normalize()
 	list, total, err := s.adminRepository.GetRoles(ctx, req)
 	if err != nil {
 		return nil, err
