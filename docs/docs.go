@@ -453,42 +453,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/admin/role/permissions": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取指定角色的权限列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "权限模块"
-                ],
-                "summary": "获取角色权限",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "角色名称",
-                        "name": "role",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolePermissionsData"
-                        }
-                    }
-                }
-            },
+        "/v1/admin/role/permission": {
             "put": {
                 "security": [
                     {
@@ -522,6 +487,43 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/role/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取指定角色的权限列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "权限模块"
+                ],
+                "summary": "获取角色权限",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "角色名称",
+                        "name": "role",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolePermissionsData"
                         }
                     }
                 }
@@ -895,6 +897,7 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
+                    "minLength": 6,
                     "example": "123456"
                 },
                 "phone": {
@@ -903,6 +906,7 @@ const docTemplate = `{
                 },
                 "roles": {
                     "type": "array",
+                    "maxItems": 20,
                     "items": {
                         "type": "string"
                     },
@@ -918,12 +922,6 @@ const docTemplate = `{
         },
         "nunu-layout-admin_api_v1.AdminUserDataItem": {
             "type": "object",
-            "required": [
-                "email",
-                "nickname",
-                "password",
-                "username"
-            ],
             "properties": {
                 "createdAt": {
                     "type": "string"
@@ -938,10 +936,6 @@ const docTemplate = `{
                 "nickname": {
                     "type": "string",
                     "example": "小Baby"
-                },
-                "password": {
-                    "type": "string",
-                    "example": "123456"
                 },
                 "phone": {
                     "type": "string",
@@ -968,6 +962,7 @@ const docTemplate = `{
         "nunu-layout-admin_api_v1.AdminUserUpdateRequest": {
             "type": "object",
             "required": [
+                "id",
                 "username"
             ],
             "properties": {
@@ -976,7 +971,8 @@ const docTemplate = `{
                     "example": "1234@gmail.com"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "nickname": {
                     "type": "string",
@@ -984,6 +980,7 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
+                    "minLength": 6,
                     "example": "123456"
                 },
                 "phone": {
@@ -1007,6 +1004,12 @@ const docTemplate = `{
         },
         "nunu-layout-admin_api_v1.ApiCreateRequest": {
             "type": "object",
+            "required": [
+                "group",
+                "method",
+                "name",
+                "path"
+            ],
             "properties": {
                 "group": {
                     "type": "string",
@@ -1014,6 +1017,15 @@ const docTemplate = `{
                 },
                 "method": {
                     "type": "string",
+                    "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS",
+                        "HEAD"
+                    ],
                     "example": "GET"
                 },
                 "name": {
@@ -1055,7 +1067,11 @@ const docTemplate = `{
         "nunu-layout-admin_api_v1.ApiUpdateRequest": {
             "type": "object",
             "required": [
-                "id"
+                "group",
+                "id",
+                "method",
+                "name",
+                "path"
             ],
             "properties": {
                 "group": {
@@ -1068,6 +1084,15 @@ const docTemplate = `{
                 },
                 "method": {
                     "type": "string",
+                    "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS",
+                        "HEAD"
+                    ],
                     "example": "GET"
                 },
                 "name": {
@@ -1110,10 +1135,6 @@ const docTemplate = `{
                 "nickname": {
                     "type": "string",
                     "example": "小Baby"
-                },
-                "password": {
-                    "type": "string",
-                    "example": "123456"
                 },
                 "phone": {
                     "type": "string",
@@ -1315,13 +1336,18 @@ const docTemplate = `{
         },
         "nunu-layout-admin_api_v1.MenuCreateRequest": {
             "type": "object",
+            "required": [
+                "name",
+                "path",
+                "title"
+            ],
             "properties": {
                 "component": {
                     "description": "绑定的组件",
                     "type": "string"
                 },
                 "hideInMenu": {
-                    "description": "是否保活",
+                    "description": "菜单是否隐藏",
                     "type": "boolean"
                 },
                 "icon": {
@@ -1374,7 +1400,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "hideInMenu": {
-                    "description": "是否保活",
+                    "description": "菜单是否隐藏",
                     "type": "boolean"
                 },
                 "icon": {
@@ -1414,7 +1440,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
-                    "description": "是否保活",
+                    "description": "更新时间",
                     "type": "string"
                 },
                 "url": {
@@ -1429,13 +1455,19 @@ const docTemplate = `{
         },
         "nunu-layout-admin_api_v1.MenuUpdateRequest": {
             "type": "object",
+            "required": [
+                "id",
+                "name",
+                "path",
+                "title"
+            ],
             "properties": {
                 "component": {
                     "description": "绑定的组件",
                     "type": "string"
                 },
                 "hideInMenu": {
-                    "description": "是否保活",
+                    "description": "菜单是否隐藏",
                     "type": "boolean"
                 },
                 "icon": {
@@ -1540,8 +1572,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "id",
-                "name",
-                "sid"
+                "name"
             ],
             "properties": {
                 "id": {
@@ -1551,10 +1582,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Admin"
-                },
-                "sid": {
-                    "type": "string",
-                    "example": "1"
                 }
             }
         },

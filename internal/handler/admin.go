@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"net/http"
+
 	v1 "nunu-layout-admin/api/v1"
 	"nunu-layout-admin/internal/service"
 )
@@ -35,13 +35,13 @@ func NewAdminHandler(
 func (h *AdminHandler) Login(ctx *gin.Context) {
 	var req v1.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 
 	token, err := h.adminService.Login(ctx, &req)
 	if err != nil {
-		v1.HandleError(ctx, http.StatusUnauthorized, v1.ErrUnauthorized, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, v1.LoginResponseData{
@@ -62,10 +62,9 @@ func (h *AdminHandler) Login(ctx *gin.Context) {
 func (h *AdminHandler) GetMenus(ctx *gin.Context) {
 	data, err := h.adminService.GetMenus(ctx, GetUserIdFromCtx(ctx))
 	if err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-	// 过滤权限菜单
 	v1.HandleSuccess(ctx, data)
 }
 
@@ -82,10 +81,9 @@ func (h *AdminHandler) GetMenus(ctx *gin.Context) {
 func (h *AdminHandler) GetAdminMenus(ctx *gin.Context) {
 	data, err := h.adminService.GetAdminMenus(ctx)
 	if err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-	// 过滤权限菜单
 	v1.HandleSuccess(ctx, data)
 }
 
@@ -102,10 +100,9 @@ func (h *AdminHandler) GetAdminMenus(ctx *gin.Context) {
 func (h *AdminHandler) GetUserPermissions(ctx *gin.Context) {
 	data, err := h.adminService.GetUserPermissions(ctx, GetUserIdFromCtx(ctx))
 	if err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-	// 过滤权限菜单
 	v1.HandleSuccess(ctx, data)
 }
 
@@ -122,13 +119,13 @@ func (h *AdminHandler) GetUserPermissions(ctx *gin.Context) {
 // @Router /v1/admin/role/permissions [get]
 func (h *AdminHandler) GetRolePermissions(ctx *gin.Context) {
 	var req v1.GetRolePermissionsRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetRolePermissions(ctx, req.Role)
 	if err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, data)
@@ -144,16 +141,15 @@ func (h *AdminHandler) GetRolePermissions(ctx *gin.Context) {
 // @Security Bearer
 // @Param request body v1.UpdateRolePermissionRequest true "参数"
 // @Success 200 {object} v1.Response
-// @Router /v1/admin/role/permissions [put]
+// @Router /v1/admin/role/permission [put]
 func (h *AdminHandler) UpdateRolePermission(ctx *gin.Context) {
 	var req v1.UpdateRolePermissionRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
-	err := h.adminService.UpdateRolePermission(ctx, &req)
-	if err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+	if err := h.adminService.UpdateRolePermission(ctx, &req); err != nil {
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -172,12 +168,12 @@ func (h *AdminHandler) UpdateRolePermission(ctx *gin.Context) {
 // @Router /v1/admin/menu [put]
 func (h *AdminHandler) MenuUpdate(ctx *gin.Context) {
 	var req v1.MenuUpdateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.MenuUpdate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -196,12 +192,12 @@ func (h *AdminHandler) MenuUpdate(ctx *gin.Context) {
 // @Router /v1/admin/menu [post]
 func (h *AdminHandler) MenuCreate(ctx *gin.Context) {
 	var req v1.MenuCreateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.MenuCreate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -220,14 +216,13 @@ func (h *AdminHandler) MenuCreate(ctx *gin.Context) {
 // @Router /v1/admin/menu [delete]
 func (h *AdminHandler) MenuDelete(ctx *gin.Context) {
 	var req v1.MenuDeleteRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.MenuDelete(ctx, req.ID); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
-
 	}
 	v1.HandleSuccess(ctx, nil)
 }
@@ -248,16 +243,15 @@ func (h *AdminHandler) MenuDelete(ctx *gin.Context) {
 // @Router /v1/admin/roles [get]
 func (h *AdminHandler) GetRoles(ctx *gin.Context) {
 	var req v1.GetRoleListRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetRoles(ctx, &req)
 	if err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-
 	v1.HandleSuccess(ctx, data)
 }
 
@@ -274,12 +268,12 @@ func (h *AdminHandler) GetRoles(ctx *gin.Context) {
 // @Router /v1/admin/role [post]
 func (h *AdminHandler) RoleCreate(ctx *gin.Context) {
 	var req v1.RoleCreateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.RoleCreate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -298,12 +292,12 @@ func (h *AdminHandler) RoleCreate(ctx *gin.Context) {
 // @Router /v1/admin/role [put]
 func (h *AdminHandler) RoleUpdate(ctx *gin.Context) {
 	var req v1.RoleUpdateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.RoleUpdate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -322,12 +316,12 @@ func (h *AdminHandler) RoleUpdate(ctx *gin.Context) {
 // @Router /v1/admin/role [delete]
 func (h *AdminHandler) RoleDelete(ctx *gin.Context) {
 	var req v1.RoleDeleteRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.RoleDelete(ctx, req.ID); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -351,16 +345,15 @@ func (h *AdminHandler) RoleDelete(ctx *gin.Context) {
 // @Router /v1/admin/apis [get]
 func (h *AdminHandler) GetApis(ctx *gin.Context) {
 	var req v1.GetApisRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetApis(ctx, &req)
 	if err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-
 	v1.HandleSuccess(ctx, data)
 }
 
@@ -377,12 +370,12 @@ func (h *AdminHandler) GetApis(ctx *gin.Context) {
 // @Router /v1/admin/api [post]
 func (h *AdminHandler) ApiCreate(ctx *gin.Context) {
 	var req v1.ApiCreateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.ApiCreate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -401,12 +394,12 @@ func (h *AdminHandler) ApiCreate(ctx *gin.Context) {
 // @Router /v1/admin/api [put]
 func (h *AdminHandler) ApiUpdate(ctx *gin.Context) {
 	var req v1.ApiUpdateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.ApiUpdate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -425,12 +418,12 @@ func (h *AdminHandler) ApiUpdate(ctx *gin.Context) {
 // @Router /v1/admin/api [delete]
 func (h *AdminHandler) ApiDelete(ctx *gin.Context) {
 	var req v1.ApiDeleteRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.ApiDelete(ctx, req.ID); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -449,12 +442,12 @@ func (h *AdminHandler) ApiDelete(ctx *gin.Context) {
 // @Router /v1/admin/user [put]
 func (h *AdminHandler) AdminUserUpdate(ctx *gin.Context) {
 	var req v1.AdminUserUpdateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.AdminUserUpdate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -473,12 +466,12 @@ func (h *AdminHandler) AdminUserUpdate(ctx *gin.Context) {
 // @Router /v1/admin/user [post]
 func (h *AdminHandler) AdminUserCreate(ctx *gin.Context) {
 	var req v1.AdminUserCreateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.AdminUserCreate(ctx, &req); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, nil)
@@ -497,14 +490,13 @@ func (h *AdminHandler) AdminUserCreate(ctx *gin.Context) {
 // @Router /v1/admin/user [delete]
 func (h *AdminHandler) AdminUserDelete(ctx *gin.Context) {
 	var req v1.AdminUserDeleteRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.AdminUserDelete(ctx, req.ID); err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
-
 	}
 	v1.HandleSuccess(ctx, nil)
 }
@@ -527,16 +519,15 @@ func (h *AdminHandler) AdminUserDelete(ctx *gin.Context) {
 // @Router /v1/admin/users [get]
 func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
 	var req v1.GetAdminUsersRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetAdminUsers(ctx, &req)
 	if err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-
 	v1.HandleSuccess(ctx, data)
 }
 
@@ -553,9 +544,8 @@ func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
 func (h *AdminHandler) GetAdminUser(ctx *gin.Context) {
 	data, err := h.adminService.GetAdminUser(ctx, GetUserIdFromCtx(ctx))
 	if err != nil {
-		v1.HandleError(ctx, http.StatusInternalServerError, v1.ErrInternalServerError, nil)
+		v1.WriteResponse(ctx, err, nil)
 		return
 	}
-
 	v1.HandleSuccess(ctx, data)
 }
