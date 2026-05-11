@@ -6,11 +6,26 @@
 //
 // 工作流：
 //   make migrate-diff name=add_xxx        // 生成新 migration
-//   make migrate-status                   // 查看待应用 migration
-//   make migrate-apply                    // 应用 migration 到本地 DB
+//   make migrate-apply                    // 应用 migration 到目标 DB
+//   make migrate-lint                     // CI 级破坏性变更检测
 //
 // 默认 migration 方言是 MySQL；运行时驱动由 data.db.user.driver 决定。
 // PostgreSQL 使用 local_postgres env 与 db/migrations/postgres 目录。
+//
+// ----------------------------------------------------------------------------
+// 数据库地址：默认指向 deploy/docker-compose 启的本地容器；走"本地原生 DB"
+// 路径时可用以下环境变量覆盖（不必改本文件）：
+//
+//   ATLAS_MYSQL_URL       覆盖 local_mysql 的目标库 URL
+//   ATLAS_MYSQL_DEV_URL   覆盖 local_mysql 的 atlas dev DB URL
+//   ATLAS_PG_URL          覆盖 local_postgres 的目标库 URL
+//   ATLAS_PG_DEV_URL      覆盖 local_postgres 的 atlas dev DB URL
+//
+// 示例（macOS 原生 MySQL，端口 3306，已 CREATE DATABASE app/atlas_dev）：
+//   export ATLAS_MYSQL_URL=mysql://root:secret@127.0.0.1:3306/app
+//   export ATLAS_MYSQL_DEV_URL=mysql://root:secret@127.0.0.1:3306/atlas_dev
+//   make migrate-apply
+// ----------------------------------------------------------------------------
 
 data "external_schema" "gorm" {
   program = [
@@ -23,11 +38,10 @@ data "external_schema" "gorm" {
 
 env "local_mysql" {
   src = data.external_schema.gorm.url
-  // 本地 DB：与 deploy/docker-compose 中 user-db 容器对齐（端口 3380）
-  url = "mysql://root:123456@127.0.0.1:3380/user"
-  // dev DB：复用 user-db 容器内的独立 schema，避免 atlas 自启 docker 容器
+  url = coalesce(getenv("ATLAS_MYSQL_URL"), "mysql://root:123456@127.0.0.1:3380/user")
+  // dev DB 用单独 schema，避免 atlas 自启 docker 容器
   // （在 OrbStack 下 docker:// URL 会超时）。需提前 CREATE DATABASE atlas_dev。
-  dev = "mysql://root:123456@127.0.0.1:3380/atlas_dev"
+  dev = coalesce(getenv("ATLAS_MYSQL_DEV_URL"), "mysql://root:123456@127.0.0.1:3380/atlas_dev")
   migration {
     dir = "file://db/migrations/mysql"
   }
@@ -40,9 +54,9 @@ env "local_mysql" {
 
 env "local_postgres" {
   src = data.external_schema.gorm.url
-  // 需自行启动 PostgreSQL，并创建 user 与 atlas_dev 两个 database。
-  url = "postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable"
-  dev = "postgres://postgres:123456@127.0.0.1:5432/atlas_dev?sslmode=disable"
+  url = coalesce(getenv("ATLAS_PG_URL"), "postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable")
+  // dev DB 需自行 CREATE DATABASE atlas_dev
+  dev = coalesce(getenv("ATLAS_PG_DEV_URL"), "postgres://postgres:123456@127.0.0.1:5432/atlas_dev?sslmode=disable")
   migration {
     dir = "file://db/migrations/postgres"
   }
