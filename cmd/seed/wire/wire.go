@@ -14,7 +14,6 @@ import (
 
 var repositorySet = wire.NewSet(
 	repository.NewDB,
-	//repository.NewRedis,
 	repository.NewRepository,
 	repository.NewCasbinEnforcer,
 )

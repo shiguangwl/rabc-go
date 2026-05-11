@@ -24,7 +24,8 @@ type userJob struct {
 	*Job
 }
 
+// KafkaConsumer 是 Kafka 消费骨架，接入消息源后再注入 sarama/segmentio client。
+// 当前空实现仅满足 wire 装配，无副作用。
 func (t userJob) KafkaConsumer(ctx context.Context) error {
-	// do something
 	return nil
 }

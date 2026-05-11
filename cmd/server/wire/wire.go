@@ -20,7 +20,6 @@ import (
 
 var repositorySet = wire.NewSet(
 	repository.NewDB,
-	//repository.NewRedis,
 	repository.NewRepository,
 	repository.NewTransaction,
 	repository.NewUserRepository,
@@ -53,7 +52,6 @@ var serverSet = wire.NewSet(
 func newApp(
 	httpServer *http.Server,
 	jobServer *server.JobServer,
-	// task *server.Task,
 ) *app.App {
 	return app.NewApp(
 		app.WithServer(httpServer, jobServer),

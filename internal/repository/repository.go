@@ -28,37 +28,39 @@ type ctxKey int
 
 const txCtxKey ctxKey = iota
 
+// Repository 收敛全 repo 共用的 DB / Casbin enforcer / logger，
+// 各业务 repo 通过组合方式复用它，避免散落式依赖注入。
 type Repository struct {
-	db *gorm.DB
-	e  *casbin.SyncedEnforcer
-	//rdb    *redis.Client
+	db     *gorm.DB
+	e      *casbin.SyncedEnforcer
 	logger *log.Logger
 }
 
+// NewRepository 构造 Repository；由 wire 装配，业务 repo 嵌入它即可继承事务与日志能力。
 func NewRepository(
 	logger *log.Logger,
 	db *gorm.DB,
 	e *casbin.SyncedEnforcer,
-	// rdb *redis.Client,
 ) *Repository {
 	return &Repository{
-		db: db,
-		e:  e,
-		//rdb:    rdb,
+		db:     db,
+		e:      e,
 		logger: logger,
 	}
 }
 
+// Transaction 是事务入口接口；由 service 层依赖以保持「业务编排可注入 mock 事务」。
 type Transaction interface {
 	Transaction(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
+// NewTransaction 把 Repository 暴露为 Transaction 接口，让 wire 在生成
+// service 依赖时只看到事务能力，屏蔽 Repository 其它字段。
 func NewTransaction(r *Repository) Transaction {
 	return r
 }
 
-// DB return tx
-// If you need to create a Transaction, you must call DB(ctx) and Transaction(ctx,fn)
+// DB 优先返回事务上下文中的 *gorm.DB，让 repo 方法在事务内外共用同一套调用路径。
 func (r *Repository) DB(ctx context.Context) *gorm.DB {
 	v := ctx.Value(txCtxKey)
 	if v != nil {
@@ -76,6 +78,9 @@ func (r *Repository) Transaction(ctx context.Context, fn func(ctx context.Contex
 	})
 }
 
+// NewDB 按 data.db.user.driver 选取 GORM Dialector，启用 TranslateError 让 repo 能用
+// sentinel 错误（ErrDuplicatedKey 等）分支，避免依赖 driver 字符串匹配。
+// 连接池上限与 ConnMaxLifetime 按"中等吞吐 + 防 stale 连接"的折衷给出默认值。
 func NewDB(conf *viper.Viper, l *log.Logger) *gorm.DB {
 	var (
 		db  *gorm.DB
@@ -107,7 +112,6 @@ func NewDB(conf *viper.Viper, l *log.Logger) *gorm.DB {
 		db = db.Debug()
 	}
 
-	// Connection Pool config
 	sqlDB, err := db.DB()
 	if err != nil {
 		panic(err)
@@ -159,6 +163,8 @@ func NewCasbinModel() (model.Model, error) {
 	return model.NewModelFromString(CasbinModelConf)
 }
 
+// NewCasbinEnforcer 关掉 adapter 隐式 AutoMigrate 让 schema 全走 atlas，
+// 启用 10s 轮询同步多副本策略；权限低延迟敏感场景可后续接入 Casbin Watcher。
 func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) *casbin.SyncedEnforcer {
 	// 关掉 adapter 的隐式 AutoMigrate / CREATE UNIQUE INDEX：
 	// casbin_rule 已纳入 atlas 管控（见 db/atlas/main.go 与 db/migrations），
@@ -178,21 +184,16 @@ func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) *casbin.Sy
 		panic(fmt.Errorf("casbin enforcer init failed: %w", err))
 	}
 
-	// 每10秒自动加载策略，防止启动多服务进程策略不一致
-	// 如果不想用轮询DB的方式，你也可以使用Casbin Watchers来同步策略，该方式需要基于Redis、Etcd等存储中间件
-	// Watchers相关文档：https://casbin.org/zh/docs/watchers
+	// 多副本部署时用轮询兜底策略一致性；若权限变更需要更低延迟，再引入 Casbin Watcher。
 	e.StartAutoLoadPolicy(10 * time.Second)
 
-	// Enable Logger, decide whether to show it in terminal
-	//e.EnableLog(true)
-
-	// Save the policy back to DB.
 	e.EnableAutoSave(true)
 
 	return e
 }
 
-// NewRedis 预留：缓存层启用时由 wire 注入
+// NewRedis 预留：缓存层启用时由 wire 注入。
+// 启动期 5s 内 Ping 失败直接 panic，避免应用以「Redis 静默不可用」的状态对外提供服务。
 func NewRedis(conf *viper.Viper) *redis.Client {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     conf.GetString("data.redis.addr"),

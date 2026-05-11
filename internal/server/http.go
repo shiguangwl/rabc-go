@@ -49,7 +49,6 @@ func NewHTTPServer(
 		http.WithServerPort(conf.GetInt("http.port")),
 	)
 	s.Use(gin.Recovery())
-	// 设置前端静态资源
 	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))
 	s.NoRoute(func(c *gin.Context) {
 		indexPageData, err := web.Assets().ReadFile("dist/index.html")
@@ -59,11 +58,9 @@ func NewHTTPServer(
 		}
 		c.Data(nethttp.StatusOK, "text/html; charset=utf-8", indexPageData)
 	})
-	// swagger doc
 	docs.SwaggerInfo.BasePath = "/"
 	s.GET("/swagger/*any", ginSwagger.WrapHandler(
 		swaggerfiles.Handler,
-		//ginSwagger.URL(fmt.Sprintf("http://localhost:%d/swagger/doc.json", conf.GetInt("app.http.port"))),
 		ginSwagger.DefaultModelsExpandDepth(-1),
 		ginSwagger.PersistAuthorization(true),
 	))
@@ -93,18 +90,15 @@ func NewHTTPServer(
 	s.Use(
 		middleware.RequestLogMiddleware(logger, logBody, maxBodyBytes),
 		middleware.ResponseLogMiddleware(logger, logBody, maxBodyBytes),
-		//middleware.SignMiddleware(log),
 	)
 
 	v1 := s.Group("/v1")
 	{
-		// No route group has permission
 		noAuthRouter := v1.Group("/")
 		{
 			noAuthRouter.POST("/login", adminHandler.Login)
 		}
 
-		// Strict permission routing group
 		strictAuthRouter := v1.Group("/").Use(middleware.StrictAuth(jwt, logger), middleware.AuthMiddleware(e))
 		{
 			strictAuthRouter.GET("/users", userHandler.GetUsers)

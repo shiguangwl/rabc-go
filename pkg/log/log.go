@@ -13,16 +13,18 @@ import (
 
 const ctxLoggerKey = "zapLogger"
 
+// Logger 是 zap.Logger 的项目包装：通过 WithValue/WithContext 把请求级
+// trace/user 等字段挂到 ctx，让下游各层无须显式传 logger 即可复用同一上下文。
 type Logger struct {
 	*zap.Logger
 }
 
+// NewLog 按 viper 配置构造按 level/encoding 分流的 Logger：
+// stdout 实时调试 + lumberjack 滚动文件，prod 关闭 development 模式以避免 stack 噪声。
 func NewLog(conf *viper.Viper) *Logger {
-	// log address "out.log" User-defined
 	lp := conf.GetString("log.log_file_name")
 	lv := conf.GetString("log.log_level")
 	var level zapcore.Level
-	//debug<info<warn<error<fatal<panic
 	switch lv {
 	case "debug":
 		level = zap.DebugLevel
@@ -36,11 +38,11 @@ func NewLog(conf *viper.Viper) *Logger {
 		level = zap.InfoLevel
 	}
 	hook := lumberjack.Logger{
-		Filename:   lp,                             // Log file path
-		MaxSize:    conf.GetInt("log.max_size"),    // Maximum size unit for each log file: M
-		MaxBackups: conf.GetInt("log.max_backups"), // The maximum number of backups that can be saved for log files
-		MaxAge:     conf.GetInt("log.max_age"),     // Maximum number of days the file can be saved
-		Compress:   conf.GetBool("log.compress"),   // Compression or not
+		Filename:   lp,
+		MaxSize:    conf.GetInt("log.max_size"),
+		MaxBackups: conf.GetInt("log.max_backups"),
+		MaxAge:     conf.GetInt("log.max_age"),
+		Compress:   conf.GetBool("log.compress"),
 	}
 
 	var encoder zapcore.Encoder
@@ -64,7 +66,7 @@ func NewLog(conf *viper.Viper) *Logger {
 	}
 	core := zapcore.NewCore(
 		encoder,
-		zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook)), // Print to console and file
+		zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook)),
 		level,
 	)
 	if conf.GetString("env") != "prod" {
@@ -90,11 +92,10 @@ func consoleEncoderConfig() zapcore.EncoderConfig {
 }
 
 func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	//enc.AppendString(t.Format("2006-01-02 15:04:05"))
 	enc.AppendString(t.Format("2006-01-02 15:04:05.000000000"))
 }
 
-// WithValue Adds a field to the specified context
+// WithValue 将字段写入请求上下文，保证后续日志自动携带 trace、用户等关联信息。
 func (l *Logger) WithValue(ctx context.Context, fields ...zapcore.Field) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
 		ctx = c.Request.Context()
@@ -104,7 +105,7 @@ func (l *Logger) WithValue(ctx context.Context, fields ...zapcore.Field) context
 	return context.WithValue(ctx, ctxLoggerKey, l.WithContext(ctx).With(fields...))
 }
 
-// WithContext Returns a zap instance from the specified context
+// WithContext 优先返回上下文 logger；缺失时回退到全局 logger，避免调用方做空值分支。
 func (l *Logger) WithContext(ctx context.Context) *Logger {
 	if c, ok := ctx.(*gin.Context); ok {
 		ctx = c.Request.Context()

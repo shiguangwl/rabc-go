@@ -16,6 +16,9 @@ import (
 
 const ctxLoggerKey = "zapLogger"
 
+// Logger 把 GORM logger 协议适配到 zap：实现 GORM 的 Info/Warn/Error/Trace，
+// 同时优先复用 ctx 上挂的请求级 zap.Logger（在中间件里通过 WithValue 设置），
+// 保证 SQL 日志能携带 trace/用户等关联字段。
 type Logger struct {
 	ZapLogger                 *zap.Logger
 	SlowThreshold             time.Duration
@@ -25,6 +28,8 @@ type Logger struct {
 	LogLevel                  gormlogger.LogLevel
 }
 
+// New 构造默认 GORM logger：Warn 级、100ms 慢查询阈值，
+// 与 GORM 官方默认行为对齐，避免开发期被 Info 级 SQL 淹没。
 func New(zapLogger *zap.Logger) gormlogger.Interface {
 	return &Logger{
 		ZapLogger:                 zapLogger,
@@ -36,33 +41,37 @@ func New(zapLogger *zap.Logger) gormlogger.Interface {
 	}
 }
 
+// LogMode 按 GORM logger 协议返回一个携带新 level 的副本，
+// 保证全局 logger 不被并发场景下的局部调整污染。
 func (l *Logger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	newlogger := *l
 	newlogger.LogLevel = level
 	return &newlogger
 }
 
-// Info print info
+// Info 把 gorm 内部的 Info 级日志桥接到 ctx 派生的 zap.Logger（含 trace/请求字段）。
 func (l Logger) Info(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormlogger.Info {
 		l.logger(ctx).Sugar().Infof(msg, data...)
 	}
 }
 
-// Warn print warn messages
+// Warn 同 Info，按 gorm logger 协议处理 Warn 级日志。
 func (l Logger) Warn(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormlogger.Warn {
 		l.logger(ctx).Sugar().Warnf(msg, data...)
 	}
 }
 
-// Error print error messages
+// Error 同 Info，按 gorm logger 协议处理 Error 级日志。
 func (l Logger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormlogger.Error {
 		l.logger(ctx).Sugar().Errorf(msg, data...)
 	}
 }
 
+// Trace 是 GORM 每条 SQL 执行后的回调；按 elapsed / err / 慢阈值
+// 决定落到哪一级，并附带 sql/rows/elapsed 结构化字段。
 func (l Logger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.LogLevel <= gormlogger.Silent {
 		return
