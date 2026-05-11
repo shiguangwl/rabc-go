@@ -9,16 +9,7 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
-        },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -1343,51 +1334,40 @@ const docTemplate = `{
             ],
             "properties": {
                 "component": {
-                    "description": "绑定的组件",
                     "type": "string"
                 },
                 "hideInMenu": {
-                    "description": "菜单是否隐藏",
                     "type": "boolean"
                 },
                 "icon": {
-                    "description": "图标，使用字符串表示",
                     "type": "string"
                 },
                 "keepAlive": {
-                    "description": "是否保活",
                     "type": "boolean"
                 },
                 "locale": {
-                    "description": "本地化标识",
                     "type": "string"
                 },
                 "name": {
-                    "description": "同路由中的name，唯一标识",
                     "type": "string"
                 },
                 "parentId": {
-                    "description": "父级菜单的id，使用整数表示",
                     "type": "integer"
                 },
                 "path": {
-                    "description": "地址",
                     "type": "string"
                 },
                 "redirect": {
-                    "description": "重定向地址",
                     "type": "string"
                 },
                 "title": {
-                    "description": "展示名称",
                     "type": "string"
                 },
                 "url": {
-                    "description": "iframe模式下的跳转url，不能与path重复",
+                    "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
                     "type": "string"
                 },
                 "weight": {
-                    "description": "排序权重",
                     "type": "integer"
                 }
             }
@@ -1396,59 +1376,46 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "component": {
-                    "description": "绑定的组件",
                     "type": "string"
                 },
                 "hideInMenu": {
-                    "description": "菜单是否隐藏",
                     "type": "boolean"
                 },
                 "icon": {
-                    "description": "图标，使用字符串表示",
                     "type": "string"
                 },
                 "id": {
-                    "description": "唯一id，使用整数表示",
                     "type": "integer"
                 },
                 "keepAlive": {
-                    "description": "是否保活",
                     "type": "boolean"
                 },
                 "locale": {
-                    "description": "本地化标识",
                     "type": "string"
                 },
                 "name": {
-                    "description": "同路由中的name，唯一标识",
                     "type": "string"
                 },
                 "parentId": {
-                    "description": "父级菜单的id，使用整数表示",
                     "type": "integer"
                 },
                 "path": {
-                    "description": "地址",
                     "type": "string"
                 },
                 "redirect": {
-                    "description": "重定向地址",
                     "type": "string"
                 },
                 "title": {
-                    "description": "展示名称",
                     "type": "string"
                 },
                 "updatedAt": {
-                    "description": "更新时间",
                     "type": "string"
                 },
                 "url": {
-                    "description": "iframe模式下的跳转url，不能与path重复",
+                    "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
                     "type": "string"
                 },
                 "weight": {
-                    "description": "排序权重",
                     "type": "integer"
                 }
             }
@@ -1463,58 +1430,46 @@ const docTemplate = `{
             ],
             "properties": {
                 "component": {
-                    "description": "绑定的组件",
                     "type": "string"
                 },
                 "hideInMenu": {
-                    "description": "菜单是否隐藏",
                     "type": "boolean"
                 },
                 "icon": {
-                    "description": "图标，使用字符串表示",
                     "type": "string"
                 },
                 "id": {
-                    "description": "唯一id，使用整数表示",
                     "type": "integer"
                 },
                 "keepAlive": {
-                    "description": "是否保活",
                     "type": "boolean"
                 },
                 "locale": {
-                    "description": "本地化标识",
                     "type": "string"
                 },
                 "name": {
-                    "description": "同路由中的name，唯一标识",
                     "type": "string"
                 },
                 "parentId": {
-                    "description": "父级菜单的id，使用整数表示",
                     "type": "integer"
                 },
                 "path": {
-                    "description": "地址",
                     "type": "string"
                 },
                 "redirect": {
-                    "description": "重定向地址",
                     "type": "string"
                 },
                 "title": {
-                    "description": "展示名称",
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
                 },
                 "url": {
-                    "description": "iframe模式下的跳转url，不能与path重复",
+                    "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
                     "type": "string"
                 },
                 "weight": {
-                    "description": "排序权重",
                     "type": "integer"
                 }
             }
@@ -1623,8 +1578,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8000",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "Nunu Example API",
-	Description:      "This is a sample server celler server.",
+	Title:            "RABC-Go Admin API",
+	Description:      "RBAC 管理后台接口，覆盖登录认证、菜单/API 权限、角色授权与管理员管理。",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -11,21 +11,13 @@ import (
 	"nunu-layout-admin/pkg/config"
 )
 
-// @title           Nunu Example API
+// @title           RABC-Go Admin API
 // @version         1.0.0
-// @description     This is a sample server celler server.
-// @termsOfService  http://swagger.io/terms/
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+// @description     RBAC 管理后台接口，覆盖登录认证、菜单/API 权限、角色授权与管理员管理。
 // @host      localhost:8000
 // @securityDefinitions.apiKey Bearer
 // @in header
 // @name Authorization
-// @externalDocs.description  OpenAPI
-// @externalDocs.url          https://swagger.io/resources/open-api/
 func main() {
 	var envConf = flag.String("conf", "config/local.yml", "config path, eg: -conf ./config/local.yml")
 	flag.Parse()

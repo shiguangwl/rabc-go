@@ -24,8 +24,6 @@ func NewAdminHandler(
 
 // Login godoc
 // @Summary 账号登录
-// @Schemes
-// @Description
 // @Tags 用户模块
 // @Accept json
 // @Produce json
@@ -51,7 +49,6 @@ func (h *AdminHandler) Login(ctx *gin.Context) {
 
 // GetMenus godoc
 // @Summary 获取用户菜单
-// @Schemes
 // @Description 获取当前用户的菜单列表
 // @Tags 菜单模块
 // @Accept json
@@ -70,7 +67,6 @@ func (h *AdminHandler) GetMenus(ctx *gin.Context) {
 
 // GetAdminMenus godoc
 // @Summary 获取管理员菜单
-// @Schemes
 // @Description 获取管理员菜单列表
 // @Tags 菜单模块
 // @Accept json
@@ -89,7 +85,6 @@ func (h *AdminHandler) GetAdminMenus(ctx *gin.Context) {
 
 // GetUserPermissions godoc
 // @Summary 获取用户权限
-// @Schemes
 // @Description 获取当前用户的权限列表
 // @Tags 权限模块
 // @Accept json
@@ -108,7 +103,6 @@ func (h *AdminHandler) GetUserPermissions(ctx *gin.Context) {
 
 // GetRolePermissions godoc
 // @Summary 获取角色权限
-// @Schemes
 // @Description 获取指定角色的权限列表
 // @Tags 权限模块
 // @Accept json
@@ -133,7 +127,6 @@ func (h *AdminHandler) GetRolePermissions(ctx *gin.Context) {
 
 // UpdateRolePermission godoc
 // @Summary 更新角色权限
-// @Schemes
 // @Description 更新指定角色的权限列表
 // @Tags 权限模块
 // @Accept json
@@ -157,7 +150,6 @@ func (h *AdminHandler) UpdateRolePermission(ctx *gin.Context) {
 
 // MenuUpdate godoc
 // @Summary 更新菜单
-// @Schemes
 // @Description 更新菜单信息
 // @Tags 菜单模块
 // @Accept json
@@ -181,7 +173,6 @@ func (h *AdminHandler) MenuUpdate(ctx *gin.Context) {
 
 // MenuCreate godoc
 // @Summary 创建菜单
-// @Schemes
 // @Description 创建新的菜单
 // @Tags 菜单模块
 // @Accept json
@@ -205,7 +196,6 @@ func (h *AdminHandler) MenuCreate(ctx *gin.Context) {
 
 // MenuDelete godoc
 // @Summary 删除菜单
-// @Schemes
 // @Description 删除指定菜单
 // @Tags 菜单模块
 // @Accept json
@@ -229,7 +219,6 @@ func (h *AdminHandler) MenuDelete(ctx *gin.Context) {
 
 // GetRoles godoc
 // @Summary 获取角色列表
-// @Schemes
 // @Description 获取角色列表
 // @Tags 角色模块
 // @Accept json
@@ -257,7 +246,6 @@ func (h *AdminHandler) GetRoles(ctx *gin.Context) {
 
 // RoleCreate godoc
 // @Summary 创建角色
-// @Schemes
 // @Description 创建新的角色
 // @Tags 角色模块
 // @Accept json
@@ -281,7 +269,6 @@ func (h *AdminHandler) RoleCreate(ctx *gin.Context) {
 
 // RoleUpdate godoc
 // @Summary 更新角色
-// @Schemes
 // @Description 更新角色信息
 // @Tags 角色模块
 // @Accept json
@@ -305,7 +292,6 @@ func (h *AdminHandler) RoleUpdate(ctx *gin.Context) {
 
 // RoleDelete godoc
 // @Summary 删除角色
-// @Schemes
 // @Description 删除指定角色
 // @Tags 角色模块
 // @Accept json
@@ -329,7 +315,6 @@ func (h *AdminHandler) RoleDelete(ctx *gin.Context) {
 
 // GetApis godoc
 // @Summary 获取API列表
-// @Schemes
 // @Description 获取API列表
 // @Tags API模块
 // @Accept json
@@ -359,7 +344,6 @@ func (h *AdminHandler) GetApis(ctx *gin.Context) {
 
 // ApiCreate godoc
 // @Summary 创建API
-// @Schemes
 // @Description 创建新的API
 // @Tags API模块
 // @Accept json
@@ -383,7 +367,6 @@ func (h *AdminHandler) ApiCreate(ctx *gin.Context) {
 
 // ApiUpdate godoc
 // @Summary 更新API
-// @Schemes
 // @Description 更新API信息
 // @Tags API模块
 // @Accept json
@@ -407,7 +390,6 @@ func (h *AdminHandler) ApiUpdate(ctx *gin.Context) {
 
 // ApiDelete godoc
 // @Summary 删除API
-// @Schemes
 // @Description 删除指定API
 // @Tags API模块
 // @Accept json
@@ -431,7 +413,6 @@ func (h *AdminHandler) ApiDelete(ctx *gin.Context) {
 
 // AdminUserUpdate godoc
 // @Summary 更新管理员用户
-// @Schemes
 // @Description 更新管理员用户信息
 // @Tags 用户模块
 // @Accept json
@@ -455,7 +436,6 @@ func (h *AdminHandler) AdminUserUpdate(ctx *gin.Context) {
 
 // AdminUserCreate godoc
 // @Summary 创建管理员用户
-// @Schemes
 // @Description 创建新的管理员用户
 // @Tags 用户模块
 // @Accept json
@@ -479,7 +459,6 @@ func (h *AdminHandler) AdminUserCreate(ctx *gin.Context) {
 
 // AdminUserDelete godoc
 // @Summary 删除管理员用户
-// @Schemes
 // @Description 删除指定管理员用户
 // @Tags 用户模块
 // @Accept json
@@ -503,7 +482,6 @@ func (h *AdminHandler) AdminUserDelete(ctx *gin.Context) {
 
 // GetAdminUsers godoc
 // @Summary 获取管理员用户列表
-// @Schemes
 // @Description 获取管理员用户列表
 // @Tags 用户模块
 // @Accept json
@@ -533,8 +511,6 @@ func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
 
 // GetAdminUser godoc
 // @Summary 获取管理用户信息
-// @Schemes
-// @Description
 // @Tags 用户模块
 // @Accept json
 // @Produce json

@@ -77,20 +77,20 @@ type AdminUserDeleteRequest struct {
 }
 
 type MenuDataItem struct {
-	ID         uint   `json:"id,omitempty"`         // 唯一id，使用整数表示
-	ParentID   uint   `json:"parentId,omitempty"`   // 父级菜单的id，使用整数表示
-	Weight     int    `json:"weight"`               // 排序权重
-	Path       string `json:"path"`                 // 地址
-	Title      string `json:"title"`                // 展示名称
-	Name       string `json:"name,omitempty"`       // 同路由中的name，唯一标识
-	Component  string `json:"component,omitempty"`  // 绑定的组件
-	Locale     string `json:"locale,omitempty"`     // 本地化标识
-	Icon       string `json:"icon,omitempty"`       // 图标，使用字符串表示
-	Redirect   string `json:"redirect,omitempty"`   // 重定向地址
-	KeepAlive  bool   `json:"keepAlive,omitempty"`  // 是否保活
-	HideInMenu bool   `json:"hideInMenu,omitempty"` // 菜单是否隐藏
-	URL        string `json:"url,omitempty"`        // iframe模式下的跳转url，不能与path重复
-	UpdatedAt  string `json:"updatedAt,omitempty"`  // 更新时间
+	ID         uint   `json:"id,omitempty"`
+	ParentID   uint   `json:"parentId,omitempty"`
+	Weight     int    `json:"weight"`
+	Path       string `json:"path"`
+	Title      string `json:"title"`
+	Name       string `json:"name,omitempty"`
+	Component  string `json:"component,omitempty"`
+	Locale     string `json:"locale,omitempty"`
+	Icon       string `json:"icon,omitempty"`
+	Redirect   string `json:"redirect,omitempty"`
+	KeepAlive  bool   `json:"keepAlive,omitempty"`
+	HideInMenu bool   `json:"hideInMenu,omitempty"`
+	URL        string `json:"url,omitempty"` // iframe URL 不能与 path 同时作为同一菜单的主跳转来源。
+	UpdatedAt  string `json:"updatedAt,omitempty"`
 }
 type GetMenuResponseData struct {
 	List []MenuDataItem `json:"list"`
@@ -102,38 +102,38 @@ type GetMenuResponse struct {
 }
 
 type MenuCreateRequest struct {
-	ParentID   uint   `json:"parentId,omitempty"`       // 父级菜单的id，使用整数表示
-	Weight     int    `json:"weight"`                   // 排序权重
-	Path       string `json:"path" binding:"required"`  // 地址
-	Title      string `json:"title" binding:"required"` // 展示名称
-	Name       string `json:"name" binding:"required"`  // 同路由中的name，唯一标识
-	Component  string `json:"component,omitempty"`      // 绑定的组件
-	Locale     string `json:"locale,omitempty"`         // 本地化标识
-	Icon       string `json:"icon,omitempty"`           // 图标，使用字符串表示
-	Redirect   string `json:"redirect,omitempty"`       // 重定向地址
-	KeepAlive  bool   `json:"keepAlive,omitempty"`      // 是否保活
-	HideInMenu bool   `json:"hideInMenu,omitempty"`     // 菜单是否隐藏
-	URL        string `json:"url,omitempty"`            // iframe模式下的跳转url，不能与path重复
+	ParentID   uint   `json:"parentId,omitempty"`
+	Weight     int    `json:"weight"`
+	Path       string `json:"path" binding:"required"`
+	Title      string `json:"title" binding:"required"`
+	Name       string `json:"name" binding:"required"`
+	Component  string `json:"component,omitempty"`
+	Locale     string `json:"locale,omitempty"`
+	Icon       string `json:"icon,omitempty"`
+	Redirect   string `json:"redirect,omitempty"`
+	KeepAlive  bool   `json:"keepAlive,omitempty"`
+	HideInMenu bool   `json:"hideInMenu,omitempty"`
+	URL        string `json:"url,omitempty"` // iframe URL 不能与 path 同时作为同一菜单的主跳转来源。
 
 }
 type MenuUpdateRequest struct {
-	ID         uint   `json:"id" binding:"required"`    // 唯一id，使用整数表示
-	ParentID   uint   `json:"parentId,omitempty"`       // 父级菜单的id，使用整数表示
-	Weight     int    `json:"weight"`                   // 排序权重
-	Path       string `json:"path" binding:"required"`  // 地址
-	Title      string `json:"title" binding:"required"` // 展示名称
-	Name       string `json:"name" binding:"required"`  // 同路由中的name，唯一标识
-	Component  string `json:"component,omitempty"`      // 绑定的组件
-	Locale     string `json:"locale,omitempty"`         // 本地化标识
-	Icon       string `json:"icon,omitempty"`           // 图标，使用字符串表示
-	Redirect   string `json:"redirect,omitempty"`       // 重定向地址
-	KeepAlive  bool   `json:"keepAlive,omitempty"`      // 是否保活
-	HideInMenu bool   `json:"hideInMenu,omitempty"`     // 菜单是否隐藏
-	URL        string `json:"url,omitempty"`            // iframe模式下的跳转url，不能与path重复
+	ID         uint   `json:"id" binding:"required"`
+	ParentID   uint   `json:"parentId,omitempty"`
+	Weight     int    `json:"weight"`
+	Path       string `json:"path" binding:"required"`
+	Title      string `json:"title" binding:"required"`
+	Name       string `json:"name" binding:"required"`
+	Component  string `json:"component,omitempty"`
+	Locale     string `json:"locale,omitempty"`
+	Icon       string `json:"icon,omitempty"`
+	Redirect   string `json:"redirect,omitempty"`
+	KeepAlive  bool   `json:"keepAlive,omitempty"`
+	HideInMenu bool   `json:"hideInMenu,omitempty"`
+	URL        string `json:"url,omitempty"` // iframe URL 不能与 path 同时作为同一菜单的主跳转来源。
 	UpdatedAt  string `json:"updatedAt"`
 }
 type MenuDeleteRequest struct {
-	ID uint `form:"id" binding:"required"` // 唯一id，使用整数表示
+	ID uint `form:"id" binding:"required"`
 }
 type GetRoleListRequest struct {
 	Pagination
