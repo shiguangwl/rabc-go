@@ -3,6 +3,7 @@ package server
 import (
 	nethttp "net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/casbin/casbin/v2"
@@ -13,6 +14,7 @@ import (
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	v1 "rabc-go/api/v1"
 	"rabc-go/docs"
 	"rabc-go/internal/handler"
 	"rabc-go/internal/middleware"
@@ -48,22 +50,6 @@ func NewHTTPServer(
 		http.WithServerHost(conf.GetString("http.host")),
 		http.WithServerPort(conf.GetInt("http.port")),
 	)
-	s.Use(gin.Recovery())
-	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))
-	s.NoRoute(func(c *gin.Context) {
-		indexPageData, err := web.Assets().ReadFile("dist/index.html")
-		if err != nil {
-			c.String(nethttp.StatusNotFound, "404 page not found")
-			return
-		}
-		c.Data(nethttp.StatusOK, "text/html; charset=utf-8", indexPageData)
-	})
-	docs.SwaggerInfo.BasePath = "/"
-	s.GET("/swagger/*any", ginSwagger.WrapHandler(
-		swaggerfiles.Handler,
-		ginSwagger.DefaultModelsExpandDepth(-1),
-		ginSwagger.PersistAuthorization(true),
-	))
 
 	// 非 prod 启用宽松 CORS，便于本地前端开发联调；
 	// prod 由 Nginx/Ingress 反代统一处理 CORS，应用层不下发任何 CORS 头。
@@ -90,16 +76,37 @@ func NewHTTPServer(
 	s.Use(
 		middleware.RequestLogMiddleware(logger, logBody, maxBodyBytes),
 		middleware.ResponseLogMiddleware(logger, logBody, maxBodyBytes),
+		gin.Recovery(),
 	)
 
-	v1 := s.Group("/v1")
+	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))
+	s.NoRoute(func(c *gin.Context) {
+		if !isSPAFallback(c.Request) {
+			v1.WriteResponse(c, v1.ErrNotFound, nil)
+			return
+		}
+		indexPageData, err := web.Assets().ReadFile("dist/index.html")
+		if err != nil {
+			c.String(nethttp.StatusNotFound, "404 page not found")
+			return
+		}
+		c.Data(nethttp.StatusOK, "text/html; charset=utf-8", indexPageData)
+	})
+	docs.SwaggerInfo.BasePath = "/"
+	s.GET("/swagger/*any", ginSwagger.WrapHandler(
+		swaggerfiles.Handler,
+		ginSwagger.DefaultModelsExpandDepth(-1),
+		ginSwagger.PersistAuthorization(true),
+	))
+
+	v1Group := s.Group("/v1")
 	{
-		noAuthRouter := v1.Group("/")
+		noAuthRouter := v1Group.Group("/")
 		{
 			noAuthRouter.POST("/login", adminHandler.Login)
 		}
 
-		strictAuthRouter := v1.Group("/").Use(middleware.StrictAuth(jwt, logger), middleware.AuthMiddleware(e))
+		strictAuthRouter := v1Group.Group("/").Use(middleware.StrictAuth(jwt, logger), middleware.AuthMiddleware(e))
 		{
 			strictAuthRouter.GET("/users", userHandler.GetUsers)
 
@@ -130,4 +137,15 @@ func NewHTTPServer(
 		}
 	}
 	return s
+}
+
+func isSPAFallback(r *nethttp.Request) bool {
+	if r.Method != nethttp.MethodGet && r.Method != nethttp.MethodHead {
+		return false
+	}
+	path := r.URL.Path
+	return path != "/v1" &&
+		!strings.HasPrefix(path, "/v1/") &&
+		path != "/swagger" &&
+		!strings.HasPrefix(path, "/swagger/")
 }

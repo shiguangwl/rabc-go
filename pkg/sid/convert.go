@@ -4,7 +4,7 @@ const (
 	base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
-func IntToBase62(n int) string {
+func Uint64ToBase62(n uint64) string {
 	if n == 0 {
 		return string(base62[0])
 	}

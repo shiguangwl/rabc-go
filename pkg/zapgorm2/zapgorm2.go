@@ -37,7 +37,7 @@ func New(zapLogger *zap.Logger) gormlogger.Interface {
 		SlowThreshold:             100 * time.Millisecond,
 		Colorful:                  false,
 		IgnoreRecordNotFoundError: false,
-		ParameterizedQueries:      false,
+		ParameterizedQueries:      true,
 	}
 }
 
@@ -47,6 +47,14 @@ func (l *Logger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	newlogger := *l
 	newlogger.LogLevel = level
 	return &newlogger
+}
+
+// ParamsFilter 让 GORM 在 Explain SQL 前丢弃参数，避免 Debug SQL 泄露 PII。
+func (l Logger) ParamsFilter(ctx context.Context, sql string, params ...interface{}) (string, []interface{}) {
+	if l.ParameterizedQueries {
+		return sql, nil
+	}
+	return sql, params
 }
 
 // Info 把 gorm 内部的 Info 级日志桥接到 ctx 派生的 zap.Logger（含 trace/请求字段）。

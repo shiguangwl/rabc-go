@@ -19,9 +19,8 @@ const (
 
 // envBoundKeys 列出"必须可被环境变量覆盖"的配置项。
 //
-// 背景：viper 的 AutomaticEnv 仅对 yml 中已存在的 key 生效；若 yml 删行或
-// 缺失该 key，AutomaticEnv 不会自动绑定，env 注入会静默失败。这里集中显式
-// BindEnv，让覆盖契约不依赖 yml 是否登记。
+// 背景：AutomaticEnv 对 Get* 路径有效，但关键配置需要一份集中契约；
+// 显式 BindEnv 也能覆盖后续 Unmarshal 场景，避免 yml 删行后 env 注入失效。
 //
 // 新增 key 时必须在此登记，触发安全审查（密钥/密码/连接串等敏感项归并管理）。
 var envBoundKeys = []string{

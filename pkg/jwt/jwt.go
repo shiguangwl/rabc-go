@@ -96,5 +96,11 @@ func (j *JWT) ParseToken(tokenString string) (*MyCustomClaims, error) {
 	if !ok || !token.Valid {
 		return nil, ErrInvalidToken
 	}
+	if claims.UserID == 0 {
+		return nil, fmt.Errorf("%w: uid is required", ErrInvalidToken)
+	}
+	if claims.Subject != "" && claims.Subject != strconv.FormatUint(uint64(claims.UserID), 10) {
+		return nil, fmt.Errorf("%w: subject does not match uid", ErrInvalidToken)
+	}
 	return claims, nil
 }

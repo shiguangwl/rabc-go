@@ -107,7 +107,10 @@ func RequestLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.Ha
 			// 把读到的 + 未读完的 body 拼回去，业务 handler 仍能正常 BindJSON。
 			// 注意：必须把 bodyBytes 完整（含可能多读出的 1 字节）回放，否则 handler 的
 			// 解析会缺失一个字节。日志侧再单独按 limit 切片即可。
-			ctx.Request.Body = io.NopCloser(io.MultiReader(bytes.NewReader(bodyBytes), ctx.Request.Body))
+			ctx.Request.Body = replayReadCloser{
+				Reader: io.MultiReader(bytes.NewReader(bodyBytes), ctx.Request.Body),
+				Closer: ctx.Request.Body,
+			}
 			if len(bodyBytes) > limit {
 				logger.WithValue(ctx, zap.String("request_params",
 					fmt.Sprintf("[truncated at %d bytes, masking skipped]", limit)))
@@ -160,6 +163,11 @@ func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.H
 				zap.Int("status", ctx.Writer.Status()))
 		}
 	}
+}
+
+type replayReadCloser struct {
+	io.Reader
+	io.Closer
 }
 
 type bodyLogWriter struct {

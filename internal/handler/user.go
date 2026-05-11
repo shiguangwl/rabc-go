@@ -1,6 +1,7 @@
 package handler
 
 import (
+	v1 "rabc-go/api/v1"
 	"rabc-go/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -22,5 +23,5 @@ func NewUserHandler(
 }
 
 func (h *UserHandler) GetUsers(ctx *gin.Context) {
-
+	v1.WriteResponse(ctx, v1.ErrNotImplemented, nil)
 }
