@@ -30,11 +30,13 @@ func (e *stringArrayEncoder) AppendUint16(uint16)         {}
 func (e *stringArrayEncoder) AppendUint8(uint8)           {}
 func (e *stringArrayEncoder) AppendUintptr(uintptr)       {}
 
-func TestConsoleEncoderUsesShortCallerPath(t *testing.T) {
+// 守护文件日志走 ShortCallerEncoder：一旦有人改成 FullCallerEncoder，
+// 日志会暴露开发机绝对路径（含 $HOME/$GOPATH），既泄露环境又把列撑爆。
+func TestJSONEncoderUsesShortCallerPath(t *testing.T) {
 	encoder := &stringArrayEncoder{}
 	caller := zapcore.NewEntryCaller(0, "/Users/timeho/go/pkg/mod/github.com/casbin/gorm-adapter/v3@v3.32.0/adapter.go", 492, true)
 
-	consoleEncoderConfig().EncodeCaller(caller, encoder)
+	jsonEncoderConfig().EncodeCaller(caller, encoder)
 
 	if len(encoder.values) != 1 {
 		t.Fatalf("期望写入 1 个 caller 字段，实际写入 %d 个", len(encoder.values))

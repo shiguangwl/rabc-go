@@ -118,7 +118,7 @@ func RequestLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.Ha
 				logger.WithValue(ctx, zap.String("request_params", maskBody(bodyBytes, limit)))
 			}
 		}
-		logger.WithContext(ctx).Info("收到请求")
+		logger.WithContext(ctx).Info("Req")
 		ctx.Next()
 	}
 }
@@ -148,7 +148,7 @@ func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.H
 			}
 			fields = append(fields, zap.String("response_body", body))
 		}
-		logger.WithContext(ctx).Info("返回响应", fields...)
+		logger.WithContext(ctx).Info("Res", fields...)
 
 		// 5xx 错误链统一在此记录，handler/service 不再各自打错误日志，避免重复刷屏。
 		// v1.WriteResponse 在 5xx 路径会把原始 err（含 wrap 链）放入 ctx，这里读出后输出。
