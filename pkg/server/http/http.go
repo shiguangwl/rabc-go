@@ -5,10 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"rabc-go/pkg/log"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"rabc-go/pkg/log"
+)
+
+const (
+	defaultReadHeaderTimeout = 5 * time.Second
+	defaultReadTimeout       = 30 * time.Second
+	defaultWriteTimeout      = 30 * time.Second
+	defaultIdleTimeout       = 120 * time.Second
+	defaultShutdownTimeout   = 5 * time.Second
 )
 
 type Server struct {
@@ -42,24 +51,38 @@ func WithServerPort(port int) Option {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	s.httpSrv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.host, s.port),
-		Handler: s,
+		Addr:              addr,
+		Handler:           s,
+		ReadHeaderTimeout: defaultReadHeaderTimeout,
+		ReadTimeout:       defaultReadTimeout,
+		WriteTimeout:      defaultWriteTimeout,
+		IdleTimeout:       defaultIdleTimeout,
 	}
 
 	if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Sugar().Fatalf("listen: %s\n", err)
+		return fmt.Errorf("listen %s: %w", addr, err)
 	}
 
 	return nil
 }
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.Sugar().Info("Shutting down server...")
+	if s.httpSrv == nil {
+		return nil
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, defaultShutdownTimeout)
+		defer cancel()
+	}
 	if err := s.httpSrv.Shutdown(ctx); err != nil {
-		s.logger.Sugar().Fatal("Server forced to shutdown: ", err)
+		return fmt.Errorf("shutdown http server: %w", err)
 	}
 
 	s.logger.Sugar().Info("Server exiting")

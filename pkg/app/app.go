@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
-	"log"
-	"os"
+	"errors"
+	"fmt"
+	stdlog "log"
 	"os/signal"
 	"rabc-go/pkg/server"
 	"syscall"
+	"time"
 )
 
 type App struct {
@@ -37,35 +39,63 @@ func WithName(name string) Option {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
+	if len(a.servers) == 0 {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	signalCtx, stopSignals := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
+	runCtx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-
+	errCh := make(chan error, len(a.servers))
+	doneCh := make(chan struct{}, len(a.servers))
 	for _, srv := range a.servers {
 		go func(srv server.Server) {
-			err := srv.Start(ctx)
-			if err != nil {
-				log.Printf("Server start err: %v", err)
+			defer func() { doneCh <- struct{}{} }()
+			if err := srv.Start(runCtx); err != nil {
+				errCh <- fmt.Errorf("start %T: %w", srv, err)
+				return
 			}
+			errCh <- nil
 		}(srv)
 	}
 
+	var runErr error
 	select {
-	case <-signals:
-		log.Println("Received termination signal")
-	case <-ctx.Done():
-		log.Println("Context canceled")
+	case err := <-errCh:
+		runErr = err
+		if runErr == nil {
+			stdlog.Println("Server exited")
+		}
+	case <-runCtx.Done():
+		if ctx.Err() != nil {
+			runErr = ctx.Err()
+		} else {
+			stdlog.Println("Received termination signal")
+		}
 	}
+	cancel()
 
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	var stopErr error
 	for _, srv := range a.servers {
-		err := srv.Stop(ctx)
-		if err != nil {
-			log.Printf("Server stop err: %v", err)
+		if err := srv.Stop(shutdownCtx); err != nil {
+			stopErr = errors.Join(stopErr, fmt.Errorf("stop %T: %w", srv, err))
 		}
 	}
 
-	return nil
+	for range a.servers {
+		select {
+		case <-doneCh:
+		case <-shutdownCtx.Done():
+			stopErr = errors.Join(stopErr, fmt.Errorf("wait servers stopped: %w", shutdownCtx.Err()))
+			return errors.Join(runErr, stopErr)
+		}
+	}
+
+	return errors.Join(runErr, stopErr)
 }

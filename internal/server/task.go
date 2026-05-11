@@ -46,6 +46,9 @@ func (t *TaskServer) Start(ctx context.Context) error {
 	return nil
 }
 func (t *TaskServer) Stop(ctx context.Context) error {
+	if t.scheduler == nil {
+		return nil
+	}
 	t.scheduler.Stop()
 	t.log.Info("TaskServer stop...")
 	return nil

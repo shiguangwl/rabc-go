@@ -13,6 +13,7 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -81,7 +82,7 @@ func (r *Repository) Transaction(ctx context.Context, fn func(ctx context.Contex
 // NewDB 按 data.db.user.driver 选取 GORM Dialector，启用 TranslateError 让 repo 能用
 // sentinel 错误（ErrDuplicatedKey 等）分支，避免依赖 driver 字符串匹配。
 // 连接池上限与 ConnMaxLifetime 按"中等吞吐 + 防 stale 连接"的折衷给出默认值。
-func NewDB(conf *viper.Viper, l *log.Logger) *gorm.DB {
+func NewDB(conf *viper.Viper, l *log.Logger) (*gorm.DB, func(), error) {
 	var (
 		db  *gorm.DB
 		err error
@@ -92,7 +93,7 @@ func NewDB(conf *viper.Viper, l *log.Logger) *gorm.DB {
 	dsn := conf.GetString("data.db.user.dsn")
 	dialector, err := newDialector(driver, dsn)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 	db, err = gorm.Open(dialector, &gorm.Config{
 		Logger: logger,
@@ -102,7 +103,7 @@ func NewDB(conf *viper.Viper, l *log.Logger) *gorm.DB {
 		TranslateError: true,
 	})
 	if err != nil {
-		panic(fmt.Errorf("open %s: %w", driver, err))
+		return nil, nil, fmt.Errorf("open %s: %w", driver, err)
 	}
 	// SQL 日志显式开关：默认 local 打开、其它环境关闭，避免 staging/uat 把含 PII
 	// 的 SQL 与参数无差别打到日志。配置项可通过 APP_DATA_DB_DEBUG 临时覆盖。
@@ -114,12 +115,17 @@ func NewDB(conf *viper.Viper, l *log.Logger) *gorm.DB {
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
-	return db
+	cleanup := func() {
+		if err := sqlDB.Close(); err != nil {
+			l.Warn("close database connection", zap.Error(err))
+		}
+	}
+	return db, cleanup, nil
 }
 
 func newDialector(driver, dsn string) (gorm.Dialector, error) {
@@ -165,7 +171,7 @@ func NewCasbinModel() (model.Model, error) {
 
 // NewCasbinEnforcer 关掉 adapter 隐式 AutoMigrate 让 schema 全走 atlas，
 // 启用 10s 轮询同步多副本策略；权限低延迟敏感场景可后续接入 Casbin Watcher。
-func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) *casbin.SyncedEnforcer {
+func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) (*casbin.SyncedEnforcer, func(), error) {
 	// 关掉 adapter 的隐式 AutoMigrate / CREATE UNIQUE INDEX：
 	// casbin_rule 已纳入 atlas 管控（见 db/atlas/main.go 与 db/migrations），
 	// 应用启动期保持"零 DDL"，避免多副本同时启动抢着建表/建索引，也防止
@@ -173,15 +179,15 @@ func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) *casbin.Sy
 	gormadapter.TurnOffAutoMigrate(db)
 	a, err := gormadapter.NewAdapterByDB(db)
 	if err != nil {
-		panic(fmt.Errorf("casbin adapter init failed: %w", err))
+		return nil, nil, fmt.Errorf("casbin adapter init failed: %w", err)
 	}
 	m, err := NewCasbinModel()
 	if err != nil {
-		panic(fmt.Errorf("casbin model init failed: %w", err))
+		return nil, nil, fmt.Errorf("casbin model init failed: %w", err)
 	}
 	e, err := casbin.NewSyncedEnforcer(m, a)
 	if err != nil {
-		panic(fmt.Errorf("casbin enforcer init failed: %w", err))
+		return nil, nil, fmt.Errorf("casbin enforcer init failed: %w", err)
 	}
 
 	// 多副本部署时用轮询兜底策略一致性；若权限变更需要更低延迟，再引入 Casbin Watcher。
@@ -189,7 +195,7 @@ func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) *casbin.Sy
 
 	e.EnableAutoSave(true)
 
-	return e
+	return e, e.StopAutoLoadPolicy, nil
 }
 
 // NewRedis 预留：缓存层启用时由 wire 注入。

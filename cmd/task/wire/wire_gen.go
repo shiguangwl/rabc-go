@@ -7,22 +7,28 @@
 package wire
 
 import (
+	"github.com/google/wire"
+	"github.com/spf13/viper"
 	"rabc-go/internal/repository"
 	"rabc-go/internal/server"
 	"rabc-go/internal/task"
 	"rabc-go/pkg/app"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/sid"
-
-	"github.com/google/wire"
-	"github.com/spf13/viper"
 )
 
 // Injectors from wire.go:
 
 func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), error) {
-	db := repository.NewDB(viperViper, logger)
-	syncedEnforcer := repository.NewCasbinEnforcer(viperViper, logger, db)
+	db, cleanup, err := repository.NewDB(viperViper, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+	syncedEnforcer, cleanup2, err := repository.NewCasbinEnforcer(viperViper, logger, db)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	repositoryRepository := repository.NewRepository(logger, db, syncedEnforcer)
 	transaction := repository.NewTransaction(repositoryRepository)
 	sidSid := sid.NewSid()
@@ -32,6 +38,8 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 	taskServer := server.NewTaskServer(logger, userTask)
 	appApp := newApp(taskServer)
 	return appApp, func() {
+		cleanup2()
+		cleanup()
 	}, nil
 }
 

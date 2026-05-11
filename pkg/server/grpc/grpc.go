@@ -2,13 +2,17 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
-	"rabc-go/pkg/log"
 	"time"
 
 	"google.golang.org/grpc"
+
+	"rabc-go/pkg/log"
 )
+
+const defaultShutdownTimeout = 5 * time.Second
 
 type Server struct {
 	*grpc.Server
@@ -41,20 +45,40 @@ func WithServerPort(port int) Option {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.host, s.port))
-	if err != nil {
-		s.logger.Sugar().Fatalf("Failed to listen: %v", err)
+	if err := ctx.Err(); err != nil {
+		return err
 	}
-	if err = s.Server.Serve(lis); err != nil {
-		s.logger.Sugar().Fatalf("Failed to serve: %v", err)
+	addr := fmt.Sprintf("%s:%d", s.host, s.port)
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("listen %s: %w", addr, err)
+	}
+	if err = s.Server.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		return fmt.Errorf("serve grpc %s: %w", addr, err)
 	}
 	return nil
 
 }
 func (s *Server) Stop(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	s.Server.GracefulStop()
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, defaultShutdownTimeout)
+		defer cancel()
+	}
+
+	stopped := make(chan struct{})
+	go func() {
+		s.Server.GracefulStop()
+		close(stopped)
+	}()
+
+	select {
+	case <-stopped:
+	case <-ctx.Done():
+		s.Server.Stop()
+		<-stopped
+		return fmt.Errorf("graceful stop grpc server: %w", ctx.Err())
+	}
 
 	s.logger.Info("Server exiting")
 

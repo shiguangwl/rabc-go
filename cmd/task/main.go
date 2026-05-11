@@ -16,10 +16,10 @@ func main() {
 	logger := log.NewLog(conf)
 	logger.Info("start task")
 	app, cleanup, err := wire.NewWire(conf, logger)
-	defer cleanup()
 	if err != nil {
 		panic(err)
 	}
+	defer cleanup()
 	if err = app.Run(context.Background()); err != nil {
 		panic(err)
 	}

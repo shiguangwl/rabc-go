@@ -7,6 +7,8 @@
 package wire
 
 import (
+	"github.com/google/wire"
+	"github.com/spf13/viper"
 	"rabc-go/internal/handler"
 	"rabc-go/internal/job"
 	"rabc-go/internal/repository"
@@ -17,19 +19,22 @@ import (
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/server/http"
 	"rabc-go/pkg/sid"
-
-	"github.com/google/wire"
-	"github.com/spf13/viper"
 )
 
 // Injectors from wire.go:
 
 func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), error) {
 	jwtJWT := jwt.NewJwt(viperViper)
-	db := repository.NewDB(viperViper, logger)
-	syncedEnforcer := repository.NewCasbinEnforcer(viperViper, logger, db)
+	db, cleanup, err := repository.NewDB(viperViper, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+	syncedEnforcer, cleanup2, err := repository.NewCasbinEnforcer(viperViper, logger, db)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	handlerHandler := handler.NewHandler(logger)
-	sidSid := sid.NewSid()
 	serviceService := service.NewService(logger, jwtJWT)
 	repositoryRepository := repository.NewRepository(logger, db, syncedEnforcer)
 	adminRepository := repository.NewAdminRepository(repositoryRepository)
@@ -40,11 +45,14 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 	userHandler := handler.NewUserHandler(handlerHandler, userService)
 	httpServer := server.NewHTTPServer(logger, viperViper, jwtJWT, syncedEnforcer, adminHandler, userHandler)
 	transaction := repository.NewTransaction(repositoryRepository)
+	sidSid := sid.NewSid()
 	jobJob := job.NewJob(transaction, logger, sidSid)
 	userJob := job.NewUserJob(jobJob, userRepository)
 	jobServer := server.NewJobServer(logger, userJob)
 	appApp := newApp(httpServer, jobServer)
 	return appApp, func() {
+		cleanup2()
+		cleanup()
 	}, nil
 }
 
@@ -64,7 +72,6 @@ var serverSet = wire.NewSet(server.NewHTTPServer, server.NewJobServer)
 func newApp(
 	httpServer *http.Server,
 	jobServer *server.JobServer,
-
 ) *app.App {
 	return app.NewApp(app.WithServer(httpServer, jobServer), app.WithName("demo-server"))
 }

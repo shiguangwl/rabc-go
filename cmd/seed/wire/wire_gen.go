@@ -7,23 +7,34 @@
 package wire
 
 import (
+	"github.com/google/wire"
+	"github.com/spf13/viper"
 	"rabc-go/internal/repository"
 	"rabc-go/internal/server"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/sid"
-
-	"github.com/google/wire"
-	"github.com/spf13/viper"
 )
 
 // Injectors from wire.go:
 
+// NewWire 直接返回 *SeedServer，不再包成 app.App。
+// 原因：app.Run 是常驻服务模型（spawn goroutine + 阻塞等信号），与 cmd/seed
+// "写完即退出"的一次性 CLI 语义不匹配，外面套 App 会让 make seed 永远挂起。
 func NewWire(viperViper *viper.Viper, logger *log.Logger) (*server.SeedServer, func(), error) {
-	db := repository.NewDB(viperViper, logger)
+	db, cleanup, err := repository.NewDB(viperViper, logger)
+	if err != nil {
+		return nil, nil, err
+	}
 	sidSid := sid.NewSid()
-	syncedEnforcer := repository.NewCasbinEnforcer(viperViper, logger, db)
+	syncedEnforcer, cleanup2, err := repository.NewCasbinEnforcer(viperViper, logger, db)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	seedServer := server.NewSeedServer(db, logger, sidSid, syncedEnforcer, viperViper)
 	return seedServer, func() {
+		cleanup2()
+		cleanup()
 	}, nil
 }
 

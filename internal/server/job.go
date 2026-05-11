@@ -22,8 +22,11 @@ func NewJobServer(
 }
 
 func (j *JobServer) Start(ctx context.Context) error {
-	err := j.userJob.KafkaConsumer(ctx)
-	return err
+	if err := j.userJob.KafkaConsumer(ctx); err != nil {
+		return err
+	}
+	<-ctx.Done()
+	return ctx.Err()
 }
 func (j *JobServer) Stop(ctx context.Context) error {
 	return nil
