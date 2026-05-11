@@ -1,5 +1,7 @@
 package service
 
+//go:generate go tool mockgen -source=user.go -destination=../../test/mocks/service/user.go
+
 import (
 	"context"
 	"nunu-layout-admin/internal/model"

@@ -1,5 +1,7 @@
 package repository
 
+//go:generate go tool mockgen -source=admin.go -destination=../../test/mocks/repository/admin.go
+
 import (
 	"context"
 	"errors"

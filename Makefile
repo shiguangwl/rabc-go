@@ -1,61 +1,101 @@
 # ==============================================================================
-# 工作流速查
+# 项目工程命令入口
 # ------------------------------------------------------------------------------
-#   首次准备   make init             装 wire / mockgen / swag / nunu（atlas 另装）
-#   日常开发   make bootstrap        起依赖容器 + atlas apply + seed + nunu 启动 server
-#   接口变更   make mock             重生成 service/repository 的 mock
-#   注解变更   make swag             刷新 Swagger 文档到 ./docs
-#   提交前    make test             跑全量 Go race 测试
-#   发布构建   make build            前端 npm 打包 + 后端瘦身二进制 ./bin/server
-#   镜像验证   make docker           构建 cmd/task 镜像并试跑（定时任务用，非常驻）
+# 速查：`make help` 列出全部 target
+# 数据库 schema 详细文档：db/README.md
 #
-# 数据库 schema（详见 db/README.md，cmd/dbmigrate 读取 APP_CONF/config/local.yml）：
-#   make migrate-diff name=xxx       从 GORM struct 生成新版本 SQL migration
-#   make migrate-apply               应用待执行 migration 到本地 DB
-#   make migrate-status              查看 migration 状态
-#   make migrate-hash                重新计算 atlas.sum（手改文件后必跑）
-#   make migrate-validate            校验 migration 目录完整性（CI 用）
-#
-# 业务初始数据（首次部署或 reset 后跑）：
-#   make seed                        写入 RBAC 初始数据（要求空表）
-#   make seed-reset                  TRUNCATE + 重写（仅 dev/local）
+# 设计原则：优先收纳复合任务、非默认 flag 与项目约定入口；
+# 标准 Go 命令仍可直接敲，Make target 负责降低团队记忆成本。
 # ==============================================================================
 
-# 安装开发工具链
-.PHONY: init
-init:
-	go install github.com/google/wire/cmd/wire@latest
-	go install github.com/golang/mock/mockgen@latest
-	go install github.com/swaggo/swag/cmd/swag@latest
-	go install github.com/go-nunu/nunu@latest
-	@echo ""
-	@echo ">>> Atlas CLI 不在 go install 范围，请按需手装："
-	@echo "    macOS : brew install ariga/tap/atlas"
-	@echo "    其它  : curl -sSf https://atlasgo.sh | sh"
+# ------------------------------------------------------------------------------
+# 变量
+# ------------------------------------------------------------------------------
+# 工具版本：Wire / mockgen / swag 通过 go.mod 的 tool 指令锁定（Go 1.24+），
+# `go install tool` 一次性安装到 GOBIN，调用处用 `go tool <name>` 复用同一版本。
+# nunu 只负责本地热加载，不参与构建产物，保留 @latest 降低维护成本。
+NUNU_PKG := github.com/go-nunu/nunu
 
-# 一键启动本地开发环境：依赖容器 → atlas 同步 schema → 写入初始数据 → 启 server
+# Docker 镜像：CI/CD 覆盖示例 → make docker-server REGISTRY=registry.io VERSION=v1.2.3
+REGISTRY     ?= registry.local:5000
+VERSION      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+IMAGE_PREFIX := nunu-layout-admin
+
+# Docker Compose 文件路径（避免 recipe 里 cd——cd 在每行 recipe 后即失效）
+DOCKER_COMPOSE := docker compose -f deploy/docker-compose/docker-compose.yml
+
+.DEFAULT_GOAL := help
+
+# ------------------------------------------------------------------------------
+# 帮助
+# ------------------------------------------------------------------------------
+
+.PHONY: help
+help:  ## 显示所有可用命令及说明
+	@printf "\n用法: make \033[36m<target>\033[0m\n\n命令列表:\n"
+	@awk 'BEGIN {FS = ":.*##"} \
+		/^[a-zA-Z][a-zA-Z0-9_-]*:.*##/ {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' \
+		$(MAKEFILE_LIST) | sort
+	@echo ""
+
+# ------------------------------------------------------------------------------
+# 工具与一键启动
+# ------------------------------------------------------------------------------
+
+.PHONY: init
+init:  ## 安装 Go 工具链（版本由 go.mod 的 tool 指令锁定）
+	go install tool
+	go install $(NUNU_PKG)@latest
+	@echo ""
+	@echo ">>> 以下工具不在 Go module 范围，请按需手装："
+	@echo "    Atlas         : brew install ariga/tap/atlas   (或 curl -sSf https://atlasgo.sh | sh)"
+	@echo "    golangci-lint : brew install golangci-lint     (或 https://golangci-lint.run/usage/install/)"
+
 .PHONY: bootstrap
-bootstrap:
-	cd ./deploy/docker-compose && docker compose up -d --wait && cd ../../
+bootstrap:  ## 起依赖容器 → migrate-apply → seed → nunu run（Docker 路径）
+	$(DOCKER_COMPOSE) up -d --wait
 	$(MAKE) migrate-apply
 	go run ./cmd/seed
 	nunu run ./cmd/server
 
-# 生成接口 mock
-.PHONY: mock
-mock:
-	mockgen -source=internal/service/user.go -destination test/mocks/service/user.go
-	mockgen -source=internal/repository/user.go -destination test/mocks/repository/user.go
-	mockgen -source=internal/repository/repository.go -destination test/mocks/repository/repository.go
+# ------------------------------------------------------------------------------
+# 代码生成
+# ------------------------------------------------------------------------------
 
-# 运行全量 Go 测试
+.PHONY: mock
+mock:  ## 重生成 service/repository 的 mock（来源：源文件 //go:generate 注释）
+	@mkdir -p test/mocks/service test/mocks/repository
+	go generate ./internal/...
+
+.PHONY: swag
+swag:  ## 刷新 Swagger 文档到 ./docs
+	go tool swag init -g cmd/server/main.go -o ./docs --parseDependency
+
+# ------------------------------------------------------------------------------
+# 质量门禁
+# ------------------------------------------------------------------------------
+# check 把提交前要走的步骤打包成一道门；test 保留为高频入口，
+# 避免 README、CI 与开发者肌肉记忆分裂。
+
 .PHONY: test
-test:
+test:  ## 执行全量 Go race 测试
 	go test -race ./...
 
-# 构建前后端
+.PHONY: check
+check:  ## 提交前完整质量门禁（vet + lint + race test + migrate validate）
+	go vet ./...
+	golangci-lint run ./...
+	$(MAKE) test
+	$(MAKE) migrate-validate
+
+# ------------------------------------------------------------------------------
+# 构建
+# ------------------------------------------------------------------------------
+# build 走依赖触发，可用 make -j2 build 并行；web-build / server-build 不
+# 写 ## 注释，help 不展示，但仍可单独调用（前端 hot reload 场景偶用）。
+
 .PHONY: build
-build: web-build server-build
+build: web-build server-build  ## 构建前端 + 后端二进制
 
 .PHONY: web-build
 web-build:
@@ -65,54 +105,70 @@ web-build:
 server-build:
 	go build -ldflags="-s -w" -o ./bin/server ./cmd/server
 
-# 构建并运行 task 镜像
-.PHONY: docker
-docker:
-	docker build -f deploy/build/Dockerfile --build-arg APP_RELATIVE_PATH=./cmd/task -t 1.1.1.1:5000/demo-task:v1 .
-	docker run --rm -i 1.1.1.1:5000/demo-task:v1
-
-# 生成 Swagger 文档
-.PHONY: swag
-swag:
-	swag init  -g cmd/server/main.go -o ./docs --parseDependency
+.PHONY: clean
+clean:  ## 清理本地构建产物（不删除已纳入版本控制的生成文件）
+	rm -rf bin web/dist
 
 # ------------------------------------------------------------------------------
-# Atlas schema migration
+# Docker（生产部署用；本地开发走 bootstrap）
 # ------------------------------------------------------------------------------
-# 生成新 migration：用法 make migrate-diff name=add_xxx
+
+.PHONY: docker-server
+docker-server:  ## 构建 server 镜像（覆盖参数：REGISTRY / VERSION）
+	docker build -f deploy/build/Dockerfile --build-arg APP_RELATIVE_PATH=./cmd/server \
+		-t $(REGISTRY)/$(IMAGE_PREFIX)-server:$(VERSION) .
+
+.PHONY: docker-task
+docker-task:  ## 构建 task 镜像（定时任务用，非常驻）
+	docker build -f deploy/build/Dockerfile --build-arg APP_RELATIVE_PATH=./cmd/task \
+		-t $(REGISTRY)/$(IMAGE_PREFIX)-task:$(VERSION) .
+
+# ------------------------------------------------------------------------------
+# Atlas schema migration（详见 db/README.md）
+# cmd/dbmigrate 默认读 APP_CONF 或 config/local.yml；atlas.hcl 的 url/dev
+# 可通过 ATLAS_MYSQL_URL / ATLAS_MYSQL_DEV_URL 等环境变量覆盖（本地 DB 路径）
+# ------------------------------------------------------------------------------
+
+.PHONY: push
+push:  ## 【仅本地】Drizzle 风格：直接同步 GORM struct → DB，不生成 SQL 文件
+	go run ./cmd/dbmigrate push
+
 .PHONY: migrate-diff
-migrate-diff:
-	@if [ -z "$(name)" ]; then echo "ERROR: name 不能为空，例如 make migrate-diff name=add_user_email"; exit 1; fi
+migrate-diff:  ## 生成新 migration（用法：make migrate-diff name=add_xxx）
+	@if [ -z "$(name)" ]; then \
+		echo "ERROR: name 不能为空，例如 make migrate-diff name=add_user_email" >&2; \
+		exit 1; \
+	fi
 	go run ./cmd/dbmigrate -name $(name) diff
 
-# 应用待执行 migration
 .PHONY: migrate-apply
-migrate-apply:
+migrate-apply:  ## 应用待执行 migration 到目标 DB
 	go run ./cmd/dbmigrate apply
 
-# 查看 migration 状态
 .PHONY: migrate-status
-migrate-status:
+migrate-status:  ## 查看 migration 状态
 	go run ./cmd/dbmigrate status
 
-# 重新计算 atlas.sum（仅手改/合并冲突后才需要）
 .PHONY: migrate-hash
-migrate-hash:
+migrate-hash:  ## 重新计算 atlas.sum（手改 SQL 或解决冲突后使用）
 	go run ./cmd/dbmigrate hash
 
-# 校验 migration 目录完整性（CI 用）
 .PHONY: migrate-validate
-migrate-validate:
+migrate-validate:  ## 校验 migration 目录完整性（CI 用）
 	go run ./cmd/dbmigrate validate
+
+.PHONY: migrate-lint
+migrate-lint:  ## 检测破坏性变更（drop col / add NOT NULL 等）；可选 base=origin/main
+	go run ./cmd/dbmigrate $(if $(base),-base $(base),) lint
 
 # ------------------------------------------------------------------------------
 # Seed 业务初始数据
 # ------------------------------------------------------------------------------
+
 .PHONY: seed
-seed:
+seed:  ## 写入 RBAC 初始数据（要求业务表为空）
 	go run ./cmd/seed
 
-# 仅 dev/local：TRUNCATE RBAC 业务表 + 重新 seed
 .PHONY: seed-reset
-seed-reset:
+seed-reset:  ## 【仅 local】清空 RBAC 业务表和策略后重新 seed
 	go run ./cmd/seed -reset=true

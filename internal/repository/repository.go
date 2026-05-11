@@ -1,5 +1,7 @@
 package repository
 
+//go:generate go tool mockgen -source=repository.go -destination=../../test/mocks/repository/repository.go
+
 import (
 	"context"
 	"fmt"
