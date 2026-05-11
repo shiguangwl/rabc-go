@@ -154,18 +154,19 @@ func (s *adminService) AdminUserUpdate(ctx context.Context, req *v1.AdminUserUpd
 	// 旧实现会在事务外做 read-modify-write，并发更新会丢密码（A 不改密码读到 H1，
 	// B 改密码写入 H2，A 把 H1 写回会把 H2 静默覆盖）。空密码下不写 password 列
 	// 的语义改在 repo 层按字段动态构造 map 实现。
+	passwordHash := ""
 	if req.Password != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
-		req.Password = string(hash)
+		passwordHash = string(hash)
 	}
 	return s.adminRepository.AdminUserUpdateAtomic(ctx, &model.AdminUser{
 		Model:    gorm.Model{ID: req.ID},
 		Email:    req.Email,
 		Nickname: req.Nickname,
-		Password: req.Password,
+		Password: passwordHash,
 		Phone:    req.Phone,
 		Username: req.Username,
 	}, req.Roles) // req.Roles 为 *[]string：nil 跳过角色同步，非 nil 全量覆盖
@@ -176,13 +177,12 @@ func (s *adminService) AdminUserCreate(ctx context.Context, req *v1.AdminUserCre
 	if err != nil {
 		return err
 	}
-	req.Password = string(hash)
 	return s.adminRepository.AdminUserCreateAtomic(ctx, &model.AdminUser{
 		Email:    req.Email,
 		Nickname: req.Nickname,
 		Phone:    req.Phone,
 		Username: req.Username,
-		Password: req.Password,
+		Password: string(hash),
 	}, req.Roles)
 }
 
@@ -256,18 +256,15 @@ func (s *adminService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1
 }
 
 func (s *adminService) ApiUpdate(ctx context.Context, req *v1.ApiUpdateRequest) error {
-	old, err := s.adminRepository.GetApi(ctx, req.ID)
-	if err != nil {
-		return err
-	}
-	// path/method 变更时事务内清旧 Casbin 策略；新策略由管理员重新分配
+	// path/method 变更时 repo 在同一事务内读取旧值并清旧 Casbin 策略；
+	// 避免 service 先读旧值再更新导致并发修改时清错资源 key。
 	return s.adminRepository.ApiUpdateAtomic(ctx, &model.Api{
 		Group:  req.Group,
 		Method: req.Method,
 		Name:   req.Name,
 		Path:   req.Path,
 		Model:  gorm.Model{ID: req.ID},
-	}, old.Path, old.Method)
+	})
 }
 
 // ApiCreate 不需要事务：新登记的 API 资源默认无任何 Casbin 策略绑定，
@@ -282,11 +279,7 @@ func (s *adminService) ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) 
 }
 
 func (s *adminService) ApiDelete(ctx context.Context, id uint) error {
-	old, err := s.adminRepository.GetApi(ctx, id)
-	if err != nil {
-		return err
-	}
-	return s.adminRepository.ApiDeleteAtomic(ctx, id, old.Path, old.Method)
+	return s.adminRepository.ApiDeleteAtomic(ctx, id)
 }
 
 func (s *adminService) GetUserPermissions(ctx context.Context, uid uint) (*v1.GetUserPermissionsData, error) {
@@ -321,10 +314,6 @@ func (s *adminService) GetRolePermissions(ctx context.Context, role string) (*v1
 }
 
 func (s *adminService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest) error {
-	old, err := s.adminRepository.GetMenu(ctx, req.ID)
-	if err != nil {
-		return err
-	}
 	return s.adminRepository.MenuUpdateAtomic(ctx, &model.Menu{
 		Component:  req.Component,
 		Icon:       req.Icon,
@@ -341,7 +330,7 @@ func (s *adminService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest
 		Model: gorm.Model{
 			ID: req.ID,
 		},
-	}, old.Path)
+	})
 }
 
 func (s *adminService) MenuCreate(ctx context.Context, req *v1.MenuCreateRequest) error {
@@ -362,11 +351,7 @@ func (s *adminService) MenuCreate(ctx context.Context, req *v1.MenuCreateRequest
 }
 
 func (s *adminService) MenuDelete(ctx context.Context, id uint) error {
-	old, err := s.adminRepository.GetMenu(ctx, id)
-	if err != nil {
-		return err
-	}
-	return s.adminRepository.MenuDeleteAtomic(ctx, id, old.Path)
+	return s.adminRepository.MenuDeleteAtomic(ctx, id)
 }
 
 func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuResponseData, error) {
@@ -487,6 +472,13 @@ func (s *adminService) RoleUpdate(ctx context.Context, req *v1.RoleUpdateRequest
 }
 
 func (s *adminService) RoleCreate(ctx context.Context, req *v1.RoleCreateRequest) error {
+	// 禁止 sid 以 RoleSubjectPrefix 开头：Casbin 内部 role subject 形如 "role:<sid>"，
+	// 若外部传入 sid="role:foo" 会与正常 sid="foo" 的 RoleSubject 结果撞名，
+	// 让命名空间隔离失效。model.RoleSubject 出于幂等保留了短路逻辑，
+	// 真正堵漏点在入口校验。
+	if strings.HasPrefix(req.Sid, model.RoleSubjectPrefix) {
+		return v1.ErrBadRequest
+	}
 	// 唯一约束冲突由 repo 反查精确翻译为 ErrRoleSidExists / ErrRoleNameExists；
 	// service 层只透传业务错误，不再依赖 affected 行数语义。
 	return s.adminRepository.RoleCreateIfAbsent(ctx, &model.Role{Name: req.Name, Sid: req.Sid})

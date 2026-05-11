@@ -36,10 +36,10 @@ type AdminRepository interface {
 	AdminUserUpdateAtomic(ctx context.Context, m *model.AdminUser, roles *[]string) error
 	AdminUserDeleteAtomic(ctx context.Context, id uint) error
 	RoleDeleteAtomic(ctx context.Context, id uint, sid string) error
-	MenuUpdateAtomic(ctx context.Context, m *model.Menu, oldPath string) error
-	MenuDeleteAtomic(ctx context.Context, id uint, oldPath string) error
-	ApiUpdateAtomic(ctx context.Context, m *model.Api, oldPath, oldMethod string) error
-	ApiDeleteAtomic(ctx context.Context, id uint, oldPath, oldMethod string) error
+	MenuUpdateAtomic(ctx context.Context, m *model.Menu) error
+	MenuDeleteAtomic(ctx context.Context, id uint) error
+	ApiUpdateAtomic(ctx context.Context, m *model.Api) error
+	ApiDeleteAtomic(ctx context.Context, id uint) error
 
 	GetUserPermissions(ctx context.Context, uid uint) ([][]string, error)
 	GetUserRoles(ctx context.Context, uid uint) ([]string, error)
@@ -95,7 +95,7 @@ type adminRepository struct {
 func (r *adminRepository) CasbinRoleDelete(ctx context.Context, role string) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
-	_, err := r.e.DeleteRole(role)
+	_, err := r.e.DeleteRole(model.RoleSubject(role))
 	return err
 }
 
@@ -163,7 +163,7 @@ func updateUserRolesOn(e casbin.IEnforcer, uid string, roles []string) error {
 		oldSet[v] = struct{}{}
 	}
 	for _, v := range roles {
-		newSet[v] = struct{}{}
+		newSet[model.RoleSubject(v)] = struct{}{}
 	}
 	var addRoles, delRoles []string
 	for k := range oldSet {
@@ -202,8 +202,91 @@ func removePoliciesByObjectActOn(e casbin.IEnforcer, obj, act string) error {
 	return err
 }
 
+func ensureRolesExist(tx *gorm.DB, roles []string) error {
+	roleSet := make(map[string]struct{}, len(roles))
+	for _, role := range roles {
+		if strings.TrimSpace(role) == "" {
+			return v1.ErrBadRequest
+		}
+		roleSet[role] = struct{}{}
+	}
+	if len(roleSet) == 0 {
+		return nil
+	}
+	sids := make([]string, 0, len(roleSet))
+	for role := range roleSet {
+		sids = append(sids, role)
+	}
+	var count int64
+	if err := tx.Model(&model.Role{}).Where("sid IN ?", sids).Count(&count).Error; err != nil {
+		return fmt.Errorf("count roles by sid: %w", err)
+	}
+	if count != int64(len(sids)) {
+		return v1.ErrBadRequest
+	}
+	return nil
+}
+
+func ensureRoleExists(tx *gorm.DB, role string) error {
+	return ensureRolesExist(tx, []string{role})
+}
+
+type apiPermission struct {
+	path   string
+	method string
+}
+
+func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}) error {
+	apis := make(map[apiPermission]struct{})
+	menus := make(map[string]struct{})
+	for key := range permissions {
+		resource, action, ok := strings.Cut(key, model.PermSep)
+		if !ok || resource == "" || action == "" {
+			return v1.ErrBadRequest
+		}
+		switch {
+		case strings.HasPrefix(resource, model.ApiResourcePrefix):
+			apis[apiPermission{
+				path:   strings.TrimPrefix(resource, model.ApiResourcePrefix),
+				method: action,
+			}] = struct{}{}
+		case strings.HasPrefix(resource, model.MenuResourcePrefix):
+			if action != "read" {
+				return v1.ErrBadRequest
+			}
+			menus[strings.TrimPrefix(resource, model.MenuResourcePrefix)] = struct{}{}
+		default:
+			return v1.ErrBadRequest
+		}
+	}
+	for api := range apis {
+		var count int64
+		if err := tx.Model(&model.Api{}).
+			Where("path = ? AND method = ?", api.path, api.method).
+			Count(&count).Error; err != nil {
+			return fmt.Errorf("count api permission resource: %w", err)
+		}
+		if count == 0 {
+			return v1.ErrBadRequest
+		}
+	}
+	for path := range menus {
+		var count int64
+		if err := tx.Model(&model.Menu{}).Where("path = ?", path).Count(&count).Error; err != nil {
+			return fmt.Errorf("count menu permission resource: %w", err)
+		}
+		if count == 0 {
+			return v1.ErrBadRequest
+		}
+	}
+	return nil
+}
+
 func ensureRowsAffected(tx *gorm.DB, result *gorm.DB, modelValue any, id uint) error {
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
+			return v1.ErrConflict.WithCause(result.Error)
+		}
 		return result.Error
 	}
 	if result.RowsAffected > 0 {
@@ -233,6 +316,9 @@ func (r *adminRepository) AdminUserCreateAtomic(ctx context.Context, m *model.Ad
 		}
 		if len(roles) == 0 {
 			return nil
+		}
+		if err := ensureRolesExist(tx, roles); err != nil {
+			return err
 		}
 		e, err := r.newTxEnforcer(tx)
 		if err != nil {
@@ -301,6 +387,9 @@ func (r *adminRepository) AdminUserUpdateAtomic(ctx context.Context, m *model.Ad
 		if roles == nil {
 			return nil
 		}
+		if err := ensureRolesExist(tx, *roles); err != nil {
+			return err
+		}
 		e, err := r.newTxEnforcer(tx)
 		if err != nil {
 			return err
@@ -314,6 +403,9 @@ func (r *adminRepository) AdminUserUpdateAtomic(ctx context.Context, m *model.Ad
 }
 
 func (r *adminRepository) AdminUserDeleteAtomic(ctx context.Context, id uint) error {
+	if strconv.FormatUint(uint64(id), 10) == model.AdminUserID {
+		return v1.ErrForbidden
+	}
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -342,7 +434,7 @@ func (r *adminRepository) RoleDeleteAtomic(ctx context.Context, id uint, sid str
 			return err
 		}
 		// 撤权先：先清 Casbin 策略再删 DB 行；tx 失败一起回滚。
-		if _, err := e.DeleteRole(sid); err != nil {
+		if _, err := e.DeleteRole(model.RoleSubject(sid)); err != nil {
 			return err
 		}
 		return ensureRowsAffected(tx, tx.Where("id = ?", id).Delete(&model.Role{}), &model.Role{}, id)
@@ -355,8 +447,7 @@ func (r *adminRepository) RoleDeleteAtomic(ctx context.Context, id uint, sid str
 
 // ApiUpdateAtomic 用 map 触发更新（理由同 AdminUserUpdateAtomic）。
 // path/method 变更时事务内同步清旧 Casbin 策略。
-func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api, oldPath, oldMethod string) error {
-	pathChanged := oldPath != m.Path || oldMethod != m.Method
+func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	updates := map[string]any{
@@ -366,6 +457,11 @@ func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api, old
 		"method":     m.Method,
 	}
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var old model.Api
+		if err := tx.Where("id = ?", m.ID).First(&old).Error; err != nil {
+			return err
+		}
+		pathChanged := old.Path != m.Path || old.Method != m.Method
 		if err := ensureRowsAffected(tx, tx.Model(&model.Api{}).Where("id = ?", m.ID).Updates(updates), &model.Api{}, m.ID); err != nil {
 			return err
 		}
@@ -376,18 +472,15 @@ func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api, old
 		if err != nil {
 			return err
 		}
-		return removePoliciesByObjectActOn(e, model.ApiResourcePrefix+oldPath, oldMethod)
+		return removePoliciesByObjectActOn(e, model.ApiResourcePrefix+old.Path, old.Method)
 	}); err != nil {
 		return err
 	}
-	if pathChanged {
-		r.reloadPolicy(ctx)
-	}
+	r.reloadPolicy(ctx)
 	return nil
 }
 
-func (r *adminRepository) MenuUpdateAtomic(ctx context.Context, m *model.Menu, oldPath string) error {
-	pathChanged := oldPath != m.Path
+func (r *adminRepository) MenuUpdateAtomic(ctx context.Context, m *model.Menu) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	updates := map[string]any{
@@ -405,6 +498,11 @@ func (r *adminRepository) MenuUpdateAtomic(ctx context.Context, m *model.Menu, o
 		"url":          m.URL,
 	}
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var old model.Menu
+		if err := tx.Where("id = ?", m.ID).First(&old).Error; err != nil {
+			return err
+		}
+		pathChanged := old.Path != m.Path
 		if err := ensureRowsAffected(tx, tx.Model(&model.Menu{}).Where("id = ?", m.ID).Updates(updates), &model.Menu{}, m.ID); err != nil {
 			return err
 		}
@@ -415,29 +513,7 @@ func (r *adminRepository) MenuUpdateAtomic(ctx context.Context, m *model.Menu, o
 		if err != nil {
 			return err
 		}
-		return removePoliciesByObjectActOn(e, model.MenuResourcePrefix+oldPath, "read")
-	}); err != nil {
-		return err
-	}
-	if pathChanged {
-		r.reloadPolicy(ctx)
-	}
-	return nil
-}
-
-func (r *adminRepository) ApiDeleteAtomic(ctx context.Context, id uint, oldPath, oldMethod string) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		// 撤权先：清 Casbin 策略后再删 DB 行
-		if err := removePoliciesByObjectActOn(e, model.ApiResourcePrefix+oldPath, oldMethod); err != nil {
-			return err
-		}
-		return ensureRowsAffected(tx, tx.Where("id = ?", id).Delete(&model.Api{}), &model.Api{}, id)
+		return removePoliciesByObjectActOn(e, model.MenuResourcePrefix+old.Path, "read")
 	}); err != nil {
 		return err
 	}
@@ -445,18 +521,46 @@ func (r *adminRepository) ApiDeleteAtomic(ctx context.Context, id uint, oldPath,
 	return nil
 }
 
-func (r *adminRepository) MenuDeleteAtomic(ctx context.Context, id uint, oldPath string) error {
+func (r *adminRepository) ApiDeleteAtomic(ctx context.Context, id uint) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var old model.Api
+		if err := tx.Where("id = ?", id).First(&old).Error; err != nil {
+			return err
+		}
 		e, err := r.newTxEnforcer(tx)
 		if err != nil {
 			return err
 		}
-		if err := removePoliciesByObjectActOn(e, model.MenuResourcePrefix+oldPath, "read"); err != nil {
+		// 撤权先：清 Casbin 策略后再删 DB 行
+		if err := removePoliciesByObjectActOn(e, model.ApiResourcePrefix+old.Path, old.Method); err != nil {
 			return err
 		}
-		return ensureRowsAffected(tx, tx.Where("id = ?", id).Delete(&model.Menu{}), &model.Menu{}, id)
+		return ensureRowsAffected(tx, tx.Unscoped().Where("id = ?", id).Delete(&model.Api{}), &model.Api{}, id)
+	}); err != nil {
+		return err
+	}
+	r.reloadPolicy(ctx)
+	return nil
+}
+
+func (r *adminRepository) MenuDeleteAtomic(ctx context.Context, id uint) error {
+	r.rbacMu.Lock()
+	defer r.rbacMu.Unlock()
+	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var old model.Menu
+		if err := tx.Where("id = ?", id).First(&old).Error; err != nil {
+			return err
+		}
+		e, err := r.newTxEnforcer(tx)
+		if err != nil {
+			return err
+		}
+		if err := removePoliciesByObjectActOn(e, model.MenuResourcePrefix+old.Path, "read"); err != nil {
+			return err
+		}
+		return ensureRowsAffected(tx, tx.Unscoped().Where("id = ?", id).Delete(&model.Menu{}), &model.Menu{}, id)
 	}); err != nil {
 		return err
 	}
@@ -480,6 +584,9 @@ func (r *adminRepository) DeleteUserRoles(ctx context.Context, uid uint) error {
 func (r *adminRepository) UpdateUserRoles(ctx context.Context, uid uint, roles []string) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
+	if err := ensureRolesExist(r.DB(ctx), roles); err != nil {
+		return err
+	}
 	return updateUserRolesOn(r.e, strconv.FormatUint(uint64(uid), 10), roles)
 }
 
@@ -539,11 +646,18 @@ func (r *adminRepository) UpdateRolePermission(ctx context.Context, role string,
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := ensureRoleExists(tx, role); err != nil {
+			return err
+		}
+		if err := ensurePermissionResourcesExist(tx, newPermSet); err != nil {
+			return err
+		}
 		e, err := r.newTxEnforcer(tx)
 		if err != nil {
 			return err
 		}
-		oldPermissions, err := e.GetPermissionsForUser(role)
+		roleSubject := model.RoleSubject(role)
+		oldPermissions, err := e.GetPermissionsForUser(roleSubject)
 		if err != nil {
 			return err
 		}
@@ -567,12 +681,12 @@ func (r *adminRepository) UpdateRolePermission(ctx context.Context, role string,
 		// IEnforcer 接口未暴露 AddPermissionsForUser（仅 *Enforcer 有），
 		// 用单条 AddPermissionForUser 循环以保持接口适配。
 		for _, perm := range removePermissions {
-			if _, err := e.DeletePermissionForUser(role, perm...); err != nil {
+			if _, err := e.DeletePermissionForUser(roleSubject, perm...); err != nil {
 				return fmt.Errorf("remove permission %v: %w", perm, err)
 			}
 		}
 		for _, perm := range addPermissions {
-			if _, err := e.AddPermissionForUser(role, perm...); err != nil {
+			if _, err := e.AddPermissionForUser(roleSubject, perm...); err != nil {
 				return fmt.Errorf("add permission %v: %w", perm, err)
 			}
 		}
@@ -623,7 +737,13 @@ func (r *adminRepository) ApiUpdate(ctx context.Context, m *model.Api) error {
 }
 
 func (r *adminRepository) ApiCreate(ctx context.Context, m *model.Api) error {
-	return r.DB(ctx).Create(m).Error
+	if err := r.DB(ctx).Create(m).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return v1.ErrConflict.WithCause(err)
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *adminRepository) ApiDelete(ctx context.Context, id uint) error {
@@ -641,10 +761,17 @@ func (r *adminRepository) GetUserPermissions(ctx context.Context, uid uint) ([][
 
 }
 func (r *adminRepository) GetRolePermissions(ctx context.Context, role string) ([][]string, error) {
-	return r.e.GetPermissionsForUser(role)
+	return r.e.GetPermissionsForUser(model.RoleSubject(role))
 }
 func (r *adminRepository) GetUserRoles(ctx context.Context, uid uint) ([]string, error) {
-	return r.e.GetRolesForUser(strconv.FormatUint(uint64(uid), 10))
+	roles, err := r.e.GetRolesForUser(strconv.FormatUint(uint64(uid), 10))
+	if err != nil {
+		return nil, err
+	}
+	for i, role := range roles {
+		roles[i] = model.RoleSID(role)
+	}
+	return roles, nil
 }
 func (r *adminRepository) MenuUpdate(ctx context.Context, m *model.Menu) error {
 	result := r.DB(ctx).Where("id = ?", m.ID).Updates(m)
@@ -652,7 +779,13 @@ func (r *adminRepository) MenuUpdate(ctx context.Context, m *model.Menu) error {
 }
 
 func (r *adminRepository) MenuCreate(ctx context.Context, m *model.Menu) error {
-	return r.DB(ctx).Create(m).Error
+	if err := r.DB(ctx).Create(m).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return v1.ErrConflict.WithCause(err)
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *adminRepository) MenuDelete(ctx context.Context, id uint) error {

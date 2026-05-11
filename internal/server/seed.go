@@ -319,10 +319,9 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 	if err := db.WithContext(ctx).Create(&roles).Error; err != nil {
 		return err
 	}
-	// 不在此处 ClearPolicy + SavePolicy。原因：会清掉运行时由管理员分配的策略。
-	// 显式 reset 路径已在 SeedServer.reset 内统一清理；默认 seed 路径下，
-	// 依赖 Casbin AddXxx 的"已存在 ok=false err=nil"幂等语义即可重入。
-	if _, err := e.AddRoleForUser(model.AdminUserID, model.AdminRole); err != nil {
+	// 不在此处 ClearPolicy + SavePolicy：默认 seed 只允许空库初始化，
+	// reset 路径已在 SeedServer.reset 内统一清理，避免误删运行时分配的策略。
+	if _, err := e.AddRoleForUser(model.AdminUserID, model.RoleSubject(model.AdminRole)); err != nil {
 		return fmt.Errorf("AddRoleForUser admin: %w", err)
 	}
 
@@ -346,7 +345,7 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 	}
 
 	// 添加运营人员权限
-	if _, err := e.AddRoleForUser("2", "1000"); err != nil {
+	if _, err := e.AddRoleForUser("2", model.RoleSubject("1000")); err != nil {
 		return fmt.Errorf("AddRoleForUser operator: %w", err)
 	}
 	operatorPerms := []struct {
@@ -377,7 +376,7 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 // Casbin AddPermissionForUser 已存在时返回 (false, nil)，幂等可重放。
 // 失败 return error 让调用方早返，避免静默吞错。
 func (m *SeedServer) addPermissionForRole(e casbin.IEnforcer, role, resource, action string) error {
-	if _, err := e.AddPermissionForUser(role, resource, action); err != nil {
+	if _, err := e.AddPermissionForUser(model.RoleSubject(role), resource, action); err != nil {
 		return fmt.Errorf("AddPermissionForUser %s %s:%s: %w", role, resource, action, err)
 	}
 	m.log.Debug("seed: granted permission",

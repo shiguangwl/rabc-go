@@ -57,7 +57,12 @@ func (h *AdminHandler) Login(ctx *gin.Context) {
 // @Success 200 {object} v1.GetMenuResponse
 // @Router /v1/menus [get]
 func (h *AdminHandler) GetMenus(ctx *gin.Context) {
-	data, err := h.adminService.GetMenus(ctx, GetUserIdFromCtx(ctx))
+	uid, ok := UserIDFromCtx(ctx)
+	if !ok {
+		v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+		return
+	}
+	data, err := h.adminService.GetMenus(ctx, uid)
 	if err != nil {
 		v1.WriteResponse(ctx, err, nil)
 		return
@@ -93,7 +98,12 @@ func (h *AdminHandler) GetAdminMenus(ctx *gin.Context) {
 // @Success 200 {object} v1.GetUserPermissionsData
 // @Router /v1/admin/user/permissions [get]
 func (h *AdminHandler) GetUserPermissions(ctx *gin.Context) {
-	data, err := h.adminService.GetUserPermissions(ctx, GetUserIdFromCtx(ctx))
+	uid, ok := UserIDFromCtx(ctx)
+	if !ok {
+		v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+		return
+	}
+	data, err := h.adminService.GetUserPermissions(ctx, uid)
 	if err != nil {
 		v1.WriteResponse(ctx, err, nil)
 		return
@@ -518,7 +528,12 @@ func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
 // @Success 200 {object} v1.GetAdminUserResponse
 // @Router /v1/admin/user [get]
 func (h *AdminHandler) GetAdminUser(ctx *gin.Context) {
-	data, err := h.adminService.GetAdminUser(ctx, GetUserIdFromCtx(ctx))
+	uid, ok := UserIDFromCtx(ctx)
+	if !ok {
+		v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+		return
+	}
+	data, err := h.adminService.GetAdminUser(ctx, uid)
 	if err != nil {
 		v1.WriteResponse(ctx, err, nil)
 		return
