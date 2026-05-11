@@ -125,8 +125,7 @@ docker-task:  ## 构建 task 镜像（定时任务用，非常驻）
 
 # ------------------------------------------------------------------------------
 # Atlas schema migration（详见 db/README.md）
-# cmd/dbmigrate 默认读 APP_CONF 或 config/local.yml；atlas.hcl 的 url/dev
-# 可通过 ATLAS_MYSQL_URL / ATLAS_MYSQL_DEV_URL 等环境变量覆盖（本地 DB 路径）
+# cmd/dbmigrate 默认读 APP_CONF 或 config/local.yml，并把目标库 DSN 传给 atlas。
 # ------------------------------------------------------------------------------
 
 .PHONY: push

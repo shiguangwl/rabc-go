@@ -5,7 +5,7 @@ import "gorm.io/gorm"
 type Menu struct {
 	gorm.Model
 	ParentID   uint   `json:"parentId,omitempty" gorm:"column:parent_id;index;comment:父级菜单id，0 表示根菜单"`
-	Path       string `json:"path" gorm:"column:path;type:varchar(255);comment:前端路由路径"`
+	Path       string `json:"path" gorm:"column:path;type:varchar(255);not null;uniqueIndex;comment:前端路由路径"`
 	Title      string `json:"title" gorm:"column:title;type:varchar(100);comment:菜单显示标题"`
 	Name       string `json:"name,omitempty" gorm:"column:name;type:varchar(100);comment:路由唯一标识，对应前端路由 name"`
 	Component  string `json:"component,omitempty" gorm:"column:component;type:varchar(255);comment:绑定组件，常用：Iframe/RouteView/ComponentError"`

@@ -101,7 +101,7 @@ cd web && npm install && npm run dev
 | `seed.initial_password` | `APP_SEED_INITIAL_PASSWORD` |
 | `log.body.enabled` | `APP_LOG_BODY_ENABLED` |
 
-Atlas 迁移连接覆盖：`ATLAS_MYSQL_URL` / `ATLAS_MYSQL_DEV_URL` / `ATLAS_PG_URL` / `ATLAS_PG_DEV_URL`。
+Atlas 迁移目标库复用 `APP_DATA_DB_USER_DRIVER` / `APP_DATA_DB_USER_DSN`。
 
 ## 数据库
 

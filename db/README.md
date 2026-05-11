@@ -46,26 +46,22 @@ make migrate-apply
 适用：MySQL/PostgreSQL 已通过 brew/apt/yum 装在宿主、不想跑容器、或 CI 环境直连托管 DB。
 
 ```bash
-# 1. 一次性手动建好两个 database（atlas dev DB 名字自定，但必须与下方 env 对齐）
+# 1. 一次性手动建好 database
 mysql -u root -p -e "CREATE DATABASE app; CREATE DATABASE atlas_dev;"
 # 或 PostgreSQL：
 # psql -U postgres -c "CREATE DATABASE app; CREATE DATABASE atlas_dev;"
 
-# 2. 用环境变量覆盖 atlas.hcl 默认 URL（仅当路径 A 不适用时设置）
-export ATLAS_MYSQL_URL=mysql://root:secret@127.0.0.1:3306/app
-export ATLAS_MYSQL_DEV_URL=mysql://root:secret@127.0.0.1:3306/atlas_dev
-
-# 3. 同时让运行时配置指向本地 DB（cmd/dbmigrate / cmd/server / cmd/seed 共用）
+# 2. 让运行时配置指向本地 DB（cmd/dbmigrate / cmd/server / cmd/seed 共用）
 export APP_DATA_DB_USER_DRIVER=mysql
 export APP_DATA_DB_USER_DSN='root:secret@tcp(127.0.0.1:3306)/app?charset=utf8mb4&parseTime=True&loc=Local'
 
-# 4. 应用 migration、写 seed、启 server（不需要 docker）
+# 3. 应用 migration、写 seed、启 server（不需要 docker）
 make migrate-apply
 go run ./cmd/seed
 go run ./cmd/server     # 或 nunu run ./cmd/server 享 hot reload
 ```
 
-PostgreSQL 路径同理，环境变量改用 `ATLAS_PG_URL` / `ATLAS_PG_DEV_URL`，driver 改 `postgres`。
+PostgreSQL 路径同理，driver 改 `postgres`，DSN 使用 PostgreSQL URL。
 
 > **不要用 `make bootstrap`**：它内置 `docker compose up`，是 Docker 路径的快捷入口。本地原生 DB 用户按上述 4 步手动跑即可——`bootstrap` 不是必经之路。
 
