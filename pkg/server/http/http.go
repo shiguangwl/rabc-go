@@ -65,13 +65,13 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("listen %s: %w", addr, err)
+		return fmt.Errorf("监听 HTTP 地址 %s 失败: %w", addr, err)
 	}
 
 	return nil
 }
 func (s *Server) Stop(ctx context.Context) error {
-	s.logger.Sugar().Info("Shutting down server...")
+	s.logger.Info("HTTP 服务正在停止")
 	if s.httpSrv == nil {
 		return nil
 	}
@@ -82,9 +82,9 @@ func (s *Server) Stop(ctx context.Context) error {
 		defer cancel()
 	}
 	if err := s.httpSrv.Shutdown(ctx); err != nil {
-		return fmt.Errorf("shutdown http server: %w", err)
+		return fmt.Errorf("关闭 HTTP 服务失败: %w", err)
 	}
 
-	s.logger.Sugar().Info("Server exiting")
+	s.logger.Info("HTTP 服务已退出")
 	return nil
 }

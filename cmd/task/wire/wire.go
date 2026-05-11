@@ -33,11 +33,13 @@ var serverSet = wire.NewSet(
 
 // build App
 func newApp(
+	logger *log.Logger,
 	task *server.TaskServer,
 ) *app.App {
 	return app.NewApp(
 		app.WithServer(task),
 		app.WithName("demo-task"),
+		app.WithLogger(logger),
 	)
 }
 

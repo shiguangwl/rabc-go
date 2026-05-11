@@ -160,7 +160,9 @@ make migrate-apply
 ### 示例 4 — 部署到生产
 
 ```bash
-# 必须在【应用启动前】跑（流水线步骤），不能让应用启动时自动跑
+# 必须在【应用启动前】跑（流水线步骤），不能让应用启动时自动跑。
+# 配置优先读 APP_* 环境变量；未设置时回退读取 APP_CONF 指向的 YAML。
+APP_CONF=config/prod.yml \
 APP_DATA_DB_USER_DRIVER=mysql \
 APP_DATA_DB_USER_DSN='<prod-dsn>' \
   make migrate-apply
@@ -174,7 +176,7 @@ APP_DATA_DB_USER_DSN='<prod-dsn>' \
 | **本地 dev / MySQL** | `make push` 或 `make migrate-apply` | `go run ./cmd/seed`（仅首次） |
 | **本地 dev / PostgreSQL** | 同上（先设 `APP_DATA_DB_USER_DRIVER=postgres`） | `APP_DATA_DB_USER_DRIVER=postgres ... go run ./cmd/seed` |
 | **CI** | `make check`（含 migrate validate）+ `make migrate-lint base=origin/main` | n/a |
-| **生产部署** | 部署流水线在应用启动前跑 `make migrate-apply`（带 prod DSN） | 仅首次部署跑 `go run ./cmd/seed`，后续不再 |
+| **生产部署** | 部署流水线在应用启动前跑 `make migrate-apply`（prod DSN 来自环境变量或 `config/prod.yml`） | 仅首次部署跑 `go run ./cmd/seed`，后续不再 |
 
 **禁止应用启动时自动跑 schema migration**：多副本会抢着 DDL，且 schema 失败应阻塞部署而非运行时崩溃。
 

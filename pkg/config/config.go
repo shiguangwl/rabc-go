@@ -17,7 +17,7 @@ const (
 	EnvLocal = "local"
 )
 
-// envBoundKeys 列出"必须可被环境变量覆盖"的配置项。
+// envBoundKeys 列出"允许被环境变量覆盖"的配置项。
 //
 // 背景：AutomaticEnv 对 Get* 路径有效，但关键配置需要一份集中契约；
 // 显式 BindEnv 也能覆盖后续 Unmarshal 场景，避免 yml 删行后 env 注入失效。
@@ -57,9 +57,10 @@ func IsLocal(conf *viper.Viper) bool {
 	return conf.GetString("env") == EnvLocal
 }
 
-// prodRequiredKeys 列出 prod 环境必须显式注入的配置项。
-// 任一缺失，启动期 panic 阻断部署，避免空值带病上线（例：空 JWT key
-// 会让 HS256 用空字节签名，token 可被任意伪造）。
+// prodRequiredKeys 列出 prod 环境必须提供的配置项。
+// 值可以来自环境变量，也可以来自 config/prod.yml；任一缺失，启动期 panic
+// 阻断部署，避免空值带病上线（例：空 JWT key 会让 HS256 用空字节签名，
+// token 可被任意伪造）。
 var prodRequiredKeys = []string{
 	"security.jwt.key",
 	"data.db.user.dsn",
@@ -78,7 +79,7 @@ func mustValidateProd(conf *viper.Viper) {
 		}
 	}
 	if len(missing) > 0 {
-		panic(fmt.Errorf("prod config missing required keys: %v", missingEnvNames(missing)))
+		panic(fmt.Errorf("prod config missing required keys: %v", missingConfigHints(missing)))
 	}
 }
 
@@ -94,12 +95,19 @@ func missingEnvNames(keys []string) []string {
 	return envs
 }
 
+func missingConfigHints(keys []string) []string {
+	hints := make([]string, 0, len(keys))
+	for _, key := range keys {
+		hints = append(hints, fmt.Sprintf("%s or %s", key, envNameForKey(key)))
+	}
+	return hints
+}
+
 func NewConfig(p string) *viper.Viper {
 	envConf := os.Getenv("APP_CONF")
 	if envConf == "" {
 		envConf = p
 	}
-	fmt.Println("load conf file:", envConf)
 	conf := getConfig(envConf)
 	mustValidateProd(conf)
 	return conf

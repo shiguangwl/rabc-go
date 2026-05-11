@@ -260,12 +260,12 @@ func (m *SeedServer) runInitialDataWithDB(ctx context.Context, db *gorm.DB, e ca
 	}
 	for _, step := range steps {
 		if err := step.fn(ctx); err != nil {
-			m.log.Error("seed step failed",
+			m.log.Error("种子数据步骤失败",
 				zap.String("step", step.name), zap.Error(err))
 			return fmt.Errorf("%s: %w", step.name, err)
 		}
 	}
-	m.log.Info("seed: initial data written")
+	m.log.Info("种子初始数据已写入")
 	return nil
 }
 
@@ -283,7 +283,7 @@ func (m *SeedServer) areSeedTablesEmpty(ctx context.Context) (bool, error) {
 }
 
 func (m *SeedServer) Stop(ctx context.Context) error {
-	m.log.Info("seed stop")
+	m.log.Info("种子任务已停止")
 	return nil
 }
 func (m *SeedServer) initialAdminUser(ctx context.Context, db *gorm.DB) error {
@@ -379,7 +379,7 @@ func (m *SeedServer) addPermissionForRole(e casbin.IEnforcer, role, resource, ac
 	if _, err := e.AddPermissionForUser(model.RoleSubject(role), resource, action); err != nil {
 		return fmt.Errorf("AddPermissionForUser %s %s:%s: %w", role, resource, action, err)
 	}
-	m.log.Debug("seed: granted permission",
+	m.log.Debug("种子权限已授权",
 		zap.String("role", role),
 		zap.String("resource", resource),
 		zap.String("action", action),
@@ -422,7 +422,7 @@ func (m *SeedServer) initialMenuData(ctx context.Context, db *gorm.DB) error {
 	menuList := make([]v1.MenuDataItem, 0)
 	err := json.Unmarshal([]byte(seed.MenuJSON), &menuList)
 	if err != nil {
-		m.log.Error("json.Unmarshal error", zap.Error(err))
+		m.log.Error("解析菜单种子数据失败", zap.Error(err))
 		return err
 	}
 	menuListDb := make([]model.Menu, 0)

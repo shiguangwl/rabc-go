@@ -26,6 +26,6 @@ type userTask struct {
 
 // CheckUser 是定时检查骨架，仅打印日志验证调度链路；接入实际巡检逻辑替换它。
 func (t userTask) CheckUser(ctx context.Context) error {
-	t.logger.Info("CheckUser")
+	t.logger.WithContext(ctx).Info("开始检查用户")
 	return nil
 }

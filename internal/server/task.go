@@ -27,7 +27,7 @@ func NewTaskServer(
 }
 func (t *TaskServer) Start(ctx context.Context) error {
 	gocron.SetPanicHandler(func(jobName string, recoverData interface{}) {
-		t.log.Error("TaskServer Panic", zap.String("job", jobName), zap.Any("recover", recoverData))
+		t.log.Error("任务发生 panic 并已恢复", zap.String("job_name", jobName), zap.Any("recover_data", recoverData))
 	})
 
 	t.scheduler = gocron.NewScheduler(time.UTC)
@@ -35,11 +35,11 @@ func (t *TaskServer) Start(ctx context.Context) error {
 	_, err := t.scheduler.CronWithSeconds("0/3 * * * * *").Do(func() {
 		err := t.userTask.CheckUser(ctx)
 		if err != nil {
-			t.log.Error("CheckUser error", zap.Error(err))
+			t.log.Error("用户检查失败", zap.Error(err))
 		}
 	})
 	if err != nil {
-		t.log.Error("CheckUser error", zap.Error(err))
+		t.log.Error("注册用户检查任务失败", zap.Error(err))
 	}
 
 	t.scheduler.StartBlocking()
@@ -50,6 +50,6 @@ func (t *TaskServer) Stop(ctx context.Context) error {
 		return nil
 	}
 	t.scheduler.Stop()
-	t.log.Info("TaskServer stop...")
+	t.log.Info("任务服务已停止")
 	return nil
 }

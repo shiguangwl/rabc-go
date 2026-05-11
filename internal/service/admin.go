@@ -72,7 +72,7 @@ func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdmin
 	// 静默 _ 忽略会让前端永远不知道角色查询挂掉。
 	roles, err := s.adminRepository.GetUserRoles(ctx, uid)
 	if err != nil {
-		s.logger.WithContext(ctx).Warn("GetUserRoles failed in GetAdminUser", zap.Uint("uid", uid), zap.Error(err))
+		s.logger.WithContext(ctx).Warn("获取用户角色失败", zap.Uint("user_id", uid), zap.Error(err))
 		roles = []string{}
 	}
 
@@ -132,7 +132,7 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 		// 之前的 continue 会让 List 长度小于 Total，前端分页错位、漏行难定位。
 		roles, err := s.adminRepository.GetUserRoles(ctx, user.ID)
 		if err != nil {
-			s.logger.WithContext(ctx).Error("GetUserRoles error", zap.Uint("uid", user.ID), zap.Error(err))
+			s.logger.WithContext(ctx).Error("获取用户角色失败", zap.Uint("user_id", user.ID), zap.Error(err))
 			return nil, err
 		}
 		data.List = append(data.List, v1.AdminUserDataItem{
@@ -357,7 +357,7 @@ func (s *adminService) MenuDelete(ctx context.Context, id uint) error {
 func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuResponseData, error) {
 	menuList, err := s.adminRepository.GetMenuList(ctx)
 	if err != nil {
-		s.logger.WithContext(ctx).Error("GetMenuList error", zap.Error(err))
+		s.logger.WithContext(ctx).Error("获取菜单列表失败", zap.Error(err))
 		return nil, err
 	}
 	data := &v1.GetMenuResponseData{
@@ -432,7 +432,7 @@ func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuRespo
 func (s *adminService) GetAdminMenus(ctx context.Context) (*v1.GetMenuResponseData, error) {
 	menuList, err := s.adminRepository.GetMenuList(ctx)
 	if err != nil {
-		s.logger.WithContext(ctx).Error("GetMenuList error", zap.Error(err))
+		s.logger.WithContext(ctx).Error("获取菜单列表失败", zap.Error(err))
 		return nil, err
 	}
 	data := &v1.GetMenuResponseData{

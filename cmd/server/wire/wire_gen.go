@@ -49,7 +49,7 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 	jobJob := job.NewJob(transaction, logger, sidSid)
 	userJob := job.NewUserJob(jobJob, userRepository)
 	jobServer := server.NewJobServer(logger, userJob)
-	appApp := newApp(httpServer, jobServer)
+	appApp := newApp(logger, httpServer, jobServer)
 	return appApp, func() {
 		cleanup2()
 		cleanup()
@@ -70,8 +70,9 @@ var serverSet = wire.NewSet(server.NewHTTPServer, server.NewJobServer)
 
 // build App
 func newApp(
+	logger *log.Logger,
 	httpServer *http.Server,
 	jobServer *server.JobServer,
 ) *app.App {
-	return app.NewApp(app.WithServer(httpServer, jobServer), app.WithName("demo-server"))
+	return app.NewApp(app.WithServer(httpServer, jobServer), app.WithName("demo-server"), app.WithLogger(logger))
 }

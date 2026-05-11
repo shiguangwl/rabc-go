@@ -87,7 +87,7 @@ cd web && npm install && npm run dev
 
 ## 配置
 
-`config/<env>.yml` + `APP_*` 环境变量（点号 → 下划线）。
+`config/<env>.yml` + `APP_*` 环境变量（点号 → 下划线）。同名配置优先读取环境变量；环境变量不存在时，回退读取 YAML。
 
 | YAML | 环境变量 |
 |------|---------|
@@ -183,7 +183,7 @@ make build
 
 - migration 在应用启动前由流水线执行：`APP_DATA_DB_USER_DSN=... make migrate-apply`。
 - seed 仅首次部署执行。
-- 敏感配置走环境变量；`config/prod.yml` 留空占位。
+- 生产配置优先读取环境变量；环境变量不存在时回退读取 `config/prod.yml`，但 `security.jwt.key` / `data.db.user.dsn` 等必填项不可为空。
 - 前端两种部署模式：内嵌进 server 二进制，或独立部署反代 `/v1`。
 
 镜像构建：

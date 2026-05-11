@@ -41,7 +41,7 @@ func run() error {
 	logger := log.NewLog(conf)
 	seedServer, cleanup, err := wire.NewWire(conf, logger)
 	if err != nil {
-		logger.Error("wire init failed", zap.Error(err))
+		logger.Error("依赖装配失败", zap.Error(err))
 		return err
 	}
 	defer cleanup()
@@ -50,13 +50,13 @@ func run() error {
 	// 用 context.Background() 即可：种子任务无外部超时来源，调用方 Ctrl+C 直达 OS。
 	ctx := context.Background()
 	if err := seedServer.Start(ctx); err != nil {
-		logger.Error("seed failed", zap.Error(err), zap.Bool("reset", *reset))
+		logger.Error("种子数据写入失败", zap.Error(err), zap.Bool("reset", *reset))
 		_ = seedServer.Stop(ctx)
 		return err
 	}
 	if err := seedServer.Stop(ctx); err != nil {
-		logger.Warn("seed stop returned error", zap.Error(err))
+		logger.Warn("种子任务停止失败", zap.Error(err))
 	}
-	logger.Info("seed completed", zap.Bool("reset", *reset))
+	logger.Info("种子数据写入完成", zap.Bool("reset", *reset))
 	return nil
 }

@@ -51,10 +51,10 @@ func (s *Server) Start(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf("listen %s: %w", addr, err)
+		return fmt.Errorf("监听 gRPC 地址 %s 失败: %w", addr, err)
 	}
 	if err = s.Server.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-		return fmt.Errorf("serve grpc %s: %w", addr, err)
+		return fmt.Errorf("启动 gRPC 服务 %s 失败: %w", addr, err)
 	}
 	return nil
 
@@ -77,10 +77,10 @@ func (s *Server) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 		s.Server.Stop()
 		<-stopped
-		return fmt.Errorf("graceful stop grpc server: %w", ctx.Err())
+		return fmt.Errorf("优雅停止 gRPC 服务超时: %w", ctx.Err())
 	}
 
-	s.logger.Info("Server exiting")
+	s.logger.Info("gRPC 服务已退出")
 
 	return nil
 }

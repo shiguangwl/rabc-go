@@ -118,7 +118,7 @@ func RequestLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.Ha
 				logger.WithValue(ctx, zap.String("request_params", maskBody(bodyBytes, limit)))
 			}
 		}
-		logger.WithContext(ctx).Info("Request")
+		logger.WithContext(ctx).Info("收到请求")
 		ctx.Next()
 	}
 }
@@ -148,7 +148,7 @@ func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.H
 			}
 			fields = append(fields, zap.String("response_body", body))
 		}
-		logger.WithContext(ctx).Info("Response", fields...)
+		logger.WithContext(ctx).Info("返回响应", fields...)
 
 		// 5xx 错误链统一在此记录，handler/service 不再各自打错误日志，避免重复刷屏。
 		// v1.WriteResponse 在 5xx 路径会把原始 err（含 wrap 链）放入 ctx，这里读出后输出。
@@ -156,10 +156,10 @@ func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.H
 		// 仍发一条带 trace 的 ERROR，让告警与排查不至于丢线索。
 		if v, ok := ctx.Get(v1.CtxBizErrKey); ok {
 			if e, ok := v.(error); ok {
-				logger.WithContext(ctx).Error("request failed", zap.Error(e))
+				logger.WithContext(ctx).Error("请求处理失败", zap.Error(e))
 			}
 		} else if ctx.Writer.Status() >= 500 {
-			logger.WithContext(ctx).Error("request failed without biz_err (likely panic recovered by gin.Recovery; check stderr for stack)",
+			logger.WithContext(ctx).Error("请求处理失败但缺少业务错误",
 				zap.Int("status", ctx.Writer.Status()))
 		}
 	}

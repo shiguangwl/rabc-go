@@ -92,24 +92,24 @@ func (l Logger) Trace(ctx context.Context, begin time.Time, fc func() (string, i
 	case err != nil && l.LogLevel >= gormlogger.Error && (!errors.Is(err, gormlogger.ErrRecordNotFound) || !l.IgnoreRecordNotFoundError):
 		sql, rows := fc()
 		if rows == -1 {
-			logger.Error("trace", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
+			logger.Error("SQL 执行失败", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 		} else {
-			logger.Error("trace", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
+			logger.Error("SQL 执行失败", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 		}
 	case elapsed > l.SlowThreshold && l.SlowThreshold != 0 && l.LogLevel >= gormlogger.Warn:
 		sql, rows := fc()
-		slowLog := fmt.Sprintf("SLOW SQL >= %v", l.SlowThreshold)
+		slowLog := fmt.Sprintf("慢 SQL 阈值 >= %v", l.SlowThreshold)
 		if rows == -1 {
-			logger.Warn("trace", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
+			logger.Warn("SQL 执行过慢", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 		} else {
-			logger.Warn("trace", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
+			logger.Warn("SQL 执行过慢", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 		}
 	case l.LogLevel == gormlogger.Info:
 		sql, rows := fc()
 		if rows == -1 {
-			logger.Info("trace", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
+			logger.Info("SQL 已执行", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 		} else {
-			logger.Info("trace", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
+			logger.Info("SQL 已执行", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 		}
 	}
 }

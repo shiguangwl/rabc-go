@@ -51,12 +51,14 @@ var serverSet = wire.NewSet(
 
 // build App
 func newApp(
+	logger *log.Logger,
 	httpServer *http.Server,
 	jobServer *server.JobServer,
 ) *app.App {
 	return app.NewApp(
 		app.WithServer(httpServer, jobServer),
 		app.WithName("demo-server"),
+		app.WithLogger(logger),
 	)
 }
 

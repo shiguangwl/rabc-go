@@ -122,7 +122,7 @@ func NewDB(conf *viper.Viper, l *log.Logger) (*gorm.DB, func(), error) {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 	cleanup := func() {
 		if err := sqlDB.Close(); err != nil {
-			l.Warn("close database connection", zap.Error(err))
+			l.Warn("关闭数据库连接失败", zap.Error(err))
 		}
 	}
 	return db, cleanup, nil

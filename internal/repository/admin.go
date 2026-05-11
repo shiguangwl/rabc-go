@@ -138,9 +138,9 @@ func (r *adminRepository) reloadPolicy(ctx context.Context) {
 		time.Sleep(100 * time.Millisecond)
 		if err2 := r.e.LoadPolicy(); err2 != nil {
 			r.logger.WithContext(ctx).Error(
-				"reload casbin policy after tx commit failed (retry exhausted); will be picked up by autoload within 10s",
-				zap.NamedError("first", err),
-				zap.NamedError("retry", err2),
+				"重载 Casbin 策略失败",
+				zap.NamedError("first_error", err),
+				zap.NamedError("retry_error", err2),
 			)
 		}
 	}

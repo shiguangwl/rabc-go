@@ -13,10 +13,10 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		tokenString := ctx.Request.Header.Get("Authorization")
 		if tokenString == "" {
-			logger.WithContext(ctx).Warn("No token", zap.Any("data", map[string]interface{}{
-				"url":    ctx.Request.URL,
-				"params": ctx.Params,
-			}))
+			logger.WithContext(ctx).Warn("缺少访问令牌",
+				zap.String("request_url", ctx.Request.URL.String()),
+				zap.Any("request_params", ctx.Params),
+			)
 			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
@@ -24,10 +24,11 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 
 		claims, err := j.ParseToken(tokenString)
 		if err != nil {
-			logger.WithContext(ctx).Warn("token parse failed", zap.Any("data", map[string]interface{}{
-				"url":    ctx.Request.URL,
-				"params": ctx.Params,
-			}), zap.Error(err))
+			logger.WithContext(ctx).Warn("访问令牌解析失败",
+				zap.String("request_url", ctx.Request.URL.String()),
+				zap.Any("request_params", ctx.Params),
+				zap.Error(err),
+			)
 			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
@@ -55,7 +56,7 @@ func NoStrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 
 		claims, err := j.ParseToken(tokenString)
 		if err != nil {
-			logger.WithContext(ctx).Warn("NoStrictAuth: token parse failed, continuing without auth", zap.Error(err))
+			logger.WithContext(ctx).Warn("可选访问令牌解析失败", zap.Error(err))
 			ctx.Next()
 			return
 		}
@@ -78,6 +79,6 @@ func injectClaimsToLogger(ctx *gin.Context, logger *log.Logger) {
 		return
 	}
 	if userInfo, ok := v.(*jwt.MyCustomClaims); ok {
-		logger.WithValue(ctx, zap.Any("UserID", userInfo.UserID))
+		logger.WithValue(ctx, zap.Uint("user_id", userInfo.UserID))
 	}
 }

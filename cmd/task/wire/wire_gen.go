@@ -36,7 +36,7 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 	userRepository := repository.NewUserRepository(repositoryRepository)
 	userTask := task.NewUserTask(taskTask, userRepository)
 	taskServer := server.NewTaskServer(logger, userTask)
-	appApp := newApp(taskServer)
+	appApp := newApp(logger, taskServer)
 	return appApp, func() {
 		cleanup2()
 		cleanup()
@@ -52,7 +52,7 @@ var taskSet = wire.NewSet(task.NewTask, task.NewUserTask)
 var serverSet = wire.NewSet(server.NewTaskServer)
 
 // build App
-func newApp(task2 *server.TaskServer,
+func newApp(logger *log.Logger, task2 *server.TaskServer,
 ) *app.App {
-	return app.NewApp(app.WithServer(task2), app.WithName("demo-task"))
+	return app.NewApp(app.WithServer(task2), app.WithName("demo-task"), app.WithLogger(logger))
 }
