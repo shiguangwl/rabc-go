@@ -1,8 +1,8 @@
 package service
 
 import (
-	"nunu-layout-admin/pkg/jwt"
-	"nunu-layout-admin/pkg/log"
+	"rabc-go/pkg/jwt"
+	"rabc-go/pkg/log"
 )
 
 // Service 是各业务 service 的公共依赖。

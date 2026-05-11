@@ -1,4 +1,4 @@
-# nunu-layout-admin 快速入门
+# rabc-go 快速入门
 
 > 面向 Go 生态新手的项目入门文档。读完这份文档你能：理解项目分层、掌握所有依赖框架的用法、知道怎么开发新业务功能。
 
@@ -18,7 +18,7 @@
 ## 二、项目结构（已排除 web/）
 
 ```
-nunu-layout-admin/
+rabc-go/
 ├── cmd/                    # 三个程序入口（每个生成一个二进制）
 │   ├── server/             # HTTP 服务主入口
 │   ├── seed/               # 初始业务数据写入（不建表）
@@ -76,21 +76,21 @@ HTTP 请求
 
 ## 三、技术栈速览
 
-| 类别 | 框架 | 作用 | 项目里的位置 |
-|------|------|------|--------------|
-| Web 框架 | Gin | HTTP 路由、参数绑定、中间件 | `internal/handler`、`internal/middleware` |
-| ORM | GORM v2 | 多驱动数据库操作 | `internal/repository` |
-| 权限 | Casbin | RBAC 策略引擎 | `internal/middleware/rbac.go`、`internal/repository/admin.go` |
-| 依赖注入 | Wire | 编译期生成装配代码 | `cmd/*/wire/` |
-| 配置 | Viper | YAML 配置加载 | `pkg/config` |
-| 日志 | zap + lumberjack | 结构化日志 + 滚动切割 | `pkg/log` |
-| 认证 | golang-jwt v5 | JWT 签发解析 | `pkg/jwt` |
-| 密码 | golang.org/x/crypto/bcrypt | 密码哈希 | `internal/service/admin.go` |
-| 分布式 ID | sonyflake | 雪花 ID + Base62 | `pkg/sid` |
-| 定时任务 | gocron | Cron 调度 | `internal/server/task.go` |
-| API 文档 | swag | 注解生成 Swagger | `docs/`（自动生成） |
-| 校验 | go-playground/validator | binding tag 校验（Gin 内置） | `api/v1/admin.go` |
-| 工具库 | duke-git/lancet | 字符串/MD5/UUID 等工具 | 散见各处 |
+| 类别      | 框架                       | 作用                         | 项目里的位置                                                  |
+| --------- | -------------------------- | ---------------------------- | ------------------------------------------------------------- |
+| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件  | `internal/handler`、`internal/middleware`                     |
+| ORM       | GORM v2                    | 多驱动数据库操作             | `internal/repository`                                         |
+| 权限      | Casbin                     | RBAC 策略引擎                | `internal/middleware/rbac.go`、`internal/repository/admin.go` |
+| 依赖注入  | Wire                       | 编译期生成装配代码           | `cmd/*/wire/`                                                 |
+| 配置      | Viper                      | YAML 配置加载                | `pkg/config`                                                  |
+| 日志      | zap + lumberjack           | 结构化日志 + 滚动切割        | `pkg/log`                                                     |
+| 认证      | golang-jwt v5              | JWT 签发解析                 | `pkg/jwt`                                                     |
+| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                     | `internal/service/admin.go`                                   |
+| 分布式 ID | sonyflake                  | 雪花 ID + Base62             | `pkg/sid`                                                     |
+| 定时任务  | gocron                     | Cron 调度                    | `internal/server/task.go`                                     |
+| API 文档  | swag                       | 注解生成 Swagger             | `docs/`（自动生成）                                           |
+| 校验      | go-playground/validator    | binding tag 校验（Gin 内置） | `api/v1/admin.go`                                             |
+| 工具库    | duke-git/lancet            | 字符串/MD5/UUID 等工具       | 散见各处                                                      |
 
 ---
 
@@ -169,10 +169,10 @@ wire ./cmd/task/wire
 
 #### 新人易踩坑
 
-| 坑 | 解决 |
-|----|------|
+| 坑                          | 解决                                   |
+| --------------------------- | -------------------------------------- |
 | 改了 wire.go 忘跑 wire 命令 | 真正运行的是 wire_gen.go，必须重新生成 |
-| Provider 没加进 wire.NewSet | wire 当它不存在，编译失败 |
+| Provider 没加进 wire.NewSet | wire 当它不存在，编译失败              |
 
 ---
 
@@ -328,11 +328,11 @@ make seed
 
 权限抽象为 **(subject, object, action)** 三元组：
 
-| 元素 | 含义 | 例子 |
-|------|------|------|
-| sub | 主体（用户/角色） | `admin` |
-| obj | 资源 | `api:/v1/admin/users` |
-| act | 操作 | `GET` |
+| 元素 | 含义              | 例子                  |
+| ---- | ----------------- | --------------------- |
+| sub  | 主体（用户/角色） | `admin`               |
+| obj  | 资源              | `api:/v1/admin/users` |
+| act  | 操作              | `GET`                 |
 
 加 `g(user, role)` 关系实现 RBAC。
 
@@ -364,6 +364,7 @@ const (
 ```
 
 策略举例：
+
 - `(admin, menu:/dashboard, read)` → admin 角色能看到 `/dashboard` 菜单
 - `(admin, api:/v1/admin/users, GET)` → admin 能调这个接口
 
@@ -493,18 +494,18 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 
 按这条装配线走，你能独立写出完整功能。每一步对应一层架构，强制保持单一职责。
 
-| 步骤 | 文件 | 干什么 |
-|------|------|--------|
-| ① 模型 | `internal/model/product.go` | 定义 `Product` struct + GORM tag |
-| ② DTO | `api/v1/product.go` | 定义请求/响应结构体 |
-| ③ Repository | `internal/repository/product.go` | `ProductRepository` interface + 实现 |
-| ④ Service | `internal/service/product.go` | `ProductService` interface + 业务逻辑 |
-| ⑤ Handler | `internal/handler/product.go` | 解析请求 → 调 service（带 swag 注解） |
-| ⑥ 路由 | `internal/server/http.go` | 在 `strictAuthRouter` 加路由 |
-| ⑦ Wire 注入 | `cmd/server/wire/wire.go` | 加 `NewProductRepository/Service/Handler` |
-| ⑧ 重生成 | shell | `wire ./cmd/server/wire` |
-| ⑨ 建表 | `db/atlas/main.go` + `db/migrations/` | 在 `models()` 登记模型并执行 `make migrate-diff name=add_product` |
-| ⑩ 配权限 | 后台界面 | API 管理新增 → 角色管理分配权限 |
+| 步骤         | 文件                                  | 干什么                                                            |
+| ------------ | ------------------------------------- | ----------------------------------------------------------------- |
+| ① 模型       | `internal/model/product.go`           | 定义 `Product` struct + GORM tag                                  |
+| ② DTO        | `api/v1/product.go`                   | 定义请求/响应结构体                                               |
+| ③ Repository | `internal/repository/product.go`      | `ProductRepository` interface + 实现                              |
+| ④ Service    | `internal/service/product.go`         | `ProductService` interface + 业务逻辑                             |
+| ⑤ Handler    | `internal/handler/product.go`         | 解析请求 → 调 service（带 swag 注解）                             |
+| ⑥ 路由       | `internal/server/http.go`             | 在 `strictAuthRouter` 加路由                                      |
+| ⑦ Wire 注入  | `cmd/server/wire/wire.go`             | 加 `NewProductRepository/Service/Handler`                         |
+| ⑧ 重生成     | shell                                 | `wire ./cmd/server/wire`                                          |
+| ⑨ 建表       | `db/atlas/main.go` + `db/migrations/` | 在 `models()` 登记模型并执行 `make migrate-diff name=add_product` |
+| ⑩ 配权限     | 后台界面                              | API 管理新增 → 角色管理分配权限                                   |
 
 ### 模板代码（参照 admin 模块）
 
@@ -627,15 +628,15 @@ make build
 
 ## 八、Go 语言关键概念速查
 
-| 概念 | 说明 | 项目中的例子 |
-|------|------|--------------|
-| 结构体嵌入 | 类似继承但更轻量 | `AdminUser` 嵌入 `gorm.Model` |
-| Interface 隐式实现 | 不需要 `implements` 关键字，方法集匹配即实现 | `productRepository` 实现 `ProductRepository` |
-| ctx 传参 | `context.Context` 是 Go 惯用的"请求上下文"，贯穿调用链 | 所有 service/repository 方法第一个参数 |
-| build tag | 文件顶部 `//go:build xxx` 控制是否参与编译 | `wire.go` 用 `wireinject` 隔离 |
-| 多返回值 | Go 函数可返回多个值，错误通常是最后一个 | `(token string, err error)` |
-| `_ = xxx` | 忽略返回值 | `roles, _ := s.adminRepository.GetUserRoles(...)` |
-| panic/recover | 异常机制，但 Go 提倡用错误返回值而非 panic | Wire 的 `panic(wire.Build(...))` 是占位符 |
+| 概念               | 说明                                                   | 项目中的例子                                      |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------------- |
+| 结构体嵌入         | 类似继承但更轻量                                       | `AdminUser` 嵌入 `gorm.Model`                     |
+| Interface 隐式实现 | 不需要 `implements` 关键字，方法集匹配即实现           | `productRepository` 实现 `ProductRepository`      |
+| ctx 传参           | `context.Context` 是 Go 惯用的"请求上下文"，贯穿调用链 | 所有 service/repository 方法第一个参数            |
+| build tag          | 文件顶部 `//go:build xxx` 控制是否参与编译             | `wire.go` 用 `wireinject` 隔离                    |
+| 多返回值           | Go 函数可返回多个值，错误通常是最后一个                | `(token string, err error)`                       |
+| `_ = xxx`          | 忽略返回值                                             | `roles, _ := s.adminRepository.GetUserRoles(...)` |
+| panic/recover      | 异常机制，但 Go 提倡用错误返回值而非 panic             | Wire 的 `panic(wire.Build(...))` 是占位符         |
 
 ---
 

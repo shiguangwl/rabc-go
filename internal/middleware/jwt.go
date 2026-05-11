@@ -4,9 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/pkg/jwt"
-	"nunu-layout-admin/pkg/log"
+	v1 "rabc-go/api/v1"
+	"rabc-go/pkg/jwt"
+	"rabc-go/pkg/log"
 )
 
 func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {

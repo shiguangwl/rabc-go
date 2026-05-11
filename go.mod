@@ -1,4 +1,4 @@
-module nunu-layout-admin
+module rabc-go
 
 go 1.25.0
 

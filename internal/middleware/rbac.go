@@ -6,9 +6,9 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/internal/model"
-	"nunu-layout-admin/pkg/jwt"
+	v1 "rabc-go/api/v1"
+	"rabc-go/internal/model"
+	"rabc-go/pkg/jwt"
 )
 
 func AuthMiddleware(e *casbin.SyncedEnforcer) gin.HandlerFunc {

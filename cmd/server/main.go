@@ -4,11 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"nunu-layout-admin/pkg/log"
+	"rabc-go/pkg/log"
+
+	"rabc-go/cmd/server/wire"
+	"rabc-go/pkg/config"
 
 	"go.uber.org/zap"
-	"nunu-layout-admin/cmd/server/wire"
-	"nunu-layout-admin/pkg/config"
 )
 
 // @title           RABC-Go Admin API

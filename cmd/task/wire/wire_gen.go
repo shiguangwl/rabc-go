@@ -7,14 +7,15 @@
 package wire
 
 import (
+	"rabc-go/internal/repository"
+	"rabc-go/internal/server"
+	"rabc-go/internal/task"
+	"rabc-go/pkg/app"
+	"rabc-go/pkg/log"
+	"rabc-go/pkg/sid"
+
 	"github.com/google/wire"
 	"github.com/spf13/viper"
-	"nunu-layout-admin/internal/repository"
-	"nunu-layout-admin/internal/server"
-	"nunu-layout-admin/internal/task"
-	"nunu-layout-admin/pkg/app"
-	"nunu-layout-admin/pkg/log"
-	"nunu-layout-admin/pkg/sid"
 )
 
 // Injectors from wire.go:

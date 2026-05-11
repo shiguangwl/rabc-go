@@ -4,7 +4,7 @@ package repository
 
 import (
 	"context"
-	"nunu-layout-admin/internal/model"
+	"rabc-go/internal/model"
 )
 
 type UserRepository interface {

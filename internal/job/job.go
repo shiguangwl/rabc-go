@@ -1,10 +1,10 @@
 package job
 
 import (
-	"nunu-layout-admin/internal/repository"
-	"nunu-layout-admin/pkg/jwt"
-	"nunu-layout-admin/pkg/log"
-	"nunu-layout-admin/pkg/sid"
+	"rabc-go/internal/repository"
+	"rabc-go/pkg/jwt"
+	"rabc-go/pkg/log"
+	"rabc-go/pkg/sid"
 )
 
 type Job struct {

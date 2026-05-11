@@ -2,7 +2,7 @@ package job
 
 import (
 	"context"
-	"nunu-layout-admin/internal/repository"
+	"rabc-go/internal/repository"
 )
 
 type UserJob interface {

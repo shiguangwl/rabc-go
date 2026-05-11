@@ -2,7 +2,7 @@ package task
 
 import (
 	"context"
-	"nunu-layout-admin/internal/repository"
+	"rabc-go/internal/repository"
 )
 
 type UserTask interface {

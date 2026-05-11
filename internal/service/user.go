@@ -4,8 +4,8 @@ package service
 
 import (
 	"context"
-	"nunu-layout-admin/internal/model"
-	"nunu-layout-admin/internal/repository"
+	"rabc-go/internal/model"
+	"rabc-go/internal/repository"
 )
 
 type UserService interface {

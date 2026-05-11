@@ -7,9 +7,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"nunu-layout-admin/cmd/seed/wire"
-	"nunu-layout-admin/pkg/config"
-	"nunu-layout-admin/pkg/log"
+	"rabc-go/cmd/seed/wire"
+	"rabc-go/pkg/config"
+	"rabc-go/pkg/log"
 )
 
 // cmd/seed 仅负责 RBAC 业务初始数据写入。

@@ -11,7 +11,7 @@ package mock_repository
 
 import (
 	context "context"
-	model "nunu-layout-admin/internal/model"
+	model "rabc-go/internal/model"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

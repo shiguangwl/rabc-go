@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
-	"nunu-layout-admin/internal/job"
-	"nunu-layout-admin/pkg/log"
+	"rabc-go/internal/job"
+	"rabc-go/pkg/log"
 )
 
 type JobServer struct {

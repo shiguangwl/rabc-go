@@ -13,14 +13,14 @@ import (
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"nunu-layout-admin/docs"
-	"nunu-layout-admin/internal/handler"
-	"nunu-layout-admin/internal/middleware"
-	"nunu-layout-admin/pkg/config"
-	"nunu-layout-admin/pkg/jwt"
-	"nunu-layout-admin/pkg/log"
-	"nunu-layout-admin/pkg/server/http"
-	"nunu-layout-admin/web"
+	"rabc-go/docs"
+	"rabc-go/internal/handler"
+	"rabc-go/internal/middleware"
+	"rabc-go/pkg/config"
+	"rabc-go/pkg/jwt"
+	"rabc-go/pkg/log"
+	"rabc-go/pkg/server/http"
+	"rabc-go/web"
 )
 
 // devOriginRe 限定 dev CORS 仅放通本机环回（localhost / 127.0.0.1 / [::1]）任意端口。

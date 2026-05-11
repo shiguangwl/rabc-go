@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"rabc-go/internal/service"
+
 	"github.com/gin-gonic/gin"
-	"nunu-layout-admin/internal/service"
 )
 
 type UserHandler struct {

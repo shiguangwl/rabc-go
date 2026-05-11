@@ -19,9 +19,9 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 
-	"nunu-layout-admin/pkg/config"
-	"nunu-layout-admin/pkg/log"
-	"nunu-layout-admin/pkg/zapgorm2"
+	"rabc-go/pkg/config"
+	"rabc-go/pkg/log"
+	"rabc-go/pkg/zapgorm2"
 )
 
 type ctxKey int

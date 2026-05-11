@@ -40,7 +40,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.ApiUpdateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.ApiUpdateRequest"
                         }
                     }
                 ],
@@ -48,7 +48,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -77,7 +77,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.ApiCreateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.ApiCreateRequest"
                         }
                     }
                 ],
@@ -85,7 +85,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -120,7 +120,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -188,7 +188,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetApisResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetApisResponse"
                         }
                     }
                 }
@@ -219,7 +219,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.MenuUpdateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.MenuUpdateRequest"
                         }
                     }
                 ],
@@ -227,7 +227,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -256,7 +256,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.MenuCreateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.MenuCreateRequest"
                         }
                     }
                 ],
@@ -264,7 +264,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -299,7 +299,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -327,7 +327,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetMenuResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetMenuResponse"
                         }
                     }
                 }
@@ -358,7 +358,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.RoleUpdateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.RoleUpdateRequest"
                         }
                     }
                 ],
@@ -366,7 +366,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -395,7 +395,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.RoleCreateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.RoleCreateRequest"
                         }
                     }
                 ],
@@ -403,7 +403,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -438,7 +438,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -469,7 +469,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.UpdateRolePermissionRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.UpdateRolePermissionRequest"
                         }
                     }
                 ],
@@ -477,7 +477,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -514,7 +514,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolePermissionsData"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetRolePermissionsData"
                         }
                     }
                 }
@@ -570,7 +570,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolesResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetRolesResponse"
                         }
                     }
                 }
@@ -597,7 +597,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUserResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetAdminUserResponse"
                         }
                     }
                 }
@@ -626,7 +626,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.AdminUserUpdateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.AdminUserUpdateRequest"
                         }
                     }
                 ],
@@ -634,7 +634,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -663,7 +663,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.AdminUserCreateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.AdminUserCreateRequest"
                         }
                     }
                 ],
@@ -671,7 +671,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -706,7 +706,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
+                            "$ref": "#/definitions/rabc-go_api_v1.Response"
                         }
                     }
                 }
@@ -734,7 +734,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetUserPermissionsData"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetUserPermissionsData"
                         }
                     }
                 }
@@ -802,7 +802,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUsersResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetAdminUsersResponse"
                         }
                     }
                 }
@@ -827,7 +827,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.LoginRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.LoginRequest"
                         }
                     }
                 ],
@@ -835,7 +835,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.LoginResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.LoginResponse"
                         }
                     }
                 }
@@ -863,7 +863,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetMenuResponse"
+                            "$ref": "#/definitions/rabc-go_api_v1.GetMenuResponse"
                         }
                     }
                 }
@@ -871,7 +871,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "nunu-layout-admin_api_v1.AdminUserCreateRequest": {
+        "rabc-go_api_v1.AdminUserCreateRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -911,7 +911,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.AdminUserDataItem": {
+        "rabc-go_api_v1.AdminUserDataItem": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -950,7 +950,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.AdminUserUpdateRequest": {
+        "rabc-go_api_v1.AdminUserUpdateRequest": {
             "type": "object",
             "required": [
                 "id",
@@ -993,7 +993,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.ApiCreateRequest": {
+        "rabc-go_api_v1.ApiCreateRequest": {
             "type": "object",
             "required": [
                 "group",
@@ -1029,7 +1029,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.ApiDataItem": {
+        "rabc-go_api_v1.ApiDataItem": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -1055,7 +1055,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.ApiUpdateRequest": {
+        "rabc-go_api_v1.ApiUpdateRequest": {
             "type": "object",
             "required": [
                 "group",
@@ -1096,21 +1096,21 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetAdminUserResponse": {
+        "rabc-go_api_v1.GetAdminUserResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUserResponseData"
+                    "$ref": "#/definitions/rabc-go_api_v1.GetAdminUserResponseData"
                 },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetAdminUserResponseData": {
+        "rabc-go_api_v1.GetAdminUserResponseData": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -1149,27 +1149,27 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetAdminUsersResponse": {
+        "rabc-go_api_v1.GetAdminUsersResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUsersResponseData"
+                    "$ref": "#/definitions/rabc-go_api_v1.GetAdminUsersResponseData"
                 },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetAdminUsersResponseData": {
+        "rabc-go_api_v1.GetAdminUsersResponseData": {
             "type": "object",
             "properties": {
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.AdminUserDataItem"
+                        "$ref": "#/definitions/rabc-go_api_v1.AdminUserDataItem"
                     }
                 },
                 "total": {
@@ -1177,21 +1177,21 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetApisResponse": {
+        "rabc-go_api_v1.GetApisResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetApisResponseData"
+                    "$ref": "#/definitions/rabc-go_api_v1.GetApisResponseData"
                 },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetApisResponseData": {
+        "rabc-go_api_v1.GetApisResponseData": {
             "type": "object",
             "properties": {
                 "groups": {
@@ -1203,7 +1203,7 @@ const docTemplate = `{
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.ApiDataItem"
+                        "$ref": "#/definitions/rabc-go_api_v1.ApiDataItem"
                     }
                 },
                 "total": {
@@ -1211,32 +1211,32 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetMenuResponse": {
+        "rabc-go_api_v1.GetMenuResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetMenuResponseData"
+                    "$ref": "#/definitions/rabc-go_api_v1.GetMenuResponseData"
                 },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetMenuResponseData": {
+        "rabc-go_api_v1.GetMenuResponseData": {
             "type": "object",
             "properties": {
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.MenuDataItem"
+                        "$ref": "#/definitions/rabc-go_api_v1.MenuDataItem"
                     }
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetRolePermissionsData": {
+        "rabc-go_api_v1.GetRolePermissionsData": {
             "type": "object",
             "properties": {
                 "list": {
@@ -1247,27 +1247,27 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetRolesResponse": {
+        "rabc-go_api_v1.GetRolesResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolesResponseData"
+                    "$ref": "#/definitions/rabc-go_api_v1.GetRolesResponseData"
                 },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetRolesResponseData": {
+        "rabc-go_api_v1.GetRolesResponseData": {
             "type": "object",
             "properties": {
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.RoleDataItem"
+                        "$ref": "#/definitions/rabc-go_api_v1.RoleDataItem"
                     }
                 },
                 "total": {
@@ -1275,7 +1275,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.GetUserPermissionsData": {
+        "rabc-go_api_v1.GetUserPermissionsData": {
             "type": "object",
             "properties": {
                 "list": {
@@ -1286,7 +1286,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.LoginRequest": {
+        "rabc-go_api_v1.LoginRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -1303,21 +1303,21 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.LoginResponse": {
+        "rabc-go_api_v1.LoginResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer"
                 },
                 "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.LoginResponseData"
+                    "$ref": "#/definitions/rabc-go_api_v1.LoginResponseData"
                 },
                 "message": {
                     "type": "string"
                 }
             }
         },
-        "nunu-layout-admin_api_v1.LoginResponseData": {
+        "rabc-go_api_v1.LoginResponseData": {
             "type": "object",
             "properties": {
                 "accessToken": {
@@ -1325,7 +1325,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.MenuCreateRequest": {
+        "rabc-go_api_v1.MenuCreateRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -1372,7 +1372,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.MenuDataItem": {
+        "rabc-go_api_v1.MenuDataItem": {
             "type": "object",
             "properties": {
                 "component": {
@@ -1420,7 +1420,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.MenuUpdateRequest": {
+        "rabc-go_api_v1.MenuUpdateRequest": {
             "type": "object",
             "required": [
                 "id",
@@ -1474,7 +1474,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.Response": {
+        "rabc-go_api_v1.Response": {
             "type": "object",
             "properties": {
                 "code": {
@@ -1486,7 +1486,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.RoleCreateRequest": {
+        "rabc-go_api_v1.RoleCreateRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -1503,7 +1503,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.RoleDataItem": {
+        "rabc-go_api_v1.RoleDataItem": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -1523,7 +1523,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.RoleUpdateRequest": {
+        "rabc-go_api_v1.RoleUpdateRequest": {
             "type": "object",
             "required": [
                 "id",
@@ -1540,7 +1540,7 @@ const docTemplate = `{
                 }
             }
         },
-        "nunu-layout-admin_api_v1.UpdateRolePermissionRequest": {
+        "rabc-go_api_v1.UpdateRolePermissionRequest": {
             "type": "object",
             "required": [
                 "list",

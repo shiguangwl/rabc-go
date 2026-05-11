@@ -18,13 +18,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/db/seed"
-	"nunu-layout-admin/internal/model"
-	"nunu-layout-admin/internal/repository"
-	"nunu-layout-admin/pkg/config"
-	"nunu-layout-admin/pkg/log"
-	"nunu-layout-admin/pkg/sid"
+	v1 "rabc-go/api/v1"
+	"rabc-go/db/seed"
+	"rabc-go/internal/model"
+	"rabc-go/internal/repository"
+	"rabc-go/pkg/config"
+	"rabc-go/pkg/log"
+	"rabc-go/pkg/sid"
 )
 
 // SeedServer 仅负责 RBAC 业务初始数据写入。

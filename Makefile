@@ -19,7 +19,7 @@ NUNU_PKG := github.com/go-nunu/nunu
 # Docker 镜像：CI/CD 覆盖示例 → make docker-server REGISTRY=registry.io VERSION=v1.2.3
 REGISTRY     ?= registry.local:5000
 VERSION      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
-IMAGE_PREFIX := nunu-layout-admin
+IMAGE_PREFIX := rabc-go
 
 # Docker Compose 文件路径（避免 recipe 里 cd——cd 在每行 recipe 后即失效）
 DOCKER_COMPOSE := docker compose -f deploy/docker-compose/docker-compose.yml

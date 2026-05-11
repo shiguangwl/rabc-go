@@ -17,8 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/pkg/log"
+	v1 "rabc-go/api/v1"
+	"rabc-go/pkg/log"
 )
 
 // defaultMaxLogBodyBytes 是写入日志的 body 字节上限默认值。

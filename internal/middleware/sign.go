@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/pkg/log"
+	v1 "rabc-go/api/v1"
+	"rabc-go/pkg/log"
 )
 
 func SignMiddleware(logger *log.Logger, conf *viper.Viper) gin.HandlerFunc {

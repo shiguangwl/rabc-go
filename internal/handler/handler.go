@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"rabc-go/pkg/jwt"
+	"rabc-go/pkg/log"
+
 	"github.com/gin-gonic/gin"
-	"nunu-layout-admin/pkg/jwt"
-	"nunu-layout-admin/pkg/log"
 )
 
 type Handler struct {

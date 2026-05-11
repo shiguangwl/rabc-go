@@ -16,8 +16,8 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/internal/model"
+	v1 "rabc-go/api/v1"
+	"rabc-go/internal/model"
 )
 
 type AdminRepository interface {

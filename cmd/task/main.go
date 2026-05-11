@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"flag"
-	"nunu-layout-admin/cmd/task/wire"
-	"nunu-layout-admin/pkg/config"
-	"nunu-layout-admin/pkg/log"
+	"rabc-go/cmd/task/wire"
+	"rabc-go/pkg/config"
+	"rabc-go/pkg/log"
 )
 
 func main() {

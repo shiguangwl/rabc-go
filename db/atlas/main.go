@@ -19,7 +19,7 @@ import (
 
 	"ariga.io/atlas-provider-gorm/gormschema"
 
-	"nunu-layout-admin/internal/model"
+	"rabc-go/internal/model"
 )
 
 // casbinRule 是 atlas schema 镜像，专为 DDL 生成存在，运行时不被 enforcer 使用。

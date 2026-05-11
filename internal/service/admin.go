@@ -12,9 +12,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/internal/model"
-	"nunu-layout-admin/internal/repository"
+	v1 "rabc-go/api/v1"
+	"rabc-go/internal/model"
+	"rabc-go/internal/repository"
 )
 
 type AdminService interface {

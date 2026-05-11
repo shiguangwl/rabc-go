@@ -3,8 +3,8 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	v1 "nunu-layout-admin/api/v1"
-	"nunu-layout-admin/internal/service"
+	v1 "rabc-go/api/v1"
+	"rabc-go/internal/service"
 )
 
 type AdminHandler struct {

@@ -1,1566 +1,1370 @@
 {
-    "swagger": "2.0",
-    "info": {
-        "description": "RBAC 管理后台接口，覆盖登录认证、菜单/API 权限、角色授权与管理员管理。",
-        "title": "RABC-Go Admin API",
-        "contact": {},
-        "version": "1.0.0"
-    },
-    "host": "localhost:8000",
-    "paths": {
-        "/v1/admin/api": {
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新API信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "API模块"
-                ],
-                "summary": "更新API",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.ApiUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "创建新的API",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "API模块"
-                ],
-                "summary": "创建API",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.ApiCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "删除指定API",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "API模块"
-                ],
-                "summary": "删除API",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "API ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
+  "swagger": "2.0",
+  "info": {
+    "description": "RBAC 管理后台接口，覆盖登录认证、菜单/API 权限、角色授权与管理员管理。",
+    "title": "RABC-Go Admin API",
+    "contact": {},
+    "version": "1.0.0"
+  },
+  "host": "localhost:8000",
+  "paths": {
+    "/v1/admin/api": {
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "更新API信息",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["API模块"],
+        "summary": "更新API",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.ApiUpdateRequest"
             }
-        },
-        "/v1/admin/apis": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取API列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "API模块"
-                ],
-                "summary": "获取API列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "每页数量",
-                        "name": "pageSize",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "API分组",
-                        "name": "group",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "API名称",
-                        "name": "name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "API路径",
-                        "name": "path",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "请求方法",
-                        "name": "method",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetApisResponse"
-                        }
-                    }
-                }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
             }
-        },
-        "/v1/admin/menu": {
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新菜单信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "菜单模块"
-                ],
-                "summary": "更新菜单",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.MenuUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "创建新的菜单",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "菜单模块"
-                ],
-                "summary": "创建菜单",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.MenuCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "删除指定菜单",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "菜单模块"
-                ],
-                "summary": "删除菜单",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "菜单ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/menus": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取管理员菜单列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "菜单模块"
-                ],
-                "summary": "获取管理员菜单",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetMenuResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/role": {
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新角色信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "角色模块"
-                ],
-                "summary": "更新角色",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.RoleUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "创建新的角色",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "角色模块"
-                ],
-                "summary": "创建角色",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.RoleCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "删除指定角色",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "角色模块"
-                ],
-                "summary": "删除角色",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "角色ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/role/permission": {
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新指定角色的权限列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "权限模块"
-                ],
-                "summary": "更新角色权限",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.UpdateRolePermissionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/role/permissions": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取指定角色的权限列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "权限模块"
-                ],
-                "summary": "获取角色权限",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "角色名称",
-                        "name": "role",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolePermissionsData"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/roles": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取角色列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "角色模块"
-                ],
-                "summary": "获取角色列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "每页数量",
-                        "name": "pageSize",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "角色ID",
-                        "name": "sid",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "角色名称",
-                        "name": "name",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolesResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/user": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户模块"
-                ],
-                "summary": "获取管理用户信息",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUserResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "更新管理员用户信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户模块"
-                ],
-                "summary": "更新管理员用户",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.AdminUserUpdateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "创建新的管理员用户",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户模块"
-                ],
-                "summary": "创建管理员用户",
-                "parameters": [
-                    {
-                        "description": "参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.AdminUserCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "删除指定管理员用户",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户模块"
-                ],
-                "summary": "删除管理员用户",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "用户ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/user/permissions": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取当前用户的权限列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "权限模块"
-                ],
-                "summary": "获取用户权限",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetUserPermissionsData"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/users": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取管理员用户列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户模块"
-                ],
-                "summary": "获取管理员用户列表",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "每页数量",
-                        "name": "pageSize",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户名",
-                        "name": "username",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "昵称",
-                        "name": "nickname",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "手机号",
-                        "name": "phone",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "邮箱",
-                        "name": "email",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUsersResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/login": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户模块"
-                ],
-                "summary": "账号登录",
-                "parameters": [
-                    {
-                        "description": "params",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.LoginResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/menus": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取当前用户的菜单列表",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "菜单模块"
-                ],
-                "summary": "获取用户菜单",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/nunu-layout-admin_api_v1.GetMenuResponse"
-                        }
-                    }
-                }
-            }
+          }
         }
-    },
-    "definitions": {
-        "nunu-layout-admin_api_v1.AdminUserCreateRequest": {
-            "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "1234@gmail.com"
-                },
-                "nickname": {
-                    "type": "string",
-                    "example": "小Baby"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 6,
-                    "example": "123456"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "1858888888"
-                },
-                "roles": {
-                    "type": "array",
-                    "maxItems": 20,
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        ""
-                    ]
-                },
-                "username": {
-                    "type": "string",
-                    "example": "张三"
-                }
+      },
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "创建新的API",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["API模块"],
+        "summary": "创建API",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.ApiCreateRequest"
             }
-        },
-        "nunu-layout-admin_api_v1.AdminUserDataItem": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "1234@gmail.com"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "nickname": {
-                    "type": "string",
-                    "example": "小Baby"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "1858888888"
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        ""
-                    ]
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "张三"
-                }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
             }
-        },
-        "nunu-layout-admin_api_v1.AdminUserUpdateRequest": {
-            "type": "object",
-            "required": [
-                "id",
-                "username"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "1234@gmail.com"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "nickname": {
-                    "type": "string",
-                    "example": "小Baby"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 6,
-                    "example": "123456"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "1858888888"
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        ""
-                    ]
-                },
-                "username": {
-                    "type": "string",
-                    "example": "张三"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.ApiCreateRequest": {
-            "type": "object",
-            "required": [
-                "group",
-                "method",
-                "name",
-                "path"
-            ],
-            "properties": {
-                "group": {
-                    "type": "string",
-                    "example": "权限管理"
-                },
-                "method": {
-                    "type": "string",
-                    "enum": [
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "PATCH",
-                        "DELETE",
-                        "OPTIONS",
-                        "HEAD"
-                    ],
-                    "example": "GET"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "菜单列表"
-                },
-                "path": {
-                    "type": "string",
-                    "example": "/v1/test"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.ApiDataItem": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "group": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "method": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "path": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.ApiUpdateRequest": {
-            "type": "object",
-            "required": [
-                "group",
-                "id",
-                "method",
-                "name",
-                "path"
-            ],
-            "properties": {
-                "group": {
-                    "type": "string",
-                    "example": "权限管理"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "method": {
-                    "type": "string",
-                    "enum": [
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "PATCH",
-                        "DELETE",
-                        "OPTIONS",
-                        "HEAD"
-                    ],
-                    "example": "GET"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "菜单列表"
-                },
-                "path": {
-                    "type": "string",
-                    "example": "/v1/test"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetAdminUserResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUserResponseData"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetAdminUserResponseData": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "1234@gmail.com"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "nickname": {
-                    "type": "string",
-                    "example": "小Baby"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "1858888888"
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        ""
-                    ]
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "张三"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetAdminUsersResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetAdminUsersResponseData"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetAdminUsersResponseData": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.AdminUserDataItem"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetApisResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetApisResponseData"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetApisResponseData": {
-            "type": "object",
-            "properties": {
-                "groups": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.ApiDataItem"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetMenuResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetMenuResponseData"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetMenuResponseData": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.MenuDataItem"
-                    }
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetRolePermissionsData": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetRolesResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.GetRolesResponseData"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetRolesResponseData": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/nunu-layout-admin_api_v1.RoleDataItem"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.GetUserPermissionsData": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.LoginRequest": {
-            "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
-            "properties": {
-                "password": {
-                    "type": "string",
-                    "example": "123456"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "1234@gmail.com"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.LoginResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/nunu-layout-admin_api_v1.LoginResponseData"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.LoginResponseData": {
-            "type": "object",
-            "properties": {
-                "accessToken": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.MenuCreateRequest": {
-            "type": "object",
-            "required": [
-                "name",
-                "path",
-                "title"
-            ],
-            "properties": {
-                "component": {
-                    "type": "string"
-                },
-                "hideInMenu": {
-                    "type": "boolean"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "keepAlive": {
-                    "type": "boolean"
-                },
-                "locale": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parentId": {
-                    "type": "integer"
-                },
-                "path": {
-                    "type": "string"
-                },
-                "redirect": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
-                    "type": "string"
-                },
-                "weight": {
-                    "type": "integer"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.MenuDataItem": {
-            "type": "object",
-            "properties": {
-                "component": {
-                    "type": "string"
-                },
-                "hideInMenu": {
-                    "type": "boolean"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "keepAlive": {
-                    "type": "boolean"
-                },
-                "locale": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parentId": {
-                    "type": "integer"
-                },
-                "path": {
-                    "type": "string"
-                },
-                "redirect": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "url": {
-                    "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
-                    "type": "string"
-                },
-                "weight": {
-                    "type": "integer"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.MenuUpdateRequest": {
-            "type": "object",
-            "required": [
-                "id",
-                "name",
-                "path",
-                "title"
-            ],
-            "properties": {
-                "component": {
-                    "type": "string"
-                },
-                "hideInMenu": {
-                    "type": "boolean"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "keepAlive": {
-                    "type": "boolean"
-                },
-                "locale": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parentId": {
-                    "type": "integer"
-                },
-                "path": {
-                    "type": "string"
-                },
-                "redirect": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "url": {
-                    "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
-                    "type": "string"
-                },
-                "weight": {
-                    "type": "integer"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.Response": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {},
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.RoleCreateRequest": {
-            "type": "object",
-            "required": [
-                "name",
-                "sid"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "Admin"
-                },
-                "sid": {
-                    "type": "string",
-                    "example": "1"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.RoleDataItem": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "sid": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.RoleUpdateRequest": {
-            "type": "object",
-            "required": [
-                "id",
-                "name"
-            ],
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Admin"
-                }
-            }
-        },
-        "nunu-layout-admin_api_v1.UpdateRolePermissionRequest": {
-            "type": "object",
-            "required": [
-                "list",
-                "role"
-            ],
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        ""
-                    ]
-                },
-                "role": {
-                    "type": "string",
-                    "example": "admin"
-                }
-            }
+          }
         }
-    },
-    "securityDefinitions": {
-        "Bearer": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
+      },
+      "delete": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "删除指定API",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["API模块"],
+        "summary": "删除API",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "API ID",
+            "name": "id",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
         }
+      }
+    },
+    "/v1/admin/apis": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取API列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["API模块"],
+        "summary": "获取API列表",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "页码",
+            "name": "page",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "每页数量",
+            "name": "pageSize",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "API分组",
+            "name": "group",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "API名称",
+            "name": "name",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "API路径",
+            "name": "path",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "请求方法",
+            "name": "method",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetApisResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/menu": {
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "更新菜单信息",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["菜单模块"],
+        "summary": "更新菜单",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.MenuUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "创建新的菜单",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["菜单模块"],
+        "summary": "创建菜单",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.MenuCreateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "删除指定菜单",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["菜单模块"],
+        "summary": "删除菜单",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "菜单ID",
+            "name": "id",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/menus": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取管理员菜单列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["菜单模块"],
+        "summary": "获取管理员菜单",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetMenuResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/role": {
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "更新角色信息",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["角色模块"],
+        "summary": "更新角色",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.RoleUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "创建新的角色",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["角色模块"],
+        "summary": "创建角色",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.RoleCreateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "删除指定角色",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["角色模块"],
+        "summary": "删除角色",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "角色ID",
+            "name": "id",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/role/permission": {
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "更新指定角色的权限列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["权限模块"],
+        "summary": "更新角色权限",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.UpdateRolePermissionRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/role/permissions": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取指定角色的权限列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["权限模块"],
+        "summary": "获取角色权限",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "角色名称",
+            "name": "role",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetRolePermissionsData"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/roles": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取角色列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["角色模块"],
+        "summary": "获取角色列表",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "页码",
+            "name": "page",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "每页数量",
+            "name": "pageSize",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "角色ID",
+            "name": "sid",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "角色名称",
+            "name": "name",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetRolesResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/user": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["用户模块"],
+        "summary": "获取管理用户信息",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetAdminUserResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "更新管理员用户信息",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["用户模块"],
+        "summary": "更新管理员用户",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.AdminUserUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "创建新的管理员用户",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["用户模块"],
+        "summary": "创建管理员用户",
+        "parameters": [
+          {
+            "description": "参数",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.AdminUserCreateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "删除指定管理员用户",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["用户模块"],
+        "summary": "删除管理员用户",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "用户ID",
+            "name": "id",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.Response"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/user/permissions": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取当前用户的权限列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["权限模块"],
+        "summary": "获取用户权限",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetUserPermissionsData"
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取管理员用户列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["用户模块"],
+        "summary": "获取管理员用户列表",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "页码",
+            "name": "page",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "每页数量",
+            "name": "pageSize",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "用户名",
+            "name": "username",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "昵称",
+            "name": "nickname",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "手机号",
+            "name": "phone",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "邮箱",
+            "name": "email",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetAdminUsersResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/login": {
+      "post": {
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["用户模块"],
+        "summary": "账号登录",
+        "parameters": [
+          {
+            "description": "params",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.LoginRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.LoginResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/menus": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "获取当前用户的菜单列表",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["菜单模块"],
+        "summary": "获取用户菜单",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/rabc-go_api_v1.GetMenuResponse"
+            }
+          }
+        }
+      }
     }
+  },
+  "definitions": {
+    "rabc-go_api_v1.AdminUserCreateRequest": {
+      "type": "object",
+      "required": ["password", "username"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "example": "1234@gmail.com"
+        },
+        "nickname": {
+          "type": "string",
+          "example": "小Baby"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 6,
+          "example": "123456"
+        },
+        "phone": {
+          "type": "string",
+          "example": "1858888888"
+        },
+        "roles": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string"
+          },
+          "example": [""]
+        },
+        "username": {
+          "type": "string",
+          "example": "张三"
+        }
+      }
+    },
+    "rabc-go_api_v1.AdminUserDataItem": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "example": "1234@gmail.com"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "nickname": {
+          "type": "string",
+          "example": "小Baby"
+        },
+        "phone": {
+          "type": "string",
+          "example": "1858888888"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": [""]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string",
+          "example": "张三"
+        }
+      }
+    },
+    "rabc-go_api_v1.AdminUserUpdateRequest": {
+      "type": "object",
+      "required": ["id", "username"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "example": "1234@gmail.com"
+        },
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "nickname": {
+          "type": "string",
+          "example": "小Baby"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 6,
+          "example": "123456"
+        },
+        "phone": {
+          "type": "string",
+          "example": "1858888888"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": [""]
+        },
+        "username": {
+          "type": "string",
+          "example": "张三"
+        }
+      }
+    },
+    "rabc-go_api_v1.ApiCreateRequest": {
+      "type": "object",
+      "required": ["group", "method", "name", "path"],
+      "properties": {
+        "group": {
+          "type": "string",
+          "example": "权限管理"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+          "example": "GET"
+        },
+        "name": {
+          "type": "string",
+          "example": "菜单列表"
+        },
+        "path": {
+          "type": "string",
+          "example": "/v1/test"
+        }
+      }
+    },
+    "rabc-go_api_v1.ApiDataItem": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "method": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.ApiUpdateRequest": {
+      "type": "object",
+      "required": ["group", "id", "method", "name", "path"],
+      "properties": {
+        "group": {
+          "type": "string",
+          "example": "权限管理"
+        },
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+          "example": "GET"
+        },
+        "name": {
+          "type": "string",
+          "example": "菜单列表"
+        },
+        "path": {
+          "type": "string",
+          "example": "/v1/test"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetAdminUserResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/rabc-go_api_v1.GetAdminUserResponseData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetAdminUserResponseData": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "example": "1234@gmail.com"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "nickname": {
+          "type": "string",
+          "example": "小Baby"
+        },
+        "phone": {
+          "type": "string",
+          "example": "1858888888"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": [""]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string",
+          "example": "张三"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetAdminUsersResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/rabc-go_api_v1.GetAdminUsersResponseData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetAdminUsersResponseData": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rabc-go_api_v1.AdminUserDataItem"
+          }
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetApisResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/rabc-go_api_v1.GetApisResponseData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetApisResponseData": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rabc-go_api_v1.ApiDataItem"
+          }
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetMenuResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/rabc-go_api_v1.GetMenuResponseData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetMenuResponseData": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rabc-go_api_v1.MenuDataItem"
+          }
+        }
+      }
+    },
+    "rabc-go_api_v1.GetRolePermissionsData": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rabc-go_api_v1.GetRolesResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/rabc-go_api_v1.GetRolesResponseData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetRolesResponseData": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rabc-go_api_v1.RoleDataItem"
+          }
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "rabc-go_api_v1.GetUserPermissionsData": {
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rabc-go_api_v1.LoginRequest": {
+      "type": "object",
+      "required": ["password", "username"],
+      "properties": {
+        "password": {
+          "type": "string",
+          "example": "123456"
+        },
+        "username": {
+          "type": "string",
+          "example": "1234@gmail.com"
+        }
+      }
+    },
+    "rabc-go_api_v1.LoginResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {
+          "$ref": "#/definitions/rabc-go_api_v1.LoginResponseData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.LoginResponseData": {
+      "type": "object",
+      "properties": {
+        "accessToken": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.MenuCreateRequest": {
+      "type": "object",
+      "required": ["name", "path", "title"],
+      "properties": {
+        "component": {
+          "type": "string"
+        },
+        "hideInMenu": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "keepAlive": {
+          "type": "boolean"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parentId": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "redirect": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      }
+    },
+    "rabc-go_api_v1.MenuDataItem": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "type": "string"
+        },
+        "hideInMenu": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "keepAlive": {
+          "type": "boolean"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parentId": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "redirect": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      }
+    },
+    "rabc-go_api_v1.MenuUpdateRequest": {
+      "type": "object",
+      "required": ["id", "name", "path", "title"],
+      "properties": {
+        "component": {
+          "type": "string"
+        },
+        "hideInMenu": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "keepAlive": {
+          "type": "boolean"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parentId": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "redirect": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "description": "iframe URL 不能与 path 同时作为同一菜单的主跳转来源。",
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      }
+    },
+    "rabc-go_api_v1.Response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "data": {},
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.RoleCreateRequest": {
+      "type": "object",
+      "required": ["name", "sid"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "Admin"
+        },
+        "sid": {
+          "type": "string",
+          "example": "1"
+        }
+      }
+    },
+    "rabc-go_api_v1.RoleDataItem": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sid": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "rabc-go_api_v1.RoleUpdateRequest": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "name": {
+          "type": "string",
+          "example": "Admin"
+        }
+      }
+    },
+    "rabc-go_api_v1.UpdateRolePermissionRequest": {
+      "type": "object",
+      "required": ["list", "role"],
+      "properties": {
+        "list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": [""]
+        },
+        "role": {
+          "type": "string",
+          "example": "admin"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  }
 }
