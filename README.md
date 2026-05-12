@@ -22,7 +22,6 @@
 |------|------|
 | `cmd/server` | HTTP API 与内嵌前端 |
 | `cmd/seed` | 写入 RBAC 初始数据 |
-| `cmd/task` | 定时任务进程 |
 | `cmd/dbmigrate` | Atlas 命令封装 |
 | `internal/handler` | HTTP 控制器 |
 | `internal/service` | 业务逻辑 |
@@ -34,14 +33,16 @@
 | `db/atlas` | GORM → Atlas schema 桥接 |
 | `db/migrations/{mysql,postgres}` | 版本化 SQL |
 | `web/` | Vue3 前端，`web/dist` 由 `web/embed.go` 内嵌 |
-| `deploy/docker-compose` | 本地依赖容器 |
-| `deploy/build` | 生产镜像 Dockerfile |
+| `deploy/remote` | 远程 Docker Compose 部署配置 |
+| `scripts/deploy.sh` | SSH 远程部署脚本 |
 
 ## 环境要求
 
 - Go 1.25+
 - Node.js 18.15+
-- Docker / Docker Compose
+- pnpm
+- MySQL / PostgreSQL
+- Redis
 - Atlas CLI
 
 ```bash
@@ -52,7 +53,10 @@ brew install ariga/tap/atlas                   # 或 curl -sSf https://atlasgo.s
 ## 快速开始
 
 ```bash
-make bootstrap     # 起依赖容器 → migrate-apply → seed → nunu run
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
+make migrate-apply
+make seed
+nunu run ./cmd/server
 ```
 
 | 服务 | 地址 |
@@ -71,7 +75,7 @@ make bootstrap     # 起依赖容器 → migrate-apply → seed → nunu run
 ## 手动启动
 
 ```bash
-docker compose -f deploy/docker-compose/docker-compose.yml up -d --wait
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
 make migrate-apply
 make seed
 go run ./cmd/server          # 或 nunu run ./cmd/server
@@ -80,10 +84,10 @@ go run ./cmd/server          # 或 nunu run ./cmd/server
 前端独立开发：
 
 ```bash
-cd web && npm install && npm run dev
+cd web && pnpm install && pnpm dev
 ```
 
-不使用 Docker、直连宿主 DB 的步骤：见 [db/README.md](db/README.md)。
+本地数据库与 Redis 准备步骤：见 [db/README.md](db/README.md)。
 
 ## 配置
 
@@ -155,11 +159,10 @@ g, <user_id>, <role_sid>
 |------|------|
 | `make help` | 列出全部 target |
 | `make init` | 安装 Wire / mockgen / swag / nunu |
-| `make bootstrap` | 起依赖 → 迁移 → seed → 热加载启服 |
 | `make test` | `go test -race ./...` |
 | `make check` | vet + lint + race test + migrate validate |
 | `make mock` | 重新生成 service/repository mock |
-| `make swag` | 刷新 Swagger 到 `./docs` |
+| `make swag` | 刷新 Swagger 到 `./docs/swagger` |
 | `make build` | 构建前端 + 后端二进制到 `bin/server` |
 | `make clean` | 清理 `bin/` 与 `web/dist/` |
 | `make push` | GORM struct 同步到本地 DB |
@@ -171,8 +174,6 @@ g, <user_id>, <role_sid>
 | `make migrate-hash` | 重算 `atlas.sum` |
 | `make seed` | 写入初始数据（要求 RBAC 表空） |
 | `make seed-reset` | 仅 local：清表后重新 seed |
-| `make docker-server` | 构建 server 镜像 |
-| `make docker-task` | 构建 task 镜像 |
 
 ## 部署
 
@@ -185,13 +186,7 @@ make build
 - seed 仅首次部署执行。
 - 生产配置优先读取环境变量；环境变量不存在时回退读取 `config/prod.yml`，但 `security.jwt.key` / `data.db.user.dsn` 等必填项不可为空。
 - 前端两种部署模式：内嵌进 server 二进制，或独立部署反代 `/v1`。
-
-镜像构建：
-
-```bash
-make docker-server REGISTRY=registry.example.com VERSION=v1.2.3
-make docker-task   REGISTRY=registry.example.com VERSION=v1.2.3
-```
+- Docker 远程部署见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 ## License
 

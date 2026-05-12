@@ -24,46 +24,30 @@ Schema 与数据严格分离：**atlas 负责 DDL，cmd/seed 负责 DML**。
 brew install ariga/tap/atlas
 # curl -sSf https://atlasgo.sh | sh
 
-# 2. 数据库二选一（详见下方"DB 路径"）
+# 2. 本地数据库与 Redis（详见下方"本地依赖"）
 ```
 
-## DB 路径
+## 本地依赖
 
-本仓库支持两条等价路径，按需选用；CLI/Make 命令在两条路径下完全一致。
-
-### 路径 A — Docker Compose（默认推荐）
+适用：MySQL/PostgreSQL 与 Redis 已通过 brew/apt/yum 装在宿主，或 CI 环境直连托管 DB。
 
 ```bash
-docker compose -f deploy/docker-compose/docker-compose.yml up -d --wait
-# 容器自动监听 MySQL :3380、PostgreSQL :5432，并通过 initdb 脚本预建 atlas_dev 库。
-make migrate-apply
-```
-
-`atlas.hcl` 默认 URL 即指向这套容器（MySQL 3380 / PostgreSQL 5432），无需任何环境变量。
-
-### 路径 B — 本地原生 DB（不用 Docker）
-
-适用：MySQL/PostgreSQL 已通过 brew/apt/yum 装在宿主、不想跑容器、或 CI 环境直连托管 DB。
-
-```bash
-# 1. 一次性手动建好 database
-mysql -u root -p -e "CREATE DATABASE app; CREATE DATABASE atlas_dev;"
+# 1. 一次性手动建好业务 database；atlas_dev 由 cmd/dbmigrate 在本地自动创建。
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
 # 或 PostgreSQL：
-# psql -U postgres -c "CREATE DATABASE app; CREATE DATABASE atlas_dev;"
+# psql -U postgres -c "CREATE DATABASE user;"
 
 # 2. 让运行时配置指向本地 DB（cmd/dbmigrate / cmd/server / cmd/seed 共用）
 export APP_DATA_DB_USER_DRIVER=mysql
-export APP_DATA_DB_USER_DSN='root:secret@tcp(127.0.0.1:3306)/app?charset=utf8mb4&parseTime=True&loc=Local'
+export APP_DATA_DB_USER_DSN='root:secret@tcp(127.0.0.1:3306)/user?charset=utf8mb4&parseTime=True&loc=Local'
 
-# 3. 应用 migration、写 seed、启 server（不需要 docker）
+# 3. 应用 migration、写 seed、启 server
 make migrate-apply
 go run ./cmd/seed
 go run ./cmd/server     # 或 nunu run ./cmd/server 享 hot reload
 ```
 
-PostgreSQL 路径同理，driver 改 `postgres`，DSN 使用 PostgreSQL URL。
-
-> **不要用 `make bootstrap`**：它内置 `docker compose up`，是 Docker 路径的快捷入口。本地原生 DB 用户按上述 4 步手动跑即可——`bootstrap` 不是必经之路。
+PostgreSQL 路径同理，driver 改 `postgres`，DSN 使用 PostgreSQL URL；Redis 默认读取 `127.0.0.1:6379`。
 
 ## 日常工作流
 
@@ -188,4 +172,4 @@ APP_DATA_DB_USER_DSN='<prod-dsn>' \
 - **默认 MySQL 不等于只支持 MySQL**：应用运行时可按 `data.db.user.driver` 切换驱动；migration 按方言隔离在 `db/migrations/mysql` 与 `db/migrations/postgres`，不能跨库混用。
 - **casbin_rule 已纳入 atlas 管理**：由 `db/atlas/main.go` 中本地 `casbinRule` 镜像 struct（列与 gorm-adapter v3.CasbinRule 对齐 + 显式声明 `idx_casbin_rule` 唯一索引）描述。运行时通过 `repository.NewCasbinEnforcer` 调用 `gormadapter.TurnOffAutoMigrate` 关掉 adapter 的隐式建表与 `CREATE UNIQUE INDEX`。升级 gorm-adapter 大版本前须先比对其 `CasbinRule` 字段是否仍兼容此镜像，不兼容时同步刷新镜像与 migration。
 - **新增需要 atlas 管理的表**：必须在 `db/atlas/main.go:models()` 显式登记，否则 atlas 不会感知。
-- **PostgreSQL 前置条件**：`atlas.hcl` 默认连接 `postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable` 与 `atlas_dev`，配置 `data.db.user.driver=postgres` 前需确保两个 database 已存在。
+- **PostgreSQL 前置条件**：`atlas.hcl` 默认连接 `postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable`，配置 `data.db.user.driver=postgres` 前需确保业务 database 已存在。

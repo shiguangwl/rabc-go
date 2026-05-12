@@ -1,4 +1,4 @@
-# rabc-go 快速入门
+# nunu-layout-admin 快速入门
 
 > 面向 Go 生态新手的项目入门文档。读完这份文档你能：理解项目分层、掌握所有依赖框架的用法、知道怎么开发新业务功能。
 
@@ -9,26 +9,26 @@
 基于 [go-nunu](https://github.com/go-nunu/nunu) 脚手架的 RBAC 后台模板，提供：
 
 - **Gin** Web 框架 + **GORM** ORM + **Casbin** 权限引擎
+- **Redis** 管理 refresh token、会话索引与吊销
 - **Wire** 编译期依赖注入
-- 三个独立可执行入口：HTTP 服务、初始数据 Seed、定时任务
-- 默认账号：`admin/123456`（超管）、`user/123456`（运营）
+- 三个独立可执行入口：HTTP 服务、初始数据 Seed、数据库迁移
+- 默认账号仅 `env: local` 使用：`admin/123456`（超管）、`user/123456`（运营）
 
 ---
 
-## 二、项目结构（已排除 web/）
+## 二、项目结构
 
 ```
-rabc-go/
-├── cmd/                    # 三个程序入口（每个生成一个二进制）
+nunu-layout-admin/
+├── cmd/                    # 程序入口（每个生成一个二进制）
 │   ├── server/             # HTTP 服务主入口
 │   ├── seed/               # 初始业务数据写入（不建表）
-│   └── task/               # 定时任务调度
-│       └── wire/           # 每个 cmd 都有自己的 Wire 装配清单
+│   └── dbmigrate/          # Atlas migration 命令封装
 │
 ├── api/v1/                 # 对外 DTO + 错误码
 │   ├── v1.go               # 统一响应封装、错误码注册表
 │   ├── errors.go           # 业务错误码常量
-│   └── admin.go            # 所有请求/响应结构体
+│   └── admin.go            # 后台管理请求/响应结构体
 │
 ├── internal/               # 私有业务代码（外部模块禁止 import）
 │   ├── handler/            # 控制器层：解析请求 → 调 Service
@@ -36,9 +36,7 @@ rabc-go/
 │   ├── repository/         # 数据访问层：GORM + Casbin
 │   ├── model/              # GORM 实体 + 业务常量
 │   ├── middleware/         # Gin 中间件（CORS、JWT、RBAC、日志、签名）
-│   ├── server/             # Server 接口实现（HTTP/Job/Task/Migrate）
-│   ├── job/                # 长驻任务（Kafka 消费者等）
-│   └── task/               # 定时任务实现
+│   └── server/             # Server 接口实现（HTTP/Seed）
 │
 ├── pkg/                    # 可复用工具包（理论上可被其他项目引用）
 │   ├── app/                # 应用容器：聚合多个 Server 优雅启停
@@ -50,10 +48,16 @@ rabc-go/
 │   └── zapgorm2/           # GORM SQL 日志桥接到 zap
 │
 ├── config/                 # YAML 配置（local.yml / prod.yml）
-├── docs/                   # Swagger 生成产物（勿手改）
-├── deploy/                 # Dockerfile + docker-compose
+├── db/                     # Atlas schema、migration 与 seed 静态数据
+│   ├── atlas/              # GORM → Atlas schema 桥接
+│   ├── migrations/         # MySQL/PostgreSQL 版本化 SQL
+│   └── seed/               # 菜单等初始数据
+├── docs/                   # 项目文档
+│   └── swagger/            # Swagger 生成产物（勿手改）
+├── deploy/remote/          # 远程部署配置
 ├── storage/                # 运行时日志等本地文件
-└── Makefile                # init/bootstrap/build/test/swag
+├── web/                    # Vue3 前端，构建产物由 web/embed.go 内嵌
+└── Makefile                # help/init/build/test/migrate/seed
 ```
 
 ### 三层调用链
@@ -85,10 +89,10 @@ HTTP 请求
 | 配置      | Viper                      | YAML 配置加载                | `pkg/config`                                                  |
 | 日志      | zap + lumberjack           | 结构化日志 + 滚动切割        | `pkg/log`                                                     |
 | 认证      | golang-jwt v5              | JWT 签发解析                 | `pkg/jwt`                                                     |
+| 会话      | redis/go-redis v9          | refresh token、会话索引、吊销 | `internal/repository/auth.go`、`internal/service/auth.go`     |
 | 密码      | golang.org/x/crypto/bcrypt | 密码哈希                     | `internal/service/admin.go`                                   |
 | 分布式 ID | sonyflake                  | 雪花 ID + Base62             | `pkg/sid`                                                     |
-| 定时任务  | gocron                     | Cron 调度                    | `internal/server/task.go`                                     |
-| API 文档  | swag                       | 注解生成 Swagger             | `docs/`（自动生成）                                           |
+| API 文档  | swag                       | 注解生成 Swagger             | `docs/swagger/`（自动生成）                                   |
 | 校验      | go-playground/validator    | binding tag 校验（Gin 内置） | `api/v1/admin.go`                                             |
 | 工具库    | duke-git/lancet            | 字符串/MD5/UUID 等工具       | 散见各处                                                      |
 
@@ -109,10 +113,12 @@ enforcer := repository.NewCasbinEnforcer(conf, logger, db)
 repo := repository.NewRepository(logger, db, enforcer)
 adminRepo := repository.NewAdminRepository(repo)
 baseService := service.NewService(...)
-adminService := service.NewAdminService(baseService, adminRepo)
-adminHandler := handler.NewAdminHandler(baseHandler, adminService)
-httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, adminHandler, userHandler)
-// ...继续 30 行
+authService := service.NewAuthService(baseService, authRepo, adminRepo, authConfig)
+adminService := service.NewAdminService(baseService, adminRepo, authService)
+adminHandler := handler.NewAdminHandler(baseHandler, adminService, authService)
+authHandler := handler.NewAuthHandler(baseHandler, authService)
+httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, adminHandler, authHandler)
+// ...继续 20 行
 ```
 
 **痛点**：顺序敏感、改一个依赖牵全身、三个 cmd 入口都要写一遍。
@@ -129,7 +135,6 @@ httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, adminHandler
 var repositorySet = wire.NewSet(   // 把构造函数捆成一组
     repository.NewDB,
     repository.NewRepository,
-    repository.NewUserRepository,
     repository.NewCasbinEnforcer,
     repository.NewAdminRepository,
 )
@@ -155,10 +160,9 @@ func NewWire(v *viper.Viper, l *log.Logger) (*app.App, func(), error) {
 #### 关键命令
 
 ```bash
-go install github.com/google/wire/cmd/wire@latest   # 装工具
-wire ./cmd/server/wire                               # 重新生成 wire_gen.go
-wire ./cmd/seed/wire
-wire ./cmd/task/wire
+make init                                            # 安装 go.mod tool 锁定的 Wire 等工具
+go tool wire ./cmd/server/wire                       # 重新生成 wire_gen.go
+go tool wire ./cmd/seed/wire
 ```
 
 #### 三大优势
@@ -185,6 +189,8 @@ v1 := s.Group("/v1")
 {
     noAuthRouter := v1.Group("/")              // 公开路由
     noAuthRouter.POST("/login", adminHandler.Login)
+    noAuthRouter.POST("/auth/refresh", authHandler.Refresh)
+    noAuthRouter.POST("/auth/logout", authHandler.Logout)
 
     strictAuthRouter := v1.Group("/").Use(     // 鉴权路由（链式中间件）
         middleware.StrictAuth(jwt, logger),
@@ -201,11 +207,15 @@ v1 := s.Group("/v1")
 func (h *AdminHandler) Login(ctx *gin.Context) {
     var req v1.LoginRequest
     if err := ctx.ShouldBindJSON(&req); err != nil {  // 自动反序列化 + 校验
-        v1.HandleError(ctx, http.StatusBadRequest, v1.ErrBadRequest, nil)
+        v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
         return
     }
-    token, _ := h.adminService.Login(ctx, &req)
-    v1.HandleSuccess(ctx, v1.LoginResponseData{AccessToken: token})
+    result, _ := h.authService.Login(ctx, &req)
+    v1.HandleSuccess(ctx, v1.LoginResponseData{
+        AccessToken:  result.AccessToken,
+        RefreshToken: result.RefreshToken,
+        ExpiresIn:    result.ExpiresIn,
+    })
 }
 ```
 
@@ -247,7 +257,12 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 type AdminUser struct {
     gorm.Model                                                  // 嵌入：自动加 ID/CreatedAt/UpdatedAt/DeletedAt
     Username string `gorm:"type:varchar(50);uniqueIndex;not null"`
-    Password string `gorm:"type:varchar(255);not null"`
+    Nickname string `gorm:"type:varchar(50);not null;comment:昵称"`
+    Password string `gorm:"type:varchar(255);not null;comment:密码"`
+    Email    string `gorm:"type:varchar(100);not null;comment:电子邮件"`
+    Phone    string `gorm:"type:varchar(20);not null;comment:手机号"`
+    IsDisabled bool `gorm:"type:boolean;not null;default:false;comment:是否禁用"`
+    LastLoginAt *time.Time `gorm:"comment:最后登录时间"`
 }
 func (m *AdminUser) TableName() string { return "admin_users" }
 ```
@@ -433,18 +448,24 @@ logger.WithContext(ctx).Info("Request")   // 带 trace ID
 
 配套 lumberjack 滚动切割：按文件大小、份数、天数自动归档。
 
-#### JWT（`pkg/jwt/jwt.go`）
+#### JWT 与 refresh 会话
 
 ```go
-// 签发
-token, _ := j.GenToken(userId, time.Now().Add(time.Hour*24*90))
+// 签发 access token，sid 用于和 refresh session 关联
+token, _ := j.GenToken(userID, time.Now().Add(accessTTL), map[string]any{"sid": sid})
 
 // 解析
 claims, err := j.ParseToken(tokenString)
-userId := claims.UserID
+userID := claims.UserID
 ```
 
 密钥来自 `config/local.yml` 的 `security.jwt.key`。
+
+Refresh token 不写入 JWT，由 `internal/service/auth.go` 生成并只保存哈希到 Redis：
+
+- `POST /v1/auth/refresh`：旧 refresh 立即失效，返回新 access + 新 refresh。
+- `POST /v1/auth/logout`：删除当前 refresh 对应 session，不影响同用户其他设备。
+- 管理端踢下线：通过 `AuthService.RevokeAllUserSessions` 或 `KickSession` 删除 Redis session。
 
 #### bcrypt 密码哈希
 
@@ -460,19 +481,7 @@ bcrypt 自带盐和成本因子，**永远不要用 MD5/SHA1 存密码**。
 
 ---
 
-### 4.6 定时任务 + Swagger
-
-#### gocron（`internal/server/task.go`）
-
-```go
-t.scheduler = gocron.NewScheduler(time.UTC)
-t.scheduler.CronWithSeconds("0/3 * * * * *").Do(func() {  // 每 3 秒
-    t.userTask.CheckUser(ctx)
-})
-t.scheduler.StartBlocking()
-```
-
-跑 `go run cmd/task/main.go` 启动独立任务进程。
+### 4.6 Swagger
 
 #### Swag 文档（`internal/handler/admin.go`）
 
@@ -486,7 +495,7 @@ t.scheduler.StartBlocking()
 func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 ```
 
-跑 `make swag` → 访问 `http://localhost:8000/swagger/index.html`。
+跑 `make swag` → 访问 `http://127.0.0.1:8000/swagger/index.html`。
 
 ---
 
@@ -503,7 +512,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 | ⑤ Handler    | `internal/handler/product.go`         | 解析请求 → 调 service（带 swag 注解）                             |
 | ⑥ 路由       | `internal/server/http.go`             | 在 `strictAuthRouter` 加路由                                      |
 | ⑦ Wire 注入  | `cmd/server/wire/wire.go`             | 加 `NewProductRepository/Service/Handler`                         |
-| ⑧ 重生成     | shell                                 | `wire ./cmd/server/wire`                                          |
+| ⑧ 重生成     | shell                                 | `go tool wire ./cmd/server/wire`                                  |
 | ⑨ 建表       | `db/atlas/main.go` + `db/migrations/` | 在 `models()` 登记模型并执行 `make migrate-diff name=add_product` |
 | ⑩ 配权限     | 后台界面                              | API 管理新增 → 角色管理分配权限                                   |
 
@@ -575,7 +584,7 @@ var handlerSet = wire.NewSet(
 )
 ```
 
-更新后必须跑：`wire ./cmd/server/wire`
+更新后必须跑：`go tool wire ./cmd/server/wire`
 
 ---
 
@@ -585,11 +594,14 @@ var handlerSet = wire.NewSet(
 # 一次性安装所有工具
 make init
 
-# 启动依赖（docker-compose）+ 数据迁移 + 热加载启动
-make bootstrap
+# 准备本地数据库 + 数据迁移 + 热加载启动
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
+make migrate-apply
+make seed
+nunu run ./cmd/server
 
 # 仅启动 HTTP 服务（开发模式）
-go run cmd/server/main.go
+go run ./cmd/server
 
 # 应用 schema migration
 make migrate-apply
@@ -597,13 +609,9 @@ make migrate-apply
 # 写入初始业务数据（首次部署执行）
 make seed
 
-# 启动定时任务进程
-go run cmd/task/main.go
-
 # 重新生成 Wire 装配代码（改完 wire.go 必须执行）
-wire ./cmd/server/wire
-wire ./cmd/seed/wire
-wire ./cmd/task/wire
+go tool wire ./cmd/server/wire
+go tool wire ./cmd/seed/wire
 
 # 生成 Swagger 文档
 make swag
@@ -616,8 +624,8 @@ make build
 
 ## 七、推荐学习路径
 
-1. **跑起来**：`make init` → `make bootstrap` → 浏览器访问 `http://localhost:8000`，admin/123456 登录。
-2. **跟一遍 Login 全链路**：从 `internal/handler/admin.go:Login` → `internal/service/admin.go:Login` → `internal/repository/admin.go:GetAdminUserByUsername`，理解三层是怎么传 ctx、传错误的。
+1. **跑起来**：`make init` → 按常用命令启动 MySQL/Redis、迁移、seed、server → 浏览器访问 `http://127.0.0.1:8000`，local 环境用 `admin/123456` 登录。
+2. **跟一遍 Login 全链路**：从 `internal/handler/admin.go:Login` → `internal/service/auth.go:Login` → `internal/repository/admin_user_repo.go:GetAdminUserByUsername`，理解三层是怎么传 ctx、传错误和写 refresh session 的。
 3. **看懂 Wire**：对照 `cmd/server/wire/wire.go`（清单）和 `cmd/server/wire/wire_gen.go`（生成产物），看每个 `New*` 函数的入参从哪儿来。
 4. **照葫芦画瓢**：仿照 admin 写一个简单 CRUD（比如 Article 文章），跑通"新增 API → 配权限 → 调通"完整流程。
 5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/repository/repository.go:NewCasbinEnforcer` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
