@@ -41,7 +41,7 @@ type AdminUser struct {
 	IsDisabled bool `gorm:"type:boolean;not null;default:false;comment:是否禁用"`
 	// LastLoginAt 最后登录时间：Login 成功后 best-effort 更新。
 	// 用 *time.Time 区分"从未登录"（nil）与"已登录过"。
-	LastLoginAt *time.Time `gorm:"type:datetime;comment:最后登录时间"`
+	LastLoginAt *time.Time `gorm:"comment:最后登录时间"`
 }
 
 func (m *AdminUser) TableName() string {

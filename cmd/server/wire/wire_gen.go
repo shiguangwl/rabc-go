@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 	"rabc-go/internal/auth"
 	"rabc-go/internal/handler"
-	"rabc-go/internal/job"
 	"rabc-go/internal/repository"
 	"rabc-go/internal/server"
 	"rabc-go/internal/service"
@@ -19,7 +18,6 @@ import (
 	"rabc-go/pkg/jwt"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/server/http"
-	"rabc-go/pkg/sid"
 )
 
 // Injectors from wire.go:
@@ -39,28 +37,15 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 	serviceService := service.NewService(logger, jwtJWT)
 	repositoryRepository := repository.NewRepository(logger, db, syncedEnforcer)
 	adminRepository := repository.NewAdminRepository(repositoryRepository)
-
-	// Auth 子系统依赖：Redis 客户端 + AuthRepository + AuthConfig + AuthService。
-	// AuthService 与 AdminService 之间存在调用关系（admin 改密 / 删除 → 调
-	// authService.RevokeAllUserSessions），所以注入顺序：AuthService 先于 AdminService。
-	redisClient := repository.NewRedis(viperViper)
-	authRepository := repository.NewAuthRepository(redisClient)
+	client := repository.NewRedis(viperViper)
+	authRepository := repository.NewAuthRepository(client)
 	authConfig := auth.LoadAuthConfig(viperViper, logger)
 	authService := service.NewAuthService(serviceService, authRepository, adminRepository, authConfig)
-
 	adminService := service.NewAdminService(serviceService, adminRepository, authService)
 	adminHandler := handler.NewAdminHandler(handlerHandler, adminService, authService)
 	authHandler := handler.NewAuthHandler(handlerHandler, authService)
-	userRepository := repository.NewUserRepository(repositoryRepository)
-	userService := service.NewUserService(serviceService, userRepository)
-	userHandler := handler.NewUserHandler(handlerHandler, userService)
-	httpServer := server.NewHTTPServer(logger, viperViper, jwtJWT, syncedEnforcer, adminHandler, userHandler, authHandler)
-	transaction := repository.NewTransaction(repositoryRepository)
-	sidSid := sid.NewSid()
-	jobJob := job.NewJob(transaction, logger, sidSid)
-	userJob := job.NewUserJob(jobJob, userRepository)
-	jobServer := server.NewJobServer(logger, userJob)
-	appApp := newApp(logger, httpServer, jobServer)
+	httpServer := server.NewHTTPServer(logger, viperViper, jwtJWT, syncedEnforcer, adminHandler, authHandler)
+	appApp := newApp(logger, httpServer)
 	return appApp, func() {
 		cleanup2()
 		cleanup()
@@ -69,28 +54,18 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 
 // wire.go:
 
-var repositorySet = wire.NewSet(
-	repository.NewDB, repository.NewRepository, repository.NewTransaction,
-	repository.NewUserRepository, repository.NewCasbinEnforcer, repository.NewAdminRepository,
-	repository.NewRedis, repository.NewAuthRepository,
-)
+var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repository.NewTransaction, repository.NewCasbinEnforcer, repository.NewAdminRepository, repository.NewRedis, repository.NewAuthRepository)
 
-var serviceSet = wire.NewSet(
-	service.NewService, service.NewUserService, service.NewAdminService,
-	service.NewAuthService, auth.LoadAuthConfig,
-)
+var serviceSet = wire.NewSet(service.NewService, service.NewAdminService, service.NewAuthService, auth.LoadAuthConfig)
 
-var handlerSet = wire.NewSet(handler.NewHandler, handler.NewUserHandler, handler.NewAdminHandler, handler.NewAuthHandler)
+var handlerSet = wire.NewSet(handler.NewHandler, handler.NewAdminHandler, handler.NewAuthHandler)
 
-var jobSet = wire.NewSet(job.NewJob, job.NewUserJob)
-
-var serverSet = wire.NewSet(server.NewHTTPServer, server.NewJobServer)
+var serverSet = wire.NewSet(server.NewHTTPServer)
 
 // build App
 func newApp(
 	logger *log.Logger,
 	httpServer *http.Server,
-	jobServer *server.JobServer,
 ) *app.App {
-	return app.NewApp(app.WithServer(httpServer, jobServer), app.WithName("demo-server"), app.WithLogger(logger))
+	return app.NewApp(app.WithServer(httpServer), app.WithName("demo-server"), app.WithLogger(logger))
 }

@@ -17,9 +17,7 @@ import (
 
 // Injectors from wire.go:
 
-// NewWire 直接返回 *SeedServer，不再包成 app.App。
-// 原因：app.Run 是常驻服务模型（spawn goroutine + 阻塞等信号），与 cmd/seed
-// "写完即退出"的一次性 CLI 语义不匹配，外面套 App 会让 make seed 永远挂起。
+// NewWire 返回一次性种子任务，调用方负责显式驱动 Start/Stop 生命周期。
 func NewWire(viperViper *viper.Viper, logger *log.Logger) (*server.SeedServer, func(), error) {
 	db, cleanup, err := repository.NewDB(viperViper, logger)
 	if err != nil {
@@ -40,6 +38,6 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*server.SeedServer, f
 
 // wire.go:
 
-var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repository.NewCasbinEnforcer)
+var repositorySet = wire.NewSet(repository.NewDB, repository.NewCasbinEnforcer)
 
 var serverSet = wire.NewSet(server.NewSeedServer)

@@ -15,7 +15,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	v1 "rabc-go/api/v1"
-	"rabc-go/docs"
+	swagger "rabc-go/docs/swagger"
 	"rabc-go/internal/handler"
 	"rabc-go/internal/middleware"
 	"rabc-go/pkg/config"
@@ -37,7 +37,6 @@ func NewHTTPServer(
 	jwt *jwt.JWT,
 	e *casbin.SyncedEnforcer,
 	adminHandler *handler.AdminHandler,
-	userHandler *handler.UserHandler,
 	authHandler *handler.AuthHandler,
 ) *http.Server {
 	if config.IsProd(conf) {
@@ -93,7 +92,7 @@ func NewHTTPServer(
 		}
 		c.Data(nethttp.StatusOK, "text/html; charset=utf-8", indexPageData)
 	})
-	docs.SwaggerInfo.BasePath = "/"
+	swagger.SwaggerInfo.BasePath = "/"
 	s.GET("/swagger/*any", ginSwagger.WrapHandler(
 		swaggerfiles.Handler,
 		ginSwagger.DefaultModelsExpandDepth(-1),
@@ -113,8 +112,6 @@ func NewHTTPServer(
 
 		strictAuthRouter := v1Group.Group("/").Use(middleware.StrictAuth(jwt, logger), middleware.AuthMiddleware(e))
 		{
-			strictAuthRouter.GET("/users", userHandler.GetUsers)
-
 			strictAuthRouter.GET("/menus", adminHandler.GetMenus)
 			strictAuthRouter.GET("/admin/menus", adminHandler.GetAdminMenus)
 			strictAuthRouter.POST("/admin/menu", adminHandler.MenuCreate)

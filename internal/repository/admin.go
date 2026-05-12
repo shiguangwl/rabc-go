@@ -1,12 +1,11 @@
 package repository
 
-//go:generate go tool mockgen -source=admin.go -destination=../../test/mocks/repository/admin.go
+//go:generate go tool mockgen -destination=../../test/mocks/repository/admin.go rabc-go/internal/repository AdminRepository,AdminAuthRepository,AdminUserRepository,PermissionRepository,MenuRepository,RoleRepository,ApiRepository
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,18 +15,26 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	v1 "rabc-go/api/v1"
 	"rabc-go/internal/model"
 )
 
 type AdminRepository interface {
-	GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersRequest) ([]model.AdminUser, int64, error)
-	GetAdminUser(ctx context.Context, uid uint) (model.AdminUser, error)
+	AdminAuthRepository
+	AdminUserRepository
+	PermissionRepository
+	MenuRepository
+	RoleRepository
+	ApiRepository
+}
+
+type AdminAuthRepository interface {
 	GetAdminUserByUsername(ctx context.Context, username string) (model.AdminUser, error)
-	AdminUserUpdate(ctx context.Context, m *model.AdminUser) error
-	AdminUserCreate(ctx context.Context, m *model.AdminUser) error
-	AdminUserDelete(ctx context.Context, id uint) error
 	UpdateLastLogin(ctx context.Context, uid uint, at time.Time) error
+}
+
+type AdminUserRepository interface {
+	GetAdminUsers(ctx context.Context, q AdminUserQuery) ([]model.AdminUser, int64, error)
+	GetAdminUser(ctx context.Context, uid uint) (model.AdminUser, error)
 
 	// Atomic 方法把"业务表写 + Casbin 策略写"包进同一个 GORM 事务。
 	// 内部用临时 enforcer 绑 tx；commit 后调 r.e.LoadPolicy() 让全局 SyncedEnforcer 立即看到变更。
@@ -36,39 +43,36 @@ type AdminRepository interface {
 	// 非 nil 表示"显式同步到该列表"（空切片含义为清空所有角色）。
 	AdminUserUpdateAtomic(ctx context.Context, m *model.AdminUser, roles *[]string) error
 	AdminUserDeleteAtomic(ctx context.Context, id uint) error
-	RoleDeleteAtomic(ctx context.Context, id uint, sid string) error
-	MenuUpdateAtomic(ctx context.Context, m *model.Menu) error
-	MenuDeleteAtomic(ctx context.Context, id uint) error
-	ApiUpdateAtomic(ctx context.Context, m *model.Api) error
-	ApiDeleteAtomic(ctx context.Context, id uint) error
+}
 
+type PermissionRepository interface {
 	GetUserPermissions(ctx context.Context, uid uint) ([][]string, error)
 	GetUserRoles(ctx context.Context, uid uint) ([]string, error)
 	GetRolePermissions(ctx context.Context, role string) ([][]string, error)
 	UpdateRolePermission(ctx context.Context, role string, permissions map[string]struct{}) error
-	UpdateUserRoles(ctx context.Context, uid uint, roles []string) error
-	DeleteUserRoles(ctx context.Context, uid uint) error
+}
 
+type MenuRepository interface {
 	GetMenuList(ctx context.Context) ([]model.Menu, error)
-	GetMenu(ctx context.Context, id uint) (model.Menu, error)
-	MenuUpdate(ctx context.Context, m *model.Menu) error
 	MenuCreate(ctx context.Context, m *model.Menu) error
-	MenuDelete(ctx context.Context, id uint) error
+	MenuUpdateAtomic(ctx context.Context, m *model.Menu) error
+	MenuDeleteAtomic(ctx context.Context, id uint) error
+}
 
-	GetRoles(ctx context.Context, req *v1.GetRoleListRequest) ([]model.Role, int64, error)
+type RoleRepository interface {
+	GetRoles(ctx context.Context, q RoleQuery) ([]model.Role, int64, error)
 	RoleUpdate(ctx context.Context, m *model.Role) error
-	RoleCreate(ctx context.Context, m *model.Role) error
 	RoleCreateIfAbsent(ctx context.Context, m *model.Role) error
-	RoleDelete(ctx context.Context, id uint) error
-	CasbinRoleDelete(ctx context.Context, role string) error
+	RoleDeleteAtomic(ctx context.Context, id uint, sid string) error
 	GetRole(ctx context.Context, id uint) (model.Role, error)
+}
 
-	GetApis(ctx context.Context, req *v1.GetApisRequest) ([]model.Api, int64, error)
-	GetApi(ctx context.Context, id uint) (model.Api, error)
+type ApiRepository interface {
+	GetApis(ctx context.Context, q ApiQuery) ([]model.Api, int64, error)
 	GetApiGroups(ctx context.Context) ([]string, error)
-	ApiUpdate(ctx context.Context, m *model.Api) error
 	ApiCreate(ctx context.Context, m *model.Api) error
-	ApiDelete(ctx context.Context, id uint) error
+	ApiUpdateAtomic(ctx context.Context, m *model.Api) error
+	ApiDeleteAtomic(ctx context.Context, id uint) error
 }
 
 func NewAdminRepository(
@@ -91,13 +95,6 @@ func NewAdminRepository(
 type adminRepository struct {
 	*Repository
 	rbacMu sync.Mutex
-}
-
-func (r *adminRepository) CasbinRoleDelete(ctx context.Context, role string) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	_, err := r.e.DeleteRole(model.RoleSubject(role))
-	return err
 }
 
 // newTxEnforcer 创建一个临时 Casbin enforcer，其 adapter 绑定传入的 GORM tx。
@@ -126,13 +123,8 @@ func (r *adminRepository) newTxEnforcer(tx *gorm.DB) (casbin.IEnforcer, error) {
 	return e, nil
 }
 
-// reloadPolicy 让全局 SyncedEnforcer 立即看到事务提交后的策略变更，
-// 避免等 StartAutoLoadPolicy 的 10 秒轮询窗口。
-//
-// 关键语义：tx 已 commit 即视为业务成功；reload 失败仅记 ERROR 让 SRE 关注，
-// 不向上传错——否则前端会以为整个操作失败并重试，重试会落到"DB/Casbin
-// 已写入但当前进程缓存未更新"的奇怪状态，更糟。
-// 兜底：StartAutoLoadPolicy 10 秒内会自动同步策略。
+// reloadPolicy 让全局 SyncedEnforcer 立即看到事务提交后的策略变更。
+// 提交后的 reload 失败只记录日志；StartAutoLoadPolicy 会继续轮询兜底。
 func (r *adminRepository) reloadPolicy(ctx context.Context) {
 	if err := r.e.LoadPolicy(); err != nil {
 		// 瞬时网络抖动：等 100ms 再试一次，多数抖动可恢复
@@ -148,7 +140,6 @@ func (r *adminRepository) reloadPolicy(ctx context.Context) {
 }
 
 // updateUserRolesOn 在指定 enforcer 上把用户角色从 old → new 做 diff 同步。
-// 抽出来是为了让全局 enforcer（UpdateUserRoles）和 tx-bound enforcer（Atomic 系列）共用。
 func updateUserRolesOn(e casbin.IEnforcer, uid string, roles []string) error {
 	if len(roles) == 0 {
 		_, err := e.DeleteRolesForUser(uid)
@@ -207,7 +198,7 @@ func ensureRolesExist(tx *gorm.DB, roles []string) error {
 	roleSet := make(map[string]struct{}, len(roles))
 	for _, role := range roles {
 		if strings.TrimSpace(role) == "" {
-			return v1.ErrBadRequest
+			return ErrBadRequest
 		}
 		roleSet[role] = struct{}{}
 	}
@@ -223,7 +214,7 @@ func ensureRolesExist(tx *gorm.DB, roles []string) error {
 		return fmt.Errorf("count roles by sid: %w", err)
 	}
 	if count != int64(len(sids)) {
-		return v1.ErrBadRequest
+		return ErrBadRequest
 	}
 	return nil
 }
@@ -243,7 +234,7 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 	for key := range permissions {
 		resource, action, ok := strings.Cut(key, model.PermSep)
 		if !ok || resource == "" || action == "" {
-			return v1.ErrBadRequest
+			return ErrBadRequest
 		}
 		switch {
 		case strings.HasPrefix(resource, model.ApiResourcePrefix):
@@ -253,11 +244,11 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 			}] = struct{}{}
 		case strings.HasPrefix(resource, model.MenuResourcePrefix):
 			if action != "read" {
-				return v1.ErrBadRequest
+				return ErrBadRequest
 			}
 			menus[strings.TrimPrefix(resource, model.MenuResourcePrefix)] = struct{}{}
 		default:
-			return v1.ErrBadRequest
+			return ErrBadRequest
 		}
 	}
 	for api := range apis {
@@ -268,7 +259,7 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 			return fmt.Errorf("count api permission resource: %w", err)
 		}
 		if count == 0 {
-			return v1.ErrBadRequest
+			return ErrBadRequest
 		}
 	}
 	for path := range menus {
@@ -277,7 +268,7 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 			return fmt.Errorf("count menu permission resource: %w", err)
 		}
 		if count == 0 {
-			return v1.ErrBadRequest
+			return ErrBadRequest
 		}
 	}
 	return nil
@@ -286,7 +277,7 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 func ensureRowsAffected(tx *gorm.DB, result *gorm.DB, modelValue any, id uint) error {
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
-			return v1.ErrConflict.WithCause(result.Error)
+			return fmt.Errorf("%w: %v", ErrConflict, result.Error)
 		}
 		return result.Error
 	}
@@ -298,583 +289,7 @@ func ensureRowsAffected(tx *gorm.DB, result *gorm.DB, modelValue any, id uint) e
 		return err
 	}
 	if count == 0 {
-		return v1.ErrNotFound
+		return ErrNotFound
 	}
 	return nil
-}
-
-func (r *adminRepository) AdminUserCreateAtomic(ctx context.Context, m *model.AdminUser, roles []string) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(m).Error; err != nil {
-			// username 唯一索引冲突翻译为业务 sentinel，避免裸驱动错被 WriteResponse 兜底成 500，
-			// 让前端按业务码精确提示"用户名已被占用"。
-			if errors.Is(err, gorm.ErrDuplicatedKey) {
-				return v1.ErrUsernameAlreadyUse.WithCause(err)
-			}
-			return err
-		}
-		if len(roles) == 0 {
-			return nil
-		}
-		if err := ensureRolesExist(tx, roles); err != nil {
-			return err
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		return updateUserRolesOn(e, strconv.FormatUint(uint64(m.ID), 10), roles)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-// AdminUserUpdateAtomic 按"非空字段才写"语义更新业务表 + 同步 Casbin 角色。
-//
-// 设计：
-//   - 用 map 而非 struct：struct 模式会跳过零值字段，使得真要"显式覆盖"也落不到库。
-//   - 又仅纳入非空字段：避免前端漏传 email/phone 时静默清空已有值。
-//     需要主动清空的业务（暂无）应在 API 层用指针类型区分"未传"vs"空串"，
-//     再由 service 层显式标记为 NULL 写入。
-//   - password 列空值语义是"不修改密码"，与上述策略天然一致；同时避免 service 层
-//     事务外 read-modify-write 被并发覆盖丢密码（详见 service.AdminUserUpdate 注释）。
-func (r *adminRepository) AdminUserUpdateAtomic(ctx context.Context, m *model.AdminUser, roles *[]string) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	updates := map[string]any{}
-	if m.Username != "" {
-		updates["username"] = m.Username
-	}
-	if m.Nickname != "" {
-		updates["nickname"] = m.Nickname
-	}
-	if m.Email != "" {
-		updates["email"] = m.Email
-	}
-	if m.Phone != "" {
-		updates["phone"] = m.Phone
-	}
-	if m.Password != "" {
-		updates["password"] = m.Password
-	}
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if len(updates) > 0 {
-			result := tx.Model(&model.AdminUser{}).Where("id = ?", m.ID).Updates(updates)
-			if result.Error != nil {
-				if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
-					return v1.ErrUsernameAlreadyUse.WithCause(result.Error)
-				}
-				return result.Error
-			}
-			if err := ensureRowsAffected(tx, result, &model.AdminUser{}, m.ID); err != nil {
-				return err
-			}
-		} else if roles != nil {
-			var count int64
-			if err := tx.Model(&model.AdminUser{}).Where("id = ?", m.ID).Count(&count).Error; err != nil {
-				return err
-			}
-			if count == 0 {
-				return v1.ErrNotFound
-			}
-		}
-		// roles 为 nil 表示前端未传该字段，跳过角色同步避免误清空。
-		// 显式传空数组（*roles == []string{}）会走 updateUserRolesOn 的 len==0 分支，
-		// 语义为"清空全部角色"，由前端业务自行确认。
-		if roles == nil {
-			return nil
-		}
-		if err := ensureRolesExist(tx, *roles); err != nil {
-			return err
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		return updateUserRolesOn(e, strconv.FormatUint(uint64(m.ID), 10), *roles)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) AdminUserDeleteAtomic(ctx context.Context, id uint) error {
-	if strconv.FormatUint(uint64(id), 10) == model.AdminUserID {
-		return v1.ErrForbidden
-	}
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		// 撤权先：先清角色绑定再删 DB 行。tx 失败两者一起回滚；不会出现"用户被删但权限残留"。
-		if _, err := e.DeleteRolesForUser(strconv.FormatUint(uint64(id), 10)); err != nil {
-			return err
-		}
-		return ensureRowsAffected(tx, tx.Where("id = ?", id).Delete(&model.AdminUser{}), &model.AdminUser{}, id)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) RoleDeleteAtomic(ctx context.Context, id uint, sid string) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		// 撤权先：先清 Casbin 策略再删 DB 行；tx 失败一起回滚。
-		if _, err := e.DeleteRole(model.RoleSubject(sid)); err != nil {
-			return err
-		}
-		return ensureRowsAffected(tx, tx.Where("id = ?", id).Delete(&model.Role{}), &model.Role{}, id)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-// ApiUpdateAtomic 用 map 触发更新（理由同 AdminUserUpdateAtomic）。
-// path/method 变更时事务内同步清旧 Casbin 策略。
-func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	updates := map[string]any{
-		"group_name": m.Group,
-		"name":       m.Name,
-		"path":       m.Path,
-		"method":     m.Method,
-	}
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var old model.Api
-		if err := tx.Where("id = ?", m.ID).First(&old).Error; err != nil {
-			return err
-		}
-		pathChanged := old.Path != m.Path || old.Method != m.Method
-		if err := ensureRowsAffected(tx, tx.Model(&model.Api{}).Where("id = ?", m.ID).Updates(updates), &model.Api{}, m.ID); err != nil {
-			return err
-		}
-		if !pathChanged {
-			return nil
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		return removePoliciesByObjectActOn(e, model.ApiResourcePrefix+old.Path, old.Method)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) MenuUpdateAtomic(ctx context.Context, m *model.Menu) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	updates := map[string]any{
-		"component":    m.Component,
-		"icon":         m.Icon,
-		"keep_alive":   m.KeepAlive,
-		"hide_in_menu": m.HideInMenu,
-		"locale":       m.Locale,
-		"weight":       m.Weight,
-		"name":         m.Name,
-		"parent_id":    m.ParentID,
-		"path":         m.Path,
-		"redirect":     m.Redirect,
-		"title":        m.Title,
-		"url":          m.URL,
-	}
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var old model.Menu
-		if err := tx.Where("id = ?", m.ID).First(&old).Error; err != nil {
-			return err
-		}
-		pathChanged := old.Path != m.Path
-		if err := ensureRowsAffected(tx, tx.Model(&model.Menu{}).Where("id = ?", m.ID).Updates(updates), &model.Menu{}, m.ID); err != nil {
-			return err
-		}
-		if !pathChanged {
-			return nil
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		return removePoliciesByObjectActOn(e, model.MenuResourcePrefix+old.Path, "read")
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) ApiDeleteAtomic(ctx context.Context, id uint) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var old model.Api
-		if err := tx.Where("id = ?", id).First(&old).Error; err != nil {
-			return err
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		// 撤权先：清 Casbin 策略后再删 DB 行
-		if err := removePoliciesByObjectActOn(e, model.ApiResourcePrefix+old.Path, old.Method); err != nil {
-			return err
-		}
-		return ensureRowsAffected(tx, tx.Unscoped().Where("id = ?", id).Delete(&model.Api{}), &model.Api{}, id)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) MenuDeleteAtomic(ctx context.Context, id uint) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var old model.Menu
-		if err := tx.Where("id = ?", id).First(&old).Error; err != nil {
-			return err
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		if err := removePoliciesByObjectActOn(e, model.MenuResourcePrefix+old.Path, "read"); err != nil {
-			return err
-		}
-		return ensureRowsAffected(tx, tx.Unscoped().Where("id = ?", id).Delete(&model.Menu{}), &model.Menu{}, id)
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) GetRole(ctx context.Context, id uint) (model.Role, error) {
-	m := model.Role{}
-	return m, r.DB(ctx).Where("id = ?", id).First(&m).Error
-}
-func (r *adminRepository) DeleteUserRoles(ctx context.Context, uid uint) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	_, err := r.e.DeleteRolesForUser(strconv.FormatUint(uint64(uid), 10))
-	return err
-}
-
-// UpdateUserRoles 把全局 enforcer 上指定用户的角色同步到 roles 列表。
-// 实际算法在 updateUserRolesOn 内，与 Atomic 系列共用。
-func (r *adminRepository) UpdateUserRoles(ctx context.Context, uid uint, roles []string) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := ensureRolesExist(r.DB(ctx), roles); err != nil {
-		return err
-	}
-	return updateUserRolesOn(r.e, strconv.FormatUint(uint64(uid), 10), roles)
-}
-
-func (r *adminRepository) GetAdminUserByUsername(ctx context.Context, username string) (model.AdminUser, error) {
-	m := model.AdminUser{}
-	return m, r.DB(ctx).Where("username = ?", username).First(&m).Error
-}
-
-func (r *adminRepository) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersRequest) ([]model.AdminUser, int64, error) {
-	var list []model.AdminUser
-	var total int64
-	scope := r.DB(ctx).Model(&model.AdminUser{})
-	if req.Username != "" {
-		scope = scope.Where("username LIKE ?", "%"+req.Username+"%")
-	}
-	if req.Nickname != "" {
-		scope = scope.Where("nickname LIKE ?", "%"+req.Nickname+"%")
-	}
-	if req.Email != "" {
-		scope = scope.Where("email LIKE ?", "%"+req.Email+"%")
-	}
-	if req.Phone != "" {
-		scope = scope.Where("phone LIKE ?", "%"+req.Phone+"%")
-	}
-	if err := scope.Count(&total).Error; err != nil {
-		return nil, total, err
-	}
-	if err := scope.Offset(req.Offset()).Limit(req.Limit()).Order("id DESC").Find(&list).Error; err != nil {
-		return nil, total, err
-	}
-	return list, total, nil
-}
-
-func (r *adminRepository) GetAdminUser(ctx context.Context, uid uint) (model.AdminUser, error) {
-	m := model.AdminUser{}
-	return m, r.DB(ctx).Where("id = ?", uid).First(&m).Error
-}
-
-func (r *adminRepository) AdminUserUpdate(ctx context.Context, m *model.AdminUser) error {
-	return r.DB(ctx).Where("id = ?", m.ID).Updates(m).Error
-}
-
-func (r *adminRepository) AdminUserCreate(ctx context.Context, m *model.AdminUser) error {
-	return r.DB(ctx).Create(m).Error
-}
-
-func (r *adminRepository) AdminUserDelete(ctx context.Context, id uint) error {
-	return r.DB(ctx).Where("id = ?", id).Delete(&model.AdminUser{}).Error
-}
-
-// UpdateLastLogin 只写 last_login_at 单列，避开 Updates(struct) 误清空零值的坑。
-func (r *adminRepository) UpdateLastLogin(ctx context.Context, uid uint, at time.Time) error {
-	return r.DB(ctx).Model(&model.AdminUser{}).
-		Where("id = ?", uid).
-		Update("last_login_at", at).Error
-}
-
-// UpdateRolePermission 把指定角色的权限集合同步成 newPermSet。
-//
-// 走 tx-bound enforcer：旧实现直接操作全局 r.e，删 N 条后 add 失败时已删的回不去——
-// 与 *Atomic 系列同样的部分失败窗口。这里包进 r.db.Transaction，
-// 由 newTxEnforcer 在事务里完成 diff/删/加，commit 后 reload 全局 enforcer。
-func (r *adminRepository) UpdateRolePermission(ctx context.Context, role string, newPermSet map[string]struct{}) error {
-	r.rbacMu.Lock()
-	defer r.rbacMu.Unlock()
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := ensureRoleExists(tx, role); err != nil {
-			return err
-		}
-		if err := ensurePermissionResourcesExist(tx, newPermSet); err != nil {
-			return err
-		}
-		e, err := r.newTxEnforcer(tx)
-		if err != nil {
-			return err
-		}
-		roleSubject := model.RoleSubject(role)
-		oldPermissions, err := e.GetPermissionsForUser(roleSubject)
-		if err != nil {
-			return err
-		}
-		oldPermSet := make(map[string]struct{}, len(oldPermissions))
-		for _, perm := range oldPermissions {
-			if len(perm) == 3 {
-				oldPermSet[strings.Join([]string{perm[1], perm[2]}, model.PermSep)] = struct{}{}
-			}
-		}
-		var removePermissions, addPermissions [][]string
-		for key := range oldPermSet {
-			if _, ok := newPermSet[key]; !ok {
-				removePermissions = append(removePermissions, strings.Split(key, model.PermSep))
-			}
-		}
-		for key := range newPermSet {
-			if _, ok := oldPermSet[key]; !ok {
-				addPermissions = append(addPermissions, strings.Split(key, model.PermSep))
-			}
-		}
-		// IEnforcer 接口未暴露 AddPermissionsForUser（仅 *Enforcer 有），
-		// 用单条 AddPermissionForUser 循环以保持接口适配。
-		for _, perm := range removePermissions {
-			if _, err := e.DeletePermissionForUser(roleSubject, perm...); err != nil {
-				return fmt.Errorf("remove permission %v: %w", perm, err)
-			}
-		}
-		for _, perm := range addPermissions {
-			if _, err := e.AddPermissionForUser(roleSubject, perm...); err != nil {
-				return fmt.Errorf("add permission %v: %w", perm, err)
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	r.reloadPolicy(ctx)
-	return nil
-}
-
-func (r *adminRepository) GetApiGroups(ctx context.Context) ([]string, error) {
-	res := make([]string, 0)
-	if err := r.DB(ctx).Model(&model.Api{}).Distinct().Order("group_name ASC").Pluck("group_name", &res).Error; err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-func (r *adminRepository) GetApis(ctx context.Context, req *v1.GetApisRequest) ([]model.Api, int64, error) {
-	var list []model.Api
-	var total int64
-	scope := r.DB(ctx).Model(&model.Api{})
-	if req.Name != "" {
-		scope = scope.Where("name LIKE ?", "%"+req.Name+"%")
-	}
-	if req.Group != "" {
-		scope = scope.Where("group_name LIKE ?", "%"+req.Group+"%")
-	}
-	if req.Path != "" {
-		scope = scope.Where("path LIKE ?", "%"+req.Path+"%")
-	}
-	if req.Method != "" {
-		scope = scope.Where("method = ?", req.Method)
-	}
-	if err := scope.Count(&total).Error; err != nil {
-		return nil, total, err
-	}
-	if err := scope.Offset(req.Offset()).Limit(req.Limit()).Order("group_name ASC").Find(&list).Error; err != nil {
-		return nil, total, err
-	}
-	return list, total, nil
-}
-
-func (r *adminRepository) ApiUpdate(ctx context.Context, m *model.Api) error {
-	result := r.DB(ctx).Where("id = ?", m.ID).Updates(m)
-	return ensureRowsAffected(r.DB(ctx), result, &model.Api{}, m.ID)
-}
-
-func (r *adminRepository) ApiCreate(ctx context.Context, m *model.Api) error {
-	if err := r.DB(ctx).Create(m).Error; err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return v1.ErrConflict.WithCause(err)
-		}
-		return err
-	}
-	return nil
-}
-
-func (r *adminRepository) ApiDelete(ctx context.Context, id uint) error {
-	result := r.DB(ctx).Where("id = ?", id).Delete(&model.Api{})
-	return ensureRowsAffected(r.DB(ctx), result, &model.Api{}, id)
-}
-
-func (r *adminRepository) GetApi(ctx context.Context, id uint) (model.Api, error) {
-	m := model.Api{}
-	return m, r.DB(ctx).Where("id = ?", id).First(&m).Error
-}
-
-func (r *adminRepository) GetUserPermissions(ctx context.Context, uid uint) ([][]string, error) {
-	return r.e.GetImplicitPermissionsForUser(strconv.FormatUint(uint64(uid), 10))
-
-}
-func (r *adminRepository) GetRolePermissions(ctx context.Context, role string) ([][]string, error) {
-	return r.e.GetPermissionsForUser(model.RoleSubject(role))
-}
-func (r *adminRepository) GetUserRoles(ctx context.Context, uid uint) ([]string, error) {
-	roles, err := r.e.GetRolesForUser(strconv.FormatUint(uint64(uid), 10))
-	if err != nil {
-		return nil, err
-	}
-	for i, role := range roles {
-		roles[i] = model.RoleSID(role)
-	}
-	return roles, nil
-}
-func (r *adminRepository) MenuUpdate(ctx context.Context, m *model.Menu) error {
-	result := r.DB(ctx).Where("id = ?", m.ID).Updates(m)
-	return ensureRowsAffected(r.DB(ctx), result, &model.Menu{}, m.ID)
-}
-
-func (r *adminRepository) MenuCreate(ctx context.Context, m *model.Menu) error {
-	if err := r.DB(ctx).Create(m).Error; err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return v1.ErrConflict.WithCause(err)
-		}
-		return err
-	}
-	return nil
-}
-
-func (r *adminRepository) MenuDelete(ctx context.Context, id uint) error {
-	result := r.DB(ctx).Where("id = ?", id).Delete(&model.Menu{})
-	return ensureRowsAffected(r.DB(ctx), result, &model.Menu{}, id)
-}
-
-func (r *adminRepository) GetMenuList(ctx context.Context) ([]model.Menu, error) {
-	var menuList []model.Menu
-	if err := r.DB(ctx).Order("weight DESC").Find(&menuList).Error; err != nil {
-		return nil, err
-	}
-	return menuList, nil
-}
-
-func (r *adminRepository) GetMenu(ctx context.Context, id uint) (model.Menu, error) {
-	m := model.Menu{}
-	return m, r.DB(ctx).Where("id = ?", id).First(&m).Error
-}
-
-func (r *adminRepository) RoleUpdate(ctx context.Context, m *model.Role) error {
-	result := r.DB(ctx).Model(&model.Role{}).Where("id = ?", m.ID).UpdateColumn("name", m.Name)
-	return ensureRowsAffected(r.DB(ctx), result, &model.Role{}, m.ID)
-}
-
-func (r *adminRepository) RoleCreate(ctx context.Context, m *model.Role) error {
-	return r.DB(ctx).Create(m).Error
-}
-
-// RoleCreateIfAbsent 直接 Create；唯一约束冲突时通过反查精确翻译为
-// ErrRoleSidExists / ErrRoleNameExists，避免给前端返回裸 driver 错。
-//
-// 取舍（MySQL 语义）：INSERT IGNORE / OnConflict.DoNothing 会吞掉所有 unique 索引冲突且
-// 不告知是哪一列；旧实现据此把任何冲突一律映射为 sid 冲突，会误导前端。
-// 这里改为先 INSERT，1062 后再用 name / sid 反查（仅冲突路径多一次查询），
-// 业务码精确度优先于一次额外查询。极小概率的 TOCTOU（冲突行被并发删除）下
-// 回退到 ErrRoleSidExists（保守兜底）由上层兜底成 409，避免穿透成 500。
-// PostgreSQL 的 ON CONFLICT DO NOTHING 可指定 columns，切库时可重新评估。
-func (r *adminRepository) RoleCreateIfAbsent(ctx context.Context, m *model.Role) error {
-	err := r.DB(ctx).Create(m).Error
-	if err == nil {
-		return nil
-	}
-	if !errors.Is(err, gorm.ErrDuplicatedKey) {
-		return err
-	}
-	var existing model.Role
-	// .Unscoped() 确保能查到被软删除但仍占着 unique key 的行；
-	// .Limit(1) 避免拿整表后 First，同时配合 Unscoped 防止误匹配。
-	if e := r.db.WithContext(ctx).Unscoped().Where("name = ?", m.Name).Limit(1).First(&existing).Error; e == nil {
-		return v1.ErrRoleNameExists.WithCause(err)
-	}
-	if e := r.db.WithContext(ctx).Unscoped().Where("sid = ?", m.Sid).Limit(1).First(&existing).Error; e == nil {
-		return v1.ErrRoleSidExists.WithCause(err)
-	}
-	// 反查均未命中：冲突行已被并发删除（极小概率 TOCTOU）。
-	// 已确认 err 是 ErrDuplicatedKey，保守兜底为 ErrRoleSidExists 而不让 driver 错
-	// 穿透到 WriteResponse 落成 500——前端拿到 409 后重试一次大概率成功。
-	return v1.ErrRoleSidExists.WithCause(err)
-}
-
-func (r *adminRepository) RoleDelete(ctx context.Context, id uint) error {
-	result := r.DB(ctx).Where("id = ?", id).Delete(&model.Role{})
-	return ensureRowsAffected(r.DB(ctx), result, &model.Role{}, id)
-}
-
-func (r *adminRepository) GetRoles(ctx context.Context, req *v1.GetRoleListRequest) ([]model.Role, int64, error) {
-	var list []model.Role
-	var total int64
-	scope := r.DB(ctx).Model(&model.Role{})
-	if req.Name != "" {
-		scope = scope.Where("name LIKE ?", "%"+req.Name+"%")
-	}
-	if req.Sid != "" {
-		scope = scope.Where("sid = ?", req.Sid)
-	}
-	if err := scope.Count(&total).Error; err != nil {
-		return nil, total, err
-	}
-	if err := scope.Offset(req.Offset()).Limit(req.Limit()).Find(&list).Error; err != nil {
-		return nil, total, err
-	}
-	return list, total, nil
 }

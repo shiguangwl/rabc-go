@@ -6,7 +6,6 @@ package wire
 import (
 	"rabc-go/internal/auth"
 	"rabc-go/internal/handler"
-	"rabc-go/internal/job"
 	"rabc-go/internal/repository"
 	"rabc-go/internal/server"
 	"rabc-go/internal/service"
@@ -14,7 +13,6 @@ import (
 	"rabc-go/pkg/jwt"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/server/http"
-	"rabc-go/pkg/sid"
 
 	"github.com/google/wire"
 	"github.com/spf13/viper"
@@ -24,7 +22,6 @@ var repositorySet = wire.NewSet(
 	repository.NewDB,
 	repository.NewRepository,
 	repository.NewTransaction,
-	repository.NewUserRepository,
 	repository.NewCasbinEnforcer,
 	repository.NewAdminRepository,
 	repository.NewRedis,
@@ -33,7 +30,6 @@ var repositorySet = wire.NewSet(
 
 var serviceSet = wire.NewSet(
 	service.NewService,
-	service.NewUserService,
 	service.NewAdminService,
 	service.NewAuthService,
 	auth.LoadAuthConfig,
@@ -41,28 +37,20 @@ var serviceSet = wire.NewSet(
 
 var handlerSet = wire.NewSet(
 	handler.NewHandler,
-	handler.NewUserHandler,
 	handler.NewAdminHandler,
 	handler.NewAuthHandler,
 )
 
-var jobSet = wire.NewSet(
-	job.NewJob,
-	job.NewUserJob,
-)
 var serverSet = wire.NewSet(
 	server.NewHTTPServer,
-	server.NewJobServer,
 )
 
-// build App
 func newApp(
 	logger *log.Logger,
 	httpServer *http.Server,
-	jobServer *server.JobServer,
 ) *app.App {
 	return app.NewApp(
-		app.WithServer(httpServer, jobServer),
+		app.WithServer(httpServer),
 		app.WithName("demo-server"),
 		app.WithLogger(logger),
 	)
@@ -73,9 +61,7 @@ func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
 		repositorySet,
 		serviceSet,
 		handlerSet,
-		jobSet,
 		serverSet,
-		sid.NewSid,
 		jwt.NewJwt,
 		newApp,
 	))

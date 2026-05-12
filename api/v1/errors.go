@@ -67,7 +67,6 @@ var (
 	ErrNotFound            = newError(404, 404, "数据不存在")
 	ErrConflict            = newError(409, 409, "资源已存在")
 	ErrInternalServerError = newError(500, 500, "服务器错误~")
-	ErrNotImplemented      = newError(501, 501, "接口未实现")
 
 	// 业务扩展错误：业务码独立编号（>=1001），HTTP 码按语义映射
 	ErrUsernameAlreadyUse = newError(1001, 409, "用户名已被占用")
