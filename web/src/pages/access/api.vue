@@ -1,7 +1,7 @@
 <script setup>
 import * as Icons from '@ant-design/icons-vue'
-import {ColumnHeightOutlined, PlusOutlined, ReloadOutlined} from '@ant-design/icons-vue'
-import {createAdminApiApi, deleteAdminApiApi, getAdminApiApi, updateAdminApiApi} from '~@/api/common/admin'
+import { ColumnHeightOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { createAdminApiApi, deleteAdminApiApi, getAdminApiApi, updateAdminApiApi } from '~@/api/common/admin'
 
 const pagination = reactive({
   pageSize: 10,
@@ -42,7 +42,6 @@ const columns = shallowRef([
     dataIndex: 'method',
   },
 
-
   {
     title: '更新时间',
     dataIndex: 'updatedAt',
@@ -78,45 +77,46 @@ const rules = {
       message: 'Please enter path',
     },
   ],
-};
+}
 const loading = shallowRef(false)
 const dataSource = shallowRef([])
 const formModelSearch = reactive({
   id: 0,
-  path: "",
-  name: "",
-  group: "",
-  method: "",
+  path: '',
+  name: '',
+  group: '',
+  method: '',
 })
 
 // 定义选中值，初始化为空数组
-const selectedValue = ref([]);
+const selectedValue = ref([])
 
 // 处理选择变化
-const handleChangeGroup = (value) => {
-  if (value.length > 1) {
-    selectedValue.value = [value[value.length - 1]]; // 只保留最后一个值
-  } else {
-    selectedValue.value = value; // 更新值
-  }
-  formModel.group = selectedValue.value[0]
-};
 const formModel = reactive({
   id: 0,
-  path: "",
-  name: "",
-  group: "",
-  method: "GET",
+  path: '',
+  name: '',
+  group: '',
+  method: 'GET',
 })
-const resetForm = () => {
+function handleChangeGroup(value) {
+  if (value.length > 1) {
+    selectedValue.value = [value[value.length - 1]] // 只保留最后一个值
+  }
+  else {
+    selectedValue.value = value // 更新值
+  }
+  formModel.group = selectedValue.value[0]
+}
+function resetForm() {
   Object.assign(formModel, {
     id: 0,
-    path: "",
-    name: "",
-    group: "",
-    method: "GET",
-  });
-};
+    path: '',
+    name: '',
+    group: '',
+    method: 'GET',
+  })
+}
 const tableSize = ref(['large'])
 const sizeItems = ref([
   {
@@ -138,35 +138,35 @@ const sizeItems = ref([
 const open = ref(false)
 const groupOptions = ref([])
 const defaultExpandedRowKeys = ref([])
-const formatToTree = (data) => {
+function formatToTree(data) {
 // 使用 Map 来分组数据
-  const groupMap = new Map();
+  const groupMap = new Map()
 
   // 遍历原始数据，按 group 分组
-  data.forEach(item => {
-    const groupName = item.group;
+  data.forEach((item) => {
+    const groupName = item.group
     if (!groupMap.has(groupName)) {
-      groupMap.set(groupName, []);
+      groupMap.set(groupName, [])
       if (!defaultExpandedRowKeys.value.includes(groupName)) {
-        defaultExpandedRowKeys.value.push(groupName);
+        defaultExpandedRowKeys.value.push(groupName)
       }
     }
     // 将去掉 group 字段后的数据放入对应分组
     // const { group, ...rest } = item;
-    groupMap.get(groupName).push(item);
-  });
+    groupMap.get(groupName).push(item)
+  })
 
   // 转换为树形结构
-  const treeData = [];
+  const treeData = []
   groupMap.forEach((children, groupName) => {
     treeData.push({
       key: groupName,
       group: groupName,
-      children: children
-    });
-  });
+      children,
+    })
+  })
 
-  return treeData;
+  return treeData
 }
 
 async function init() {
@@ -174,7 +174,7 @@ async function init() {
     return
   loading.value = true
   try {
-    const {data} = await getAdminApiApi({
+    const { data } = await getAdminApiApi({
       ...formModelSearch,
       page: pagination.current,
       pageSize: pagination.pageSize,
@@ -182,9 +182,11 @@ async function init() {
     dataSource.value = formatToTree(data.list) ?? []
     pagination.total = data.total ?? 0
     groupOptions.value = data.groups ?? []
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -197,16 +199,16 @@ async function onSearch() {
 async function onReset() {
   Object.assign(formModelSearch, {
     id: 0,
-    path: "",
-    name: "",
-    group: "",
-    method: "",
-  });
+    path: '',
+    name: '',
+    group: '',
+    method: '',
+  })
 
   await init()
 }
 
-const onClose = () => {
+function onClose() {
   open.value = false
 }
 
@@ -218,7 +220,8 @@ async function onSubmit() {
       res = await updateAdminApiApi({
         ...formModel,
       })
-    } else {
+    }
+    else {
       res = await createAdminApiApi({
         ...formModel,
       })
@@ -229,18 +232,18 @@ async function onSubmit() {
       open.value = false
       if (formModel.id > 0) {
         message.success('更新成功')
-      } else {
+      }
+      else {
         message.success('创建成功')
       }
     }
-
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     close()
   }
-
-
 }
 
 async function handleCreate(record) {
@@ -251,7 +254,6 @@ async function handleCreate(record) {
     selectedValue.value = [record.group]
   }
   open.value = true
-
 }
 
 async function handleUpdate(record) {
@@ -270,14 +272,16 @@ async function handleDelete(record) {
   const close = message.loading('删除中......')
   try {
     const res = await deleteAdminApiApi({
-      id: record.id
+      id: record.id,
     })
     if (res.code === 0)
       await init()
     message.success('删除成功')
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     close()
   }
 }
@@ -300,7 +304,6 @@ function filterAction(value) {
   })
 }
 
-
 onMounted(() => {
   init()
 })
@@ -313,13 +316,13 @@ onMounted(() => {
         <a-row :gutter="[15, 0]">
           <a-col :span="4">
             <a-form-item name="group" label="API分组">
-              <a-input style="display: none" v-model:value="formModelSearch.group" placeholder="描述API的功能"/>
+              <a-input v-model:value="formModelSearch.group" style="display: none" placeholder="描述API的功能" />
 
               <a-select
-                  v-model:value="selectedValue"
-                  mode="tags"
-                  :max-tag-count="1"
-                  @change="handleChangeGroup"
+                v-model:value="selectedValue"
+                mode="tags"
+                :max-tag-count="1"
+                @change="handleChangeGroup"
               >
                 <a-select-option v-for="item in groupOptions" :key="item" :value="item">
                   {{ item }}
@@ -329,22 +332,32 @@ onMounted(() => {
           </a-col>
           <a-col :span="4">
             <a-form-item name="name" label="API名称">
-              <a-input v-model:value="formModelSearch.name"/>
+              <a-input v-model:value="formModelSearch.name" />
             </a-form-item>
           </a-col>
           <a-col :span="4">
             <a-form-item name="name" label="API路由">
-              <a-input v-model:value="formModelSearch.path"/>
+              <a-input v-model:value="formModelSearch.path" />
             </a-form-item>
           </a-col>
           <a-col :span="4">
             <a-form-item name="name" label="Method">
               <a-select v-model:value="formModelSearch.method" placeholder="">
-                <a-select-option value="">All</a-select-option>
-                <a-select-option value="GET">GET</a-select-option>
-                <a-select-option value="POST">POST</a-select-option>
-                <a-select-option value="PUT">PUT</a-select-option>
-                <a-select-option value="DELETE">DELETE</a-select-option>
+                <a-select-option value="">
+                  All
+                </a-select-option>
+                <a-select-option value="GET">
+                  GET
+                </a-select-option>
+                <a-select-option value="POST">
+                  POST
+                </a-select-option>
+                <a-select-option value="PUT">
+                  PUT
+                </a-select-option>
+                <a-select-option value="DELETE">
+                  DELETE
+                </a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
@@ -356,10 +369,8 @@ onMounted(() => {
               <a-button :loading="loading" @click="onReset">
                 重置
               </a-button>
-
             </a-space>
           </a-col>
-
         </a-row>
       </a-form>
     </a-card>
@@ -368,26 +379,28 @@ onMounted(() => {
         <a-space size="middle">
           <a-button type="primary" @click="handleCreate">
             <template #icon>
-              <PlusOutlined/>
+              <PlusOutlined />
             </template>
             添加API
           </a-button>
           <a-tooltip title="刷新">
-            <ReloadOutlined @click="onSearch"/>
+            <ReloadOutlined @click="onSearch" />
           </a-tooltip>
           <a-tooltip title="密度">
             <a-dropdown trigger="click">
-              <ColumnHeightOutlined/>
+              <ColumnHeightOutlined />
               <template #overlay>
-                <a-menu v-model:selected-keys="tableSize" :items="sizeItems" @click="handleSizeChange"/>
+                <a-menu v-model:selected-keys="tableSize" :items="sizeItems" @click="handleSizeChange" />
               </template>
             </a-dropdown>
           </a-tooltip>
         </a-space>
       </template>
-      <a-table :loading="loading" :columns="columns" :data-source="dataSource"
-               :defaultExpandedRowKeys="defaultExpandedRowKeys"
-               :size="tableSize[0]" :pagination="pagination" :expand-column-width="100">
+      <a-table
+        :loading="loading" :columns="columns" :data-source="dataSource"
+        :default-expanded-row-keys="defaultExpandedRowKeys"
+        :size="tableSize[0]" :pagination="pagination" :expand-column-width="100"
+      >
         <template #bodyCell="column">
           <template v-if="column?.column?.dataIndex === 'name'">
             <div flex gap-2>
@@ -398,16 +411,16 @@ onMounted(() => {
           </template>
           <template v-if="column?.column?.dataIndex === 'method'">
             <div flex gap-2>
-              <a-tag v-if="column?.record.method==='GET'" color="success">
+              <a-tag v-if="column?.record.method === 'GET'" color="success">
                 {{ column?.record.method }}
               </a-tag>
-              <a-tag v-if="column?.record.method==='POST'" color="warning">
+              <a-tag v-if="column?.record.method === 'POST'" color="warning">
                 {{ column?.record.method }}
               </a-tag>
-              <a-tag v-if="column?.record.method==='PUT'" color="pink">
+              <a-tag v-if="column?.record.method === 'PUT'" color="pink">
                 {{ column?.record.method }}
               </a-tag>
-              <a-tag v-if="column?.record.method==='DELETE'" color="error">
+              <a-tag v-if="column?.record.method === 'DELETE'" color="error">
                 {{ column?.record.method }}
               </a-tag>
             </div>
@@ -427,7 +440,7 @@ onMounted(() => {
           </template>
           <template v-if="column?.column?.dataIndex === 'title'">
             <div gap-2>
-              <component :is="Icons[column.record.icon]" v-if="column.record.icon"/>
+              <component :is="Icons[column.record.icon]" v-if="column.record.icon" />
               {{ column.record.title }}
             </div>
           </template>
@@ -435,28 +448,27 @@ onMounted(() => {
       </a-table>
     </a-card>
 
-
     <a-drawer
-        :title="(formModel.id>0?'编辑':'添加') +'API'"
-        :width="550"
-        :open="open"
-        :body-style="{ paddingBottom: '80px' }"
-        :footer-style="{ textAlign: 'right' }"
-        @close="handleClose"
+      :title="`${formModel.id > 0 ? '编辑' : '添加'}API`"
+      :width="550"
+      :open="open"
+      :body-style="{ paddingBottom: '80px' }"
+      :footer-style="{ textAlign: 'right' }"
+      @close="handleClose"
     >
       <a-form :model="formModel" :rules="rules" layout="horizontal">
         <a-row :gutter="16">
           <a-col :span="24">
             <a-form-item label="API分组" name="group">
-              <a-input style="display: none" v-model:value="formModel.group" placeholder="描述API的功能"/>
+              <a-input v-model:value="formModel.group" style="display: none" placeholder="描述API的功能" />
 
               <a-select
-                  v-model:value="selectedValue"
-                  mode="tags"
-                  placeholder="分组不存在则自动创建"
-                  :max-tag-count="1"
-                  @change="handleChangeGroup"
-                  style="width: 200px"
+                v-model:value="selectedValue"
+                mode="tags"
+                placeholder="分组不存在则自动创建"
+                :max-tag-count="1"
+                style="width: 200px"
+                @change="handleChangeGroup"
               >
                 <a-select-option v-for="item in groupOptions" :key="item" :value="item">
                   {{ item }}
@@ -466,35 +478,43 @@ onMounted(() => {
           </a-col>
           <a-col :span="24">
             <a-form-item label="API名称" name="name">
-              <a-input v-model:value="formModel.name" placeholder="描述API的功能"/>
+              <a-input v-model:value="formModel.name" placeholder="描述API的功能" />
             </a-form-item>
-
-
           </a-col>
 
           <a-col :span="24">
             <a-form-item label="Method" name="method">
               <a-select v-model:value="formModel.method" placeholder="">
-                <a-select-option value="GET">GET</a-select-option>
-                <a-select-option value="POST">POST</a-select-option>
-                <a-select-option value="PUT">PUT</a-select-option>
-                <a-select-option value="DELETE">DELETE</a-select-option>
+                <a-select-option value="GET">
+                  GET
+                </a-select-option>
+                <a-select-option value="POST">
+                  POST
+                </a-select-option>
+                <a-select-option value="PUT">
+                  PUT
+                </a-select-option>
+                <a-select-option value="DELETE">
+                  DELETE
+                </a-select-option>
               </a-select>
             </a-form-item>
-
           </a-col>
           <a-col :span="24">
             <a-form-item label="API地址" name="path">
-              <a-input v-model:value="formModel.path" placeholder="示例：/v1/users"/>
+              <a-input v-model:value="formModel.path" placeholder="示例：/v1/users" />
             </a-form-item>
           </a-col>
         </a-row>
-
       </a-form>
       <template #extra>
         <a-space>
-          <a-button @click="onClose">取消</a-button>
-          <a-button type="primary" @click="onSubmit">提交</a-button>
+          <a-button @click="onClose">
+            取消
+          </a-button>
+          <a-button type="primary" @click="onSubmit">
+            提交
+          </a-button>
         </a-space>
       </template>
     </a-drawer>

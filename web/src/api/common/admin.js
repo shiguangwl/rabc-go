@@ -1,34 +1,44 @@
 export function getRolesApi(params) {
-  return useGet('/v1/admin/roles',params)
+  return useGet('/v1/admin/roles', params)
 }
 export function createRoleApi(params) {
-  return usePost('/v1/admin/role',params)
+  return usePost('/v1/admin/role', params)
 }
 export function updateRoleApi(params) {
-  return usePut('/v1/admin/role',params)
+  return usePut('/v1/admin/role', params)
 }
 export function deleteRoleApi(params) {
-  return useDelete('/v1/admin/role',params)
+  return useDelete('/v1/admin/role', params)
 }
 export function getUserPermissionsApi(params) {
-  return useGet('/v1/admin/user/permissions',params)
+  return useGet('/v1/admin/user/permissions', params)
 }
 export function getRolePermissionsApi(params) {
-  return useGet('/v1/admin/role/permissions',params)
+  return useGet('/v1/admin/role/permissions', params)
 }
 export function updateRolePermissionsApi(params) {
-  return usePut('/v1/admin/role/permission',params)
+  return usePut('/v1/admin/role/permission', params)
 }
 
 export function getAdminApiApi(params) {
-  return useGet('/v1/admin/apis',params)
+  return useGet('/v1/admin/apis', params)
 }
 export function createAdminApiApi(params) {
-  return usePost('/v1/admin/api',params)
+  return usePost('/v1/admin/api', params)
 }
 export function updateAdminApiApi(params) {
-  return usePut('/v1/admin/api',params)
+  return usePut('/v1/admin/api', params)
 }
 export function deleteAdminApiApi(params) {
-  return useDelete('/v1/admin/api',params)
+  return useDelete('/v1/admin/api', params)
+}
+
+export function getUserSessionsApi(params) {
+  return useGet('/v1/admin/user/sessions', params)
+}
+export function revokeUserSessionsApi(params) {
+  return useDelete('/v1/admin/user/sessions', params)
+}
+export function kickUserSessionApi(params) {
+  return useDelete('/v1/admin/user/session', params)
 }

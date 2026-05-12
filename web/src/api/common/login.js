@@ -1,10 +1,18 @@
+import { usePost } from '~/utils/request'
+
 export function loginApi(params) {
   return usePost('/v1/login', params, {
-    // 设置为false的时候不会携带token
+    // 登录接口不能携带旧 token，避免过期凭证影响登录请求。
     token: false,
-    // 开发模式下使用自定义的接口
     customDev: false,
-    // 是否开启全局请求loading
     loading: true,
+  })
+}
+
+// logout 只靠 refreshToken 定位会话，不能自动注入 Authorization。
+export function logoutApi(refreshToken) {
+  return usePost('/v1/auth/logout', { refreshToken }, {
+    token: false,
+    loading: false,
   })
 }

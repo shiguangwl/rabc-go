@@ -7,5 +7,5 @@ defineOptions({
 </script>
 
 <template>
-  <a decoration-none href="https://github.com/go-nunu/nunu" target="_blank"><GithubOutlined style="margin-right: 5px"/>Go-NuNu</a>
+  <a decoration-none href="https://github.com/go-nunu/nunu" target="_blank"><GithubOutlined style="margin-right: 5px" />Go-NuNu</a>
 </template>

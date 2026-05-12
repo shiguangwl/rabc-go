@@ -65,7 +65,7 @@ const showLogo = computed(() => {
     <div v-if="showLogo" class="ant-pro-sider-logo" :class="collapsed && !isMobile ? 'ant-pro-sider-collapsed' : ''">
       <a>
         <img :src="logo" alt="logo">
-        <h1 :style="{color: theme === 'inverted'||theme==='dark' ? '#fff' : '#000'}" v-if="!collapsed || isMobile">{{ title }}</h1>
+        <h1 v-if="!collapsed || isMobile" :style="{ color: theme === 'inverted' || theme === 'dark' ? '#fff' : '#000' }">{{ title }}</h1>
       </a>
     </div>
     <div class="flex-1 of-x-hidden of-y-auto scrollbar">

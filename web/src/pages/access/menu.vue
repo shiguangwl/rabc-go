@@ -1,13 +1,13 @@
 <script setup>
 import * as Icons from '@ant-design/icons-vue'
-import {ColumnHeightOutlined, PlusOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons-vue'
-import {createMenuApi, deleteMenusApi, getAdminMenusApi, updateMenuApi} from '~@/api/common/menu'
-import {useUserStore} from "~/stores/user.js";
+import { ColumnHeightOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { createMenuApi, deleteMenusApi, getAdminMenusApi, updateMenuApi } from '~@/api/common/menu'
+import { useUserStore } from '~/stores/user.js'
 
 const iconList = Object.keys(Icons).filter((key) => {
   // 检查是否是有效的 Vue 组件（图标通常是函数或对象）
-  return !(key === 'default' || key === "getTwoToneColor" || key === "setTwoToneColor" || key === "createFromIconfontCN");
-});
+  return !(key === 'default' || key === 'getTwoToneColor' || key === 'setTwoToneColor' || key === 'createFromIconfontCN')
+})
 const message = useMessage()
 const columns = shallowRef([
   {
@@ -99,43 +99,43 @@ const rules = {
       message: 'Please select an path',
     },
   ],
-};
+}
 const loading = shallowRef(false)
 const dataSource = shallowRef([])
 const formModel = reactive({
   id: 0,
   parentId: 0,
   weight: 0,
-  parentTitle: "根菜单",
-  path: "",
-  name: "",
-  title: "",
-  component: "",
-  locale: "",
-  icon: "",
-  redirect: "",
-  url: "",
+  parentTitle: '根菜单',
+  path: '',
+  name: '',
+  title: '',
+  component: '',
+  locale: '',
+  icon: '',
+  redirect: '',
+  url: '',
   keepAlive: false,
   hideInMenu: false,
 })
-const resetForm = () => {
+function resetForm() {
   Object.assign(formModel, {
     id: 0,
     parentId: 0,
     weight: 0,
-    parentTitle: "根菜单",
-    path: "",
-    name: "",
-    title: "",
-    component: "",
-    locale: "",
-    icon: "",
-    redirect: "",
-    url: "",
+    parentTitle: '根菜单',
+    path: '',
+    name: '',
+    title: '',
+    component: '',
+    locale: '',
+    icon: '',
+    redirect: '',
+    url: '',
     keepAlive: false,
     hideInMenu: false,
-  });
-};
+  })
+}
 const tableSize = ref(['large'])
 const sizeItems = ref([
   {
@@ -170,34 +170,35 @@ const options = computed(() => {
     }
   })
 })
-const formatToTree = (arr) => {
+function formatToTree(arr) {
   // 创建节点映射
-  const map = new Map();
-  arr.forEach(item => map.set(item.id, {...item}));
+  const map = new Map()
+  arr.forEach(item => map.set(item.id, { ...item }))
 
   // 创建结果数组
-  const result = [];
+  const result = []
 
   // 遍历所有节点
-  arr.forEach(item => {
-    const node = map.get(item.id);
-    node.key=node.id
+  arr.forEach((item) => {
+    const node = map.get(item.id)
+    node.key = node.id
     // 如果是顶级节点（parentId 为 0）或父节点不存在
     if (item.parentId === 0 || !map.has(item.parentId)) {
-      result.push(node);
-    } else {
+      result.push(node)
+    }
+    else {
       // 找到父节点并添加子节点
-      const parent = map.get(item.parentId);
+      const parent = map.get(item.parentId)
       if (parent) {
         // 如果父节点还没有 children，则初始化
         if (!parent.children) {
-          parent.children = [];
+          parent.children = []
         }
-        parent.children.push(node);
+        parent.children.push(node)
       }
     }
-  });
-  return result;
+  })
+  return result
 }
 const dropdownVisible = ref(false)
 const getCheckList = computed(() => columns.value.map(item => item.dataIndex))
@@ -212,11 +213,13 @@ async function init() {
     return
   loading.value = true
   try {
-    const {data} = await getAdminMenusApi({})
+    const { data } = await getAdminMenusApi({})
     dataSource.value = formatToTree(data.list) ?? []
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -224,7 +227,6 @@ async function init() {
 async function onSearch() {
   await init()
 }
-
 
 async function onSubmit() {
   const close = message.loading('提交中......')
@@ -235,7 +237,8 @@ async function onSubmit() {
       res = await updateMenuApi({
         ...formModel,
       })
-    } else {
+    }
+    else {
       res = await createMenuApi({
         ...formModel,
       })
@@ -247,18 +250,18 @@ async function onSubmit() {
       open.value = false
       if (formModel.id > 0) {
         message.success('更新成功')
-      } else {
+      }
+      else {
         message.success('创建成功')
       }
     }
-
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     close()
   }
-
-
 }
 
 async function handleCreate(record) {
@@ -268,13 +271,12 @@ async function handleCreate(record) {
     formModel.parentTitle = record.title
   }
   open.value = true
-
 }
 
 async function handleUpdate(record) {
   resetForm()
   Object.assign(formModel, record)
-  let parent = dataSource.value.find(item => item.id === record.parentId)
+  const parent = dataSource.value.find(item => item.id === record.parentId)
   formModel.parentTitle = parent ? parent.title : '根菜单'
   open.value = true
 }
@@ -288,16 +290,18 @@ async function handleDelete(record) {
   const close = message.loading('删除中......')
   try {
     const res = await deleteMenusApi({
-      id: record.id
+      id: record.id,
     })
-    if (res.code === 0){
+    if (res.code === 0) {
       await init()
       await useUserStore().generateDynamicRoutes()
       message.success('删除成功')
     }
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     close()
   }
 }
@@ -331,11 +335,11 @@ function handleCheckAllChange(e) {
 }
 
 watch(
-    () => state.checkList,
-    (val) => {
-      state.indeterminate = !!val.length && val.length < getCheckList.value.length
-      state.checkAll = val.length === getCheckList.value.length
-    },
+  () => state.checkList,
+  (val) => {
+    state.indeterminate = !!val.length && val.length < getCheckList.value.length
+    state.checkAll = val.length === getCheckList.value.length
+  },
 )
 
 function handleResetChange() {
@@ -360,29 +364,31 @@ onMounted(() => {
         <a-space size="middle">
           <a-button type="primary" @click="handleCreate">
             <template #icon>
-              <PlusOutlined/>
+              <PlusOutlined />
             </template>
             添加根菜单
           </a-button>
           <a-tooltip title="刷新">
-            <ReloadOutlined @click="onSearch"/>
+            <ReloadOutlined @click="onSearch" />
           </a-tooltip>
           <a-tooltip title="密度">
             <a-dropdown trigger="click">
-              <ColumnHeightOutlined/>
+              <ColumnHeightOutlined />
               <template #overlay>
-                <a-menu v-model:selected-keys="tableSize" :items="sizeItems" @click="handleSizeChange"/>
+                <a-menu v-model:selected-keys="tableSize" :items="sizeItems" @click="handleSizeChange" />
               </template>
             </a-dropdown>
           </a-tooltip>
           <a-tooltip title="列设置">
             <a-dropdown v-model:open="dropdownVisible" trigger="click">
-              <SettingOutlined/>
+              <SettingOutlined />
               <template #overlay>
                 <a-card>
                   <template #title>
-                    <a-checkbox v-model:checked="state.checkAll" :indeterminate="state.indeterminate"
-                                @change="handleCheckAllChange">
+                    <a-checkbox
+                      v-model:checked="state.checkAll" :indeterminate="state.indeterminate"
+                      @change="handleCheckAllChange"
+                    >
                       列选择
                     </a-checkbox>
                   </template>
@@ -391,16 +397,20 @@ onMounted(() => {
                       重置
                     </a-button>
                   </template>
-                  <a-checkbox-group v-model:value="state.checkList" :options="options"
-                                    style="display: flex; flex-direction: column;" @change="handleCheckChange"/>
+                  <a-checkbox-group
+                    v-model:value="state.checkList" :options="options"
+                    style="display: flex; flex-direction: column;" @change="handleCheckChange"
+                  />
                 </a-card>
               </template>
             </a-dropdown>
           </a-tooltip>
         </a-space>
       </template>
-      <a-table :loading="loading" :columns="filterColumns" :pagination="false" :data-source="dataSource"
-               :size="tableSize[0]" :expand-column-width="100">
+      <a-table
+        :loading="loading" :columns="filterColumns" :pagination="false" :data-source="dataSource"
+        :size="tableSize[0]" :expand-column-width="100"
+      >
         <template #bodyCell="column">
           <template v-if="column?.column?.dataIndex === 'action'">
             <div flex gap-2>
@@ -417,7 +427,7 @@ onMounted(() => {
           </template>
           <template v-if="column?.column?.dataIndex === 'title'">
             <div gap-2>
-              <component :is="Icons[column.record.icon]" v-if="column.record.icon"/>
+              <component :is="Icons[column.record.icon]" v-if="column.record.icon" />
               {{ column.record.title }}
             </div>
           </template>
@@ -425,45 +435,42 @@ onMounted(() => {
       </a-table>
     </a-card>
 
-
     <a-drawer
-        :title="formModel.id>0?'编辑':'添加' +(formModel.parentId>0?'子菜单':'菜单')"
-        :width="720"
-        :open="open"
-        :body-style="{ paddingBottom: '80px' }"
-        :footer-style="{ textAlign: 'right' }"
-        @close="handleClose"
+      :title="formModel.id > 0 ? '编辑' : `添加${formModel.parentId > 0 ? '子菜单' : '菜单'}`"
+      :width="720"
+      :open="open"
+      :body-style="{ paddingBottom: '80px' }"
+      :footer-style="{ textAlign: 'right' }"
+      @close="handleClose"
     >
       <a-form :model="formModel" :rules="rules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="组件路径" name="component">
-              <a-input v-model:value="formModel.component" placeholder="例：/dashboard/analysis"/>
+              <a-input v-model:value="formModel.component" placeholder="例：/dashboard/analysis" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="路由地址" name="path">
-              <a-input v-model:value="formModel.path" placeholder="例：/dashboard/analysis"/>
+              <a-input v-model:value="formModel.path" placeholder="例：/dashboard/analysis" />
             </a-form-item>
-
-
           </a-col>
         </a-row>
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="菜单标题" name="title">
-              <a-input v-model:value="formModel.title" placeholder="例：分析页"/>
+              <a-input v-model:value="formModel.title" placeholder="例：分析页" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="路由标识" name="name">
-              <a-input v-model:value="formModel.name" placeholder="例：DashboardAnalysis"/>
+              <a-input v-model:value="formModel.name" placeholder="例：DashboardAnalysis" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="父级菜单" name="parentId">
-              <a-input disabled v-model:value="formModel.parentTitle"/>
-              <a-input style="display:none" v-model:value="formModel.parentId"/>
+              <a-input v-model:value="formModel.parentTitle" disabled />
+              <a-input v-model:value="formModel.parentId" style="display:none" />
             </a-form-item>
           </a-col>
 
@@ -473,8 +480,8 @@ onMounted(() => {
                 <a-select-option value="">
                   <span style="margin-left: 5px;">无图标</span>
                 </a-select-option>
-                <a-select-option :value="item" v-for="(item,key) in iconList">
-                  <component :is="Icons[item]"/>
+                <a-select-option v-for="item in iconList" :key="item" :value="item">
+                  <component :is="Icons[item]" />
                   <span style="margin-left: 5px;">{{ item }}</span>
                 </a-select-option>
               </a-select>
@@ -483,37 +490,47 @@ onMounted(() => {
           <a-col :span="12">
             <a-form-item label="是否保活" name="keepAlive">
               <a-select v-model:value="formModel.keepAlive" placeholder="">
-                <a-select-option :value="true">是</a-select-option>
-                <a-select-option :value="false">否</a-select-option>
+                <a-select-option :value="true">
+                  是
+                </a-select-option>
+                <a-select-option :value="false">
+                  否
+                </a-select-option>
               </a-select>
             </a-form-item>
-
           </a-col>
           <a-col :span="12">
             <a-form-item label="是否隐藏" name="hideInMenu">
               <a-select v-model:value="formModel.hideInMenu" placeholder="">
-                <a-select-option :value="true">是</a-select-option>
-                <a-select-option :value="false">否</a-select-option>
+                <a-select-option :value="true">
+                  是
+                </a-select-option>
+                <a-select-option :value="false">
+                  否
+                </a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="排序权重" name="weight">
-              <a-input type="number" v-model:value="formModel.weight" placeholder="权重越大越靠前"/>
+              <a-input v-model:value="formModel.weight" type="number" placeholder="权重越大越靠前" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="多语言标识" name="locale">
-              <a-input v-model:value="formModel.locale" placeholder="置空则使用菜单标题"/>
+              <a-input v-model:value="formModel.locale" placeholder="置空则使用菜单标题" />
             </a-form-item>
           </a-col>
         </a-row>
-
       </a-form>
       <template #extra>
         <a-space>
-          <a-button @click="onClose">取消</a-button>
-          <a-button type="primary" @click="onSubmit">提交</a-button>
+          <a-button @click="onClose">
+            取消
+          </a-button>
+          <a-button type="primary" @click="onSubmit">
+            提交
+          </a-button>
         </a-space>
       </template>
     </a-drawer>

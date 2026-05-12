@@ -1,11 +1,83 @@
 <script setup>
-import {Modal} from 'ant-design-vue'
-import {ColumnHeightOutlined, PlusOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons-vue'
-import {createAdminUserApi, deleteAdminUserApi, getAdminUsersApi, updateAdminUserApi} from '~@/api/common/user'
-import {getRolesApi} from "~/api/common/admin.js";
-
+import { Modal } from 'ant-design-vue'
+import { ColumnHeightOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { createAdminUserApi, deleteAdminUserApi, getAdminUsersApi, updateAdminUserApi } from '~@/api/common/user'
+import {
+  getRolesApi,
+  getUserSessionsApi,
+  kickUserSessionApi,
+  revokeUserSessionsApi,
+} from '~/api/common/admin.js'
 
 const message = useMessage()
+
+// 会话弹窗只展示服务端当前可吊销的最小信息，避免前端推断会话状态。
+const sessionsModal = reactive({
+  open: false,
+  uid: 0,
+  username: '',
+  loading: false,
+  list: [],
+})
+
+async function loadUserSessions(uid) {
+  sessionsModal.loading = true
+  try {
+    const { data } = await getUserSessionsApi({ id: uid })
+    sessionsModal.list = data?.list ?? []
+  }
+  catch (e) {
+    console.log(e)
+  }
+  finally {
+    sessionsModal.loading = false
+  }
+}
+
+async function handleSessions(record) {
+  sessionsModal.uid = record.id
+  sessionsModal.username = record.username
+  sessionsModal.open = true
+  await loadUserSessions(record.id)
+}
+
+async function handleRevokeAll() {
+  if (!sessionsModal.uid)
+    return
+  Modal.confirm({
+    title: '确认踢出全部会话？',
+    content: `用户 ${sessionsModal.username} 当前 ${sessionsModal.list.length} 个会话将立即失效`,
+    onOk: async () => {
+      try {
+        await revokeUserSessionsApi({ id: sessionsModal.uid })
+        message.success('已踢出全部会话')
+        await loadUserSessions(sessionsModal.uid)
+      }
+      catch (e) {
+        console.log(e)
+      }
+    },
+  })
+}
+
+async function handleKickSession(sid) {
+  try {
+    await kickUserSessionApi({ id: sessionsModal.uid, sessionID: sid })
+    message.success('已踢下线')
+    await loadUserSessions(sessionsModal.uid)
+  }
+  catch (e) {
+    console.log(e)
+  }
+}
+
+function formatExp(ts) {
+  if (!ts)
+    return '-'
+  const d = new Date(ts * 1000)
+  return d.toLocaleString()
+}
+
 const columns = shallowRef([
   {
     title: '#',
@@ -30,6 +102,10 @@ const columns = shallowRef([
   {
     title: '角色',
     dataIndex: 'roles',
+  },
+  {
+    title: '最后登录',
+    dataIndex: 'lastLoginAt',
   },
   {
     title: '创建时间',
@@ -63,34 +139,34 @@ const dataSource = shallowRef([])
 const roleMap = shallowRef({})
 const formModelSearch = reactive({
   id: null,
-  username: "",
-  nickname: "",
-  email: "",
-  phone: "",
+  username: '',
+  nickname: '',
+  email: '',
+  phone: '',
   roles: [],
 })
 const formModel = reactive({
   id: 0,
-  username: "",
-  nickname: "",
-  password: "",
+  username: '',
+  nickname: '',
+  password: '',
   changePassword: false,
-  email: "",
-  phone: "",
+  email: '',
+  phone: '',
   roles: [],
 })
-const resetForm = () => {
+function resetForm() {
   Object.assign(formModel, {
     id: 0,
-    username: "",
-    nickname: "",
-    password: "",
+    username: '',
+    nickname: '',
+    password: '',
     changePassword: false,
-    email: "",
-    phone: "",
+    email: '',
+    phone: '',
     roles: [],
-  });
-};
+  })
+}
 const rules = {
   username: [
     {
@@ -110,7 +186,7 @@ const rules = {
       message: '请分配角色',
     },
   ],
-};
+}
 const tableSize = ref(['large'])
 const sizeItems = ref([
   {
@@ -153,7 +229,7 @@ const state = reactive({
   checkAll: true,
   checkList: getCheckList.value,
 })
-const onClose = () => {
+function onClose() {
   open.value = false
 }
 
@@ -162,7 +238,7 @@ async function init() {
     return
   loading.value = true
   try {
-    const {data: rolesData} = await getRolesApi({
+    const { data: rolesData } = await getRolesApi({
       page: pagination.current,
       pageSize: pagination.pageSize,
     })
@@ -170,17 +246,18 @@ async function init() {
       acc[cur.sid] = cur.name
       return acc
     }, {})
-    const {data} = await getAdminUsersApi({
+    const { data } = await getAdminUsersApi({
       ...formModelSearch,
       page: pagination.current,
       pageSize: pagination.pageSize,
     })
     dataSource.value = data.list ?? []
     pagination.total = data.total ?? 0
-
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -193,14 +270,14 @@ async function onSearch() {
 async function onReset() {
   Object.assign(formModelSearch, {
     id: null,
-    username: "",
-    nickname: "",
-    password: "",
+    username: '',
+    nickname: '',
+    password: '',
     changePassword: false,
-    email: "",
-    phone: "",
+    email: '',
+    phone: '',
     roles: [],
-  });
+  })
   await init()
 }
 
@@ -229,13 +306,14 @@ async function handleDelete(record) {
     if (res.code === 0)
       await init()
     message.success('删除成功')
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     close()
   }
 }
-
 
 function handleSizeChange(e) {
   tableSize.value[0] = e.key
@@ -261,11 +339,11 @@ function handleCheckAllChange(e) {
 }
 
 watch(
-    () => state.checkList,
-    (val) => {
-      state.indeterminate = !!val.length && val.length < getCheckList.value.length
-      state.checkAll = val.length === getCheckList.value.length
-    },
+  () => state.checkList,
+  (val) => {
+    state.indeterminate = !!val.length && val.length < getCheckList.value.length
+    state.checkAll = val.length === getCheckList.value.length
+  },
 )
 
 function handleResetChange() {
@@ -290,7 +368,8 @@ async function onSubmit() {
       res = await updateAdminUserApi({
         ...formModel,
       })
-    } else {
+    }
+    else {
       res = await createAdminUserApi({
         ...formModel,
       })
@@ -301,21 +380,19 @@ async function onSubmit() {
       open.value = false
       if (formModel.id > 0) {
         message.success('更新成功')
-      } else {
+      }
+      else {
         message.success('创建成功')
       }
     }
-
-  } catch (e) {
+  }
+  catch (e) {
     console.log(e)
-  } finally {
+  }
+  finally {
     close()
   }
-
-
 }
-
-
 </script>
 
 <template>
@@ -325,27 +402,27 @@ async function onSubmit() {
         <a-row :gutter="[15, 0]">
           <a-col :span="8">
             <a-form-item name="id" label="用户ID">
-              <a-input v-model:value="formModelSearch.id"/>
+              <a-input v-model:value="formModelSearch.id" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item name="username" label="用户名称">
-              <a-input v-model:value="formModelSearch.username"/>
+              <a-input v-model:value="formModelSearch.username" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item name="nickname" label="用户名称">
-              <a-input v-model:value="formModelSearch.nickname"/>
+              <a-input v-model:value="formModelSearch.nickname" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item name="email" label="邮箱">
-              <a-input v-model:value="formModelSearch.email"/>
+              <a-input v-model:value="formModelSearch.email" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item name="phone" label="手机号">
-              <a-input v-model:value="formModelSearch.phone"/>
+              <a-input v-model:value="formModelSearch.phone" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -356,10 +433,8 @@ async function onSubmit() {
               <a-button :loading="loading" @click="onReset">
                 重置
               </a-button>
-
             </a-space>
           </a-col>
-
         </a-row>
       </a-form>
     </a-card>
@@ -368,29 +443,31 @@ async function onSubmit() {
         <a-space size="middle">
           <a-button type="primary" @click="handleCreate">
             <template #icon>
-              <PlusOutlined/>
+              <PlusOutlined />
             </template>
             新增
           </a-button>
           <a-tooltip title="刷新">
-            <ReloadOutlined @click="onSearch"/>
+            <ReloadOutlined @click="onSearch" />
           </a-tooltip>
           <a-tooltip title="密度">
             <a-dropdown trigger="click">
-              <ColumnHeightOutlined/>
+              <ColumnHeightOutlined />
               <template #overlay>
-                <a-menu v-model:selected-keys="tableSize" :items="sizeItems" @click="handleSizeChange"/>
+                <a-menu v-model:selected-keys="tableSize" :items="sizeItems" @click="handleSizeChange" />
               </template>
             </a-dropdown>
           </a-tooltip>
           <a-tooltip title="列设置">
             <a-dropdown v-model:open="dropdownVisible" trigger="click">
-              <SettingOutlined/>
+              <SettingOutlined />
               <template #overlay>
                 <a-card>
                   <template #title>
-                    <a-checkbox v-model:checked="state.checkAll" :indeterminate="state.indeterminate"
-                                @change="handleCheckAllChange">
+                    <a-checkbox
+                      v-model:checked="state.checkAll" :indeterminate="state.indeterminate"
+                      @change="handleCheckAllChange"
+                    >
                       列选择
                     </a-checkbox>
                   </template>
@@ -399,20 +476,31 @@ async function onSubmit() {
                       重置
                     </a-button>
                   </template>
-                  <a-checkbox-group v-model:value="state.checkList" :options="options"
-                                    style="display: flex; flex-direction: column;" @change="handleCheckChange"/>
+                  <a-checkbox-group
+                    v-model:value="state.checkList" :options="options"
+                    style="display: flex; flex-direction: column;" @change="handleCheckChange"
+                  />
                 </a-card>
               </template>
             </a-dropdown>
           </a-tooltip>
         </a-space>
       </template>
-      <a-table :loading="loading" :columns="filterColumns" :data-source="dataSource" :pagination="pagination"
-               :size="tableSize[0]">
+      <a-table
+        :loading="loading" :columns="filterColumns" :data-source="dataSource" :pagination="pagination"
+        :size="tableSize[0]"
+      >
         <template #bodyCell="scope">
+          <template v-if="scope?.column?.dataIndex === 'lastLoginAt'">
+            <span :style="{ color: scope.record.lastLoginAt ? '' : 'var(--text-color-2)' }">
+              {{ scope.record.lastLoginAt || '从未登录' }}
+            </span>
+          </template>
           <template v-if="scope?.column?.dataIndex === 'roles'">
             <div flex gap-2>
-              <a-tag v-for="item in scope.record.roles" :key="item">{{ roleMap[item] }}</a-tag>
+              <a-tag v-for="item in scope.record.roles" :key="item">
+                {{ roleMap[item] }}
+              </a-tag>
             </div>
           </template>
           <template v-if="scope?.column?.dataIndex === 'action'">
@@ -420,7 +508,10 @@ async function onSubmit() {
               <a @click="handleUpdate(scope?.record)">
                 编辑
               </a>
-              <a v-if="scope?.record.id>1" c-error @click="handleDelete(scope?.record)">
+              <a @click="handleSessions(scope?.record)">
+                会话
+              </a>
+              <a v-if="scope?.record.id > 1" c-error @click="handleDelete(scope?.record)">
                 删除
               </a>
             </div>
@@ -430,25 +521,27 @@ async function onSubmit() {
     </a-card>
 
     <a-drawer
-        :title="formModel.id>0?'编辑':'添加' +'用户'"
-        :width="500"
-        :open="open"
-        :body-style="{ paddingBottom: '80px' }"
-        :footer-style="{ textAlign: 'right' }"
-        @close="handleClose"
+      :title="formModel.id > 0 ? '编辑' : '添加' + '用户'"
+      :width="500"
+      :open="open"
+      :body-style="{ paddingBottom: '80px' }"
+      :footer-style="{ textAlign: 'right' }"
+      @close="handleClose"
     >
-      <a-form :model="formModel" :rules="rules" layout="horizontal" :label-col="{
-  style: {
-    width: '85px',
-  },
-}" >
+      <a-form
+        :model="formModel" :rules="rules" layout="horizontal" :label-col="{
+          style: {
+            width: '85px',
+          },
+        }"
+      >
         <a-row :gutter="16">
           <a-col :span="24">
             <a-form-item label="用户名" name="username">
-              <a-input v-model:value="formModel.username" placeholder="用户名"/>
+              <a-input v-model:value="formModel.username" placeholder="用户名" />
             </a-form-item>
           </a-col>
-          <a-col :span="24" v-if="!formModel.id">
+          <a-col v-if="!formModel.id" :span="24">
             <a-form-item label="密码" name="password">
               <a-input-password v-model:value="formModel.password" placeholder="新密码">
                 <template #prefix>
@@ -458,42 +551,41 @@ async function onSubmit() {
             </a-form-item>
           </a-col>
 
-
           <a-col :span="24">
             <a-form-item label="昵称" name="nickname">
-              <a-input v-model:value="formModel.nickname" placeholder="昵称"/>
+              <a-input v-model:value="formModel.nickname" placeholder="昵称" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
             <a-form-item label="邮箱" name="email">
-              <a-input v-model:value="formModel.email" placeholder="邮箱"/>
+              <a-input v-model:value="formModel.email" placeholder="邮箱" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
             <a-form-item label="手机号" name="phone">
-              <a-input v-model:value="formModel.phone" placeholder="手机号"/>
+              <a-input v-model:value="formModel.phone" placeholder="手机号" />
             </a-form-item>
           </a-col>
-
-
 
           <a-col :span="24">
             <a-form-item label="分配角色" name="roles">
               <a-select
-                  v-model:value="formModel.roles"
-                  mode="tags"
-                  style="width: 100%"
-                  placeholder="选择需要分配的角色"
+                v-model:value="formModel.roles"
+                mode="tags"
+                style="width: 100%"
+                placeholder="选择需要分配的角色"
               >
-                <a-select-option :value="index" v-for="(item,index) in roleMap">{{ item }}</a-select-option>
+                <a-select-option v-for="(item, index) in roleMap" :key="index" :value="index">
+                  {{ item }}
+                </a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
-          <a-col :span="24" v-if="formModel.id">
+          <a-col v-if="formModel.id" :span="24">
             <a-form-item label="设置新密码">
               <a-switch v-model:checked="formModel.changePassword" />
             </a-form-item>
-            <a-form-item label="新密码" name="password" v-if="formModel.changePassword">
+            <a-form-item v-if="formModel.changePassword" label="新密码" name="password">
               <a-input-password v-model:value="formModel.password" placeholder="新密码">
                 <template #prefix>
                   <LockOutlined class="site-form-item-icon" />
@@ -501,20 +593,65 @@ async function onSubmit() {
               </a-input-password>
             </a-form-item>
           </a-col>
-
-
         </a-row>
-
       </a-form>
       <template #extra>
         <a-space>
-          <a-button @click="onClose">取消</a-button>
-          <a-button type="primary" @click="onSubmit">提交</a-button>
+          <a-button @click="onClose">
+            取消
+          </a-button>
+          <a-button type="primary" @click="onSubmit">
+            提交
+          </a-button>
         </a-space>
       </template>
     </a-drawer>
+
+    <a-modal
+      v-model:open="sessionsModal.open"
+      :title="`会话管理 - ${sessionsModal.username}`"
+      :footer="null"
+      :width="640"
+    >
+      <a-space mb-3>
+        <a-button :loading="sessionsModal.loading" @click="loadUserSessions(sessionsModal.uid)">
+          刷新
+        </a-button>
+        <a-button
+          type="primary" danger
+          :disabled="!sessionsModal.list.length"
+          @click="handleRevokeAll"
+        >
+          全部踢出
+        </a-button>
+      </a-space>
+      <a-table
+        :loading="sessionsModal.loading"
+        :data-source="sessionsModal.list"
+        :pagination="false"
+        :row-key="(r) => r.sid"
+        size="small"
+      >
+        <a-table-column title="Session ID" data-index="sid">
+          <template #default="{ record }">
+            <span style="font-family: monospace">{{ record.sid }}</span>
+          </template>
+        </a-table-column>
+        <a-table-column title="失效时间" data-index="exp" :width="180">
+          <template #default="{ record }">
+            {{ formatExp(record.exp) }}
+          </template>
+        </a-table-column>
+        <a-table-column title="操作" :width="100">
+          <template #default="{ record }">
+            <a c-error @click="handleKickSession(record.sid)">踢下线</a>
+          </template>
+        </a-table-column>
+      </a-table>
+    </a-modal>
   </page-container>
 </template>
+
 <style lang="less">
 
 </style>

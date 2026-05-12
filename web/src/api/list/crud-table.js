@@ -4,7 +4,7 @@ export async function getListApi(params) {
   })
 }
 export async function deleteApi(id) {
-  return useDelete(`/list/${id}`,null,{
+  return useDelete(`/list/${id}`, null, {
     customDev: true,
   })
 }

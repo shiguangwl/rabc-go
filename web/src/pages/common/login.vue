@@ -5,6 +5,7 @@ import { AxiosError } from 'axios'
 import GlobalLayoutFooter from '~/layouts/components/global-footer/index.vue'
 import { loginApi } from '~/api/common/login'
 import { getQueryParam } from '~/utils/tools'
+import { setAuthTokens } from '~/composables/authorization'
 import pageBubble from '@/utils/page-bubble'
 
 const message = useMessage()
@@ -12,7 +13,6 @@ const notification = useNotification()
 const appStore = useAppStore()
 const { layoutSetting } = storeToRefs(appStore)
 const router = useRouter()
-const token = useAuthorization()
 const loginModel = reactive({
   username: void 0,
   password: void 0,
@@ -72,7 +72,10 @@ async function submit() {
       }
     }
     const { data } = await loginApi(params)
-    token.value = data?.accessToken
+    setAuthTokens({
+      accessToken: data?.accessToken,
+      refreshToken: data?.refreshToken,
+    })
     notification.success({
       message: '登录成功',
       description: '欢迎回来！',
