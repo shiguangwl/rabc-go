@@ -47,7 +47,7 @@ ENV TZ=Asia/Shanghai
 ENV APP_CONF=/app/config/prod.yml
 
 COPY --from=go-builder /out/server /app/server
-COPY config /app/config
+COPY config/prod.yml /app/config/prod.yml
 
 RUN mkdir -p /app/storage/logs \
     && chown -R app:app /app
