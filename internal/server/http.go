@@ -38,6 +38,7 @@ func NewHTTPServer(
 	e *casbin.SyncedEnforcer,
 	adminHandler *handler.AdminHandler,
 	userHandler *handler.UserHandler,
+	authHandler *handler.AuthHandler,
 ) *http.Server {
 	if config.IsProd(conf) {
 		gin.SetMode(gin.ReleaseMode)
@@ -104,6 +105,10 @@ func NewHTTPServer(
 		noAuthRouter := v1Group.Group("/")
 		{
 			noAuthRouter.POST("/login", adminHandler.Login)
+			// Auth 子系统：refresh / logout 不走 StrictAuth——
+			// refresh 自验证 refresh_token；logout 即便 access 过期用户也能登出。
+			noAuthRouter.POST("/auth/refresh", authHandler.Refresh)
+			noAuthRouter.POST("/auth/logout", authHandler.Logout)
 		}
 
 		strictAuthRouter := v1Group.Group("/").Use(middleware.StrictAuth(jwt, logger), middleware.AuthMiddleware(e))
@@ -122,6 +127,9 @@ func NewHTTPServer(
 			strictAuthRouter.POST("/admin/user", adminHandler.AdminUserCreate)
 			strictAuthRouter.DELETE("/admin/user", adminHandler.AdminUserDelete)
 			strictAuthRouter.GET("/admin/user/permissions", adminHandler.GetUserPermissions)
+			strictAuthRouter.GET("/admin/user/sessions", adminHandler.GetUserSessions)
+			strictAuthRouter.DELETE("/admin/user/sessions", adminHandler.RevokeUserSessions)
+			strictAuthRouter.DELETE("/admin/user/session", adminHandler.KickUserSession)
 			strictAuthRouter.GET("/admin/role/permissions", adminHandler.GetRolePermissions)
 			strictAuthRouter.PUT("/admin/role/permission", adminHandler.UpdateRolePermission)
 			strictAuthRouter.GET("/admin/roles", adminHandler.GetRoles)

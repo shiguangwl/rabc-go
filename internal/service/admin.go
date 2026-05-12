@@ -49,16 +49,22 @@ type AdminService interface {
 func NewAdminService(
 	service *Service,
 	adminRepository repository.AdminRepository,
+	authService AuthService,
 ) AdminService {
 	return &adminService{
 		Service:         service,
 		adminRepository: adminRepository,
+		authService:     authService,
 	}
 }
 
 type adminService struct {
 	*Service
 	adminRepository repository.AdminRepository
+	// authService 用于改密 / 禁用 / 删除时调 RevokeAllUserSessions，
+	// 让管理员的账号变更操作立即吊销该用户全部活跃 session。
+	// 持有"业务接口"而非 *redis.Client，避免 wire 循环依赖与单测复杂度。
+	authService AuthService
 }
 
 const dummyPasswordHash = "$2a$10$C6UzMDM.H6dfI/f/IKcEeO6DGw4ZSLiZUj2Ip7yUpfI2KI2Zg7W6e"
@@ -77,15 +83,24 @@ func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdmin
 	}
 
 	return &v1.GetAdminUserResponseData{
-		Email:     user.Email,
-		ID:        user.ID,
-		Username:  user.Username,
-		Nickname:  user.Nickname,
-		Phone:     user.Phone,
-		Roles:     roles,
-		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		Email:       user.Email,
+		ID:          user.ID,
+		Username:    user.Username,
+		Nickname:    user.Nickname,
+		Phone:       user.Phone,
+		Roles:       roles,
+		CreatedAt:   user.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:   user.UpdatedAt.Format("2006-01-02 15:04:05"),
+		LastLoginAt: formatNullableTime(user.LastLoginAt),
 	}, nil
+}
+
+// formatNullableTime 把 *time.Time 转字符串：nil → 空串，表示"从未登录"。
+func formatNullableTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format("2006-01-02 15:04:05")
 }
 
 func (s *adminService) Login(ctx context.Context, req *v1.LoginRequest) (string, error) {
@@ -109,7 +124,7 @@ func (s *adminService) Login(ctx context.Context, req *v1.LoginRequest) (string,
 		}
 		return "", v1.ErrInternalServerError.WithCause(err)
 	}
-	token, err := s.jwt.GenToken(user.ID, time.Now().Add(time.Hour*24*90))
+	token, err := s.jwt.GenToken(user.ID, time.Now().Add(time.Hour*24*90), nil)
 	if err != nil {
 		return "", v1.ErrInternalServerError.WithCause(err)
 	}
@@ -128,22 +143,22 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 		Total: total,
 	}
 	for _, user := range list {
-		// 任一用户的角色查询失败都整体返回错误：
-		// 之前的 continue 会让 List 长度小于 Total，前端分页错位、漏行难定位。
+		// 角色查询失败时整体返回错误，保证 List 长度与 Total 语义一致。
 		roles, err := s.adminRepository.GetUserRoles(ctx, user.ID)
 		if err != nil {
 			s.logger.WithContext(ctx).Error("获取用户角色失败", zap.Uint("user_id", user.ID), zap.Error(err))
 			return nil, err
 		}
 		data.List = append(data.List, v1.AdminUserDataItem{
-			Email:     user.Email,
-			ID:        user.ID,
-			Nickname:  user.Nickname,
-			Username:  user.Username,
-			Phone:     user.Phone,
-			Roles:     roles,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02 15:04:05"),
+			Email:       user.Email,
+			ID:          user.ID,
+			Nickname:    user.Nickname,
+			Username:    user.Username,
+			Phone:       user.Phone,
+			Roles:       roles,
+			CreatedAt:   user.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:   user.UpdatedAt.Format("2006-01-02 15:04:05"),
+			LastLoginAt: formatNullableTime(user.LastLoginAt),
 		})
 	}
 	return data, nil
@@ -162,14 +177,25 @@ func (s *adminService) AdminUserUpdate(ctx context.Context, req *v1.AdminUserUpd
 		}
 		passwordHash = string(hash)
 	}
-	return s.adminRepository.AdminUserUpdateAtomic(ctx, &model.AdminUser{
+	if err := s.adminRepository.AdminUserUpdateAtomic(ctx, &model.AdminUser{
 		Model:    gorm.Model{ID: req.ID},
 		Email:    req.Email,
 		Nickname: req.Nickname,
 		Password: passwordHash,
 		Phone:    req.Phone,
 		Username: req.Username,
-	}, req.Roles) // req.Roles 为 *[]string：nil 跳过角色同步，非 nil 全量覆盖
+	}, req.Roles); err != nil {
+		return err
+	}
+
+	// 密码变更后吊销活跃会话；吊销失败不回滚已提交的账号信息。
+	if req.Password != "" {
+		if _, err := s.authService.RevokeAllUserSessions(ctx, req.ID, "password_change"); err != nil {
+			s.logger.WithContext(ctx).Warn("改密后吊销会话失败",
+				zap.Uint("user_id", req.ID), zap.Error(err))
+		}
+	}
+	return nil
 }
 
 func (s *adminService) AdminUserCreate(ctx context.Context, req *v1.AdminUserCreateRequest) error {
@@ -187,7 +213,15 @@ func (s *adminService) AdminUserCreate(ctx context.Context, req *v1.AdminUserCre
 }
 
 func (s *adminService) AdminUserDelete(ctx context.Context, id uint) error {
-	return s.adminRepository.AdminUserDeleteAtomic(ctx, id)
+	if err := s.adminRepository.AdminUserDeleteAtomic(ctx, id); err != nil {
+		return err
+	}
+	// 删除用户后吊销活跃会话；吊销失败不回滚已提交的删除操作。
+	if _, err := s.authService.RevokeAllUserSessions(ctx, id, "delete"); err != nil {
+		s.logger.WithContext(ctx).Warn("删除用户后吊销会话失败",
+			zap.Uint("user_id", id), zap.Error(err))
+	}
+	return nil
 }
 
 func (s *adminService) UpdateRolePermission(ctx context.Context, req *v1.UpdateRolePermissionRequest) error {

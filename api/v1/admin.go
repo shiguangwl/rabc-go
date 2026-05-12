@@ -4,8 +4,15 @@ type LoginRequest struct {
 	Username string `json:"username" binding:"required" example:"1234@gmail.com"`
 	Password string `json:"password" binding:"required" example:"123456"`
 }
+
+// LoginResponseData 登录响应载荷。
+//
+// AccessToken 用于短期接口鉴权，RefreshToken 用于会话续期；前端必须按
+// ExpiresIn 安排续期或在 401 后触发静默刷新。
 type LoginResponseData struct {
-	AccessToken string `json:"accessToken"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"` // access token 剩余秒数。
 }
 type LoginResponse struct {
 	Response
@@ -13,14 +20,15 @@ type LoginResponse struct {
 }
 
 type AdminUserDataItem struct {
-	ID        uint     `json:"id"`
-	Username  string   `json:"username" example:"张三"`
-	Nickname  string   `json:"nickname" example:"小Baby"`
-	Email     string   `json:"email" example:"1234@gmail.com"`
-	Phone     string   `json:"phone" example:"1858888888"`
-	Roles     []string `json:"roles" example:""`
-	UpdatedAt string   `json:"updatedAt"`
-	CreatedAt string   `json:"createdAt"`
+	ID          uint     `json:"id"`
+	Username    string   `json:"username" example:"张三"`
+	Nickname    string   `json:"nickname" example:"小Baby"`
+	Email       string   `json:"email" example:"1234@gmail.com"`
+	Phone       string   `json:"phone" example:"1858888888"`
+	Roles       []string `json:"roles" example:""`
+	UpdatedAt   string   `json:"updatedAt"`
+	CreatedAt   string   `json:"createdAt"`
+	LastLoginAt string   `json:"lastLoginAt"`
 }
 type GetAdminUsersRequest struct {
 	Pagination
@@ -30,14 +38,15 @@ type GetAdminUsersRequest struct {
 	Email    string `form:"email" example:"1234@gmail.com"`
 }
 type GetAdminUserResponseData struct {
-	ID        uint     `json:"id"`
-	Username  string   `json:"username" example:"张三"`
-	Nickname  string   `json:"nickname" example:"小Baby"`
-	Email     string   `json:"email" example:"1234@gmail.com"`
-	Phone     string   `json:"phone" example:"1858888888"`
-	Roles     []string `json:"roles" example:""`
-	UpdatedAt string   `json:"updatedAt"`
-	CreatedAt string   `json:"createdAt"`
+	ID          uint     `json:"id"`
+	Username    string   `json:"username" example:"张三"`
+	Nickname    string   `json:"nickname" example:"小Baby"`
+	Email       string   `json:"email" example:"1234@gmail.com"`
+	Phone       string   `json:"phone" example:"1858888888"`
+	Roles       []string `json:"roles" example:""`
+	UpdatedAt   string   `json:"updatedAt"`
+	CreatedAt   string   `json:"createdAt"`
+	LastLoginAt string   `json:"lastLoginAt"`
 }
 type GetAdminUserResponse struct {
 	Response
@@ -219,4 +228,31 @@ type GetRolePermissionsData struct {
 type UpdateRolePermissionRequest struct {
 	Role string   `json:"role" binding:"required" example:"admin"`
 	List []string `json:"list" binding:"required" example:""`
+}
+
+type GetUserSessionsRequest struct {
+	ID uint `form:"id" binding:"required" example:"1"`
+}
+
+type UserSessionItem struct {
+	SID string `json:"sid"`
+	Exp int64  `json:"exp"` // Unix 秒级失效时间。
+}
+
+type GetUserSessionsResponseData struct {
+	List []UserSessionItem `json:"list"`
+}
+
+type GetUserSessionsResponse struct {
+	Response
+	Data GetUserSessionsResponseData
+}
+
+type RevokeUserSessionsRequest struct {
+	ID uint `form:"id" binding:"required" example:"1"`
+}
+
+type KickUserSessionRequest struct {
+	ID        uint   `form:"id" binding:"required" example:"1"`
+	SessionID string `form:"sessionID" binding:"required" example:"abc..."`
 }

@@ -10,15 +10,21 @@ import (
 type AdminHandler struct {
 	*Handler
 	adminService service.AdminService
+	// authService 处理登录（双 Token 颁发：access + refresh + expiresIn）。
+	// AdminHandler 同时持有 adminService 和 authService：admin 业务路径仍走 adminService，
+	// 仅 /v1/login 走 authService。AuthHandler 负责 /v1/auth/refresh + /v1/auth/logout。
+	authService service.AuthService
 }
 
 func NewAdminHandler(
 	handler *Handler,
 	adminService service.AdminService,
+	authService service.AuthService,
 ) *AdminHandler {
 	return &AdminHandler{
 		Handler:      handler,
 		adminService: adminService,
+		authService:  authService,
 	}
 }
 
@@ -37,13 +43,15 @@ func (h *AdminHandler) Login(ctx *gin.Context) {
 		return
 	}
 
-	token, err := h.adminService.Login(ctx, &req)
+	result, err := h.authService.Login(ctx, &req)
 	if err != nil {
 		v1.WriteResponse(ctx, err, nil)
 		return
 	}
 	v1.HandleSuccess(ctx, v1.LoginResponseData{
-		AccessToken: token,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresIn:    result.ExpiresIn,
 	})
 }
 
@@ -517,6 +525,75 @@ func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
 		return
 	}
 	v1.HandleSuccess(ctx, data)
+}
+
+// GetUserSessions godoc
+// @Summary 获取用户活跃会话
+// @Tags 用户模块
+// @Produce json
+// @Security Bearer
+// @Param id query uint true "用户ID"
+// @Success 200 {object} v1.GetUserSessionsResponse
+// @Router /v1/admin/user/sessions [get]
+func (h *AdminHandler) GetUserSessions(ctx *gin.Context) {
+	var req v1.GetUserSessionsRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		return
+	}
+	sessions, err := h.authService.ListUserSessions(ctx, req.ID)
+	if err != nil {
+		v1.WriteResponse(ctx, err, nil)
+		return
+	}
+	out := make([]v1.UserSessionItem, 0, len(sessions))
+	for _, s := range sessions {
+		out = append(out, v1.UserSessionItem{SID: s.SID, Exp: s.Exp})
+	}
+	v1.HandleSuccess(ctx, v1.GetUserSessionsResponseData{List: out})
+}
+
+// RevokeUserSessions godoc
+// @Summary 踢出用户全部会话
+// @Tags 用户模块
+// @Produce json
+// @Security Bearer
+// @Param id query uint true "用户ID"
+// @Success 200 {object} v1.Response
+// @Router /v1/admin/user/sessions [delete]
+func (h *AdminHandler) RevokeUserSessions(ctx *gin.Context) {
+	var req v1.RevokeUserSessionsRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		return
+	}
+	if _, err := h.authService.RevokeAllUserSessions(ctx, req.ID, "admin_kick_all"); err != nil {
+		v1.WriteResponse(ctx, err, nil)
+		return
+	}
+	v1.HandleSuccess(ctx, nil)
+}
+
+// KickUserSession godoc
+// @Summary 踢下线单个会话
+// @Tags 用户模块
+// @Produce json
+// @Security Bearer
+// @Param id query uint true "用户ID"
+// @Param sessionID query string true "会话ID"
+// @Success 200 {object} v1.Response
+// @Router /v1/admin/user/session [delete]
+func (h *AdminHandler) KickUserSession(ctx *gin.Context) {
+	var req v1.KickUserSessionRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		return
+	}
+	if err := h.authService.KickSession(ctx, req.ID, req.SessionID); err != nil {
+		v1.WriteResponse(ctx, err, nil)
+		return
+	}
+	v1.HandleSuccess(ctx, nil)
 }
 
 // GetAdminUser godoc

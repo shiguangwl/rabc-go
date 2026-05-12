@@ -2,6 +2,7 @@ package model
 
 import (
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -35,6 +36,12 @@ type AdminUser struct {
 	Password string `gorm:"type:varchar(255);not null;comment:密码"`
 	Email    string `gorm:"type:varchar(100);not null;comment:电子邮件"`
 	Phone    string `gorm:"type:varchar(20);not null;comment:手机号"`
+	// IsDisabled 禁用标记：true 时拒绝登录（密码校验前判定）。
+	// 默认 false 不影响存量行为；改密 / 删除 / 禁用 都触发 RevokeAllUserSessions。
+	IsDisabled bool `gorm:"type:boolean;not null;default:false;comment:是否禁用"`
+	// LastLoginAt 最后登录时间：Login 成功后 best-effort 更新。
+	// 用 *time.Time 区分"从未登录"（nil）与"已登录过"。
+	LastLoginAt *time.Time `gorm:"type:datetime;comment:最后登录时间"`
 }
 
 func (m *AdminUser) TableName() string {

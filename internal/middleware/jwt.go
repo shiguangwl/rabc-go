@@ -35,6 +35,13 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 		}
 
 		ctx.Set("claims", claims)
+		// sid 是会话审计字段；类型不匹配只记录日志，避免扩展字段异常阻断鉴权。
+		if sid, ok := claims.ExtString("sid"); ok && sid != "" {
+			ctx.Set("sid", sid)
+		} else if _, exists := claims.Ext("sid"); exists {
+			logger.WithContext(ctx).Warn("claims.ext.sid type mismatch",
+				zap.Any("sid_raw", claims.Extras["sid"]))
+		}
 		injectClaimsToLogger(ctx, logger)
 		ctx.Next()
 	}

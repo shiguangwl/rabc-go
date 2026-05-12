@@ -410,6 +410,10 @@ func (m *SeedServer) initialApisData(ctx context.Context, db *gorm.DB) error {
 		{Group: "权限模块", Name: "创建管理员账号", Path: "/v1/admin/user", Method: http.MethodPost},
 		{Group: "权限模块", Name: "删除管理员", Path: "/v1/admin/user", Method: http.MethodDelete},
 
+		{Group: "用户会话", Name: "查看用户会话", Path: "/v1/admin/user/sessions", Method: http.MethodGet},
+		{Group: "用户会话", Name: "踢出全部会话", Path: "/v1/admin/user/sessions", Method: http.MethodDelete},
+		{Group: "用户会话", Name: "踢下线单个会话", Path: "/v1/admin/user/session", Method: http.MethodDelete},
+
 		{Group: "权限模块", Name: "获取API列表", Path: "/v1/admin/apis", Method: http.MethodGet},
 		{Group: "权限模块", Name: "创建API", Path: "/v1/admin/api", Method: http.MethodPost},
 		{Group: "权限模块", Name: "更新API", Path: "/v1/admin/api", Method: http.MethodPut},

@@ -27,6 +27,7 @@ type AdminRepository interface {
 	AdminUserUpdate(ctx context.Context, m *model.AdminUser) error
 	AdminUserCreate(ctx context.Context, m *model.AdminUser) error
 	AdminUserDelete(ctx context.Context, id uint) error
+	UpdateLastLogin(ctx context.Context, uid uint, at time.Time) error
 
 	// Atomic 方法把"业务表写 + Casbin 策略写"包进同一个 GORM 事务。
 	// 内部用临时 enforcer 绑 tx；commit 后调 r.e.LoadPolicy() 让全局 SyncedEnforcer 立即看到变更。
@@ -81,9 +82,9 @@ func NewAdminRepository(
 // adminRepository 持有 RBAC 写路径专用的进程级互斥锁。
 //
 // 锁的语义：所有"业务表 + Casbin 策略"的复合写（Atomic 系列、
-// UpdateRolePermission、UpdateUserRoles）必须串行执行。原因：
+// UpdateRolePermission、UpdateUserRoles）必须串行执行。约束：
 //   - 全局 SyncedEnforcer 启用了 StartAutoLoadPolicy 轮询，可能在 tx 提交后、
-//     reloadPolicy 之前把旧策略加载回来，与本进程的"写完立即可见"语义打架；
+//     reloadPolicy 前把旧策略加载回来，破坏本进程"写完立即可见"语义；
 //   - 临时 tx-bound enforcer 与全局 enforcer 各持有自己的 model 副本，
 //     并发写会出现策略快照漂移；
 //   - 单进程内串行能消除上述两点；多副本部署需另引入 DB advisory lock。
@@ -635,6 +636,13 @@ func (r *adminRepository) AdminUserCreate(ctx context.Context, m *model.AdminUse
 
 func (r *adminRepository) AdminUserDelete(ctx context.Context, id uint) error {
 	return r.DB(ctx).Where("id = ?", id).Delete(&model.AdminUser{}).Error
+}
+
+// UpdateLastLogin 只写 last_login_at 单列，避开 Updates(struct) 误清空零值的坑。
+func (r *adminRepository) UpdateLastLogin(ctx context.Context, uid uint, at time.Time) error {
+	return r.DB(ctx).Model(&model.AdminUser{}).
+		Where("id = ?", uid).
+		Update("last_login_at", at).Error
 }
 
 // UpdateRolePermission 把指定角色的权限集合同步成 newPermSet。

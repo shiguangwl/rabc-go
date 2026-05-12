@@ -73,4 +73,9 @@ var (
 	ErrUsernameAlreadyUse = newError(1001, 409, "用户名已被占用")
 	ErrRoleSidExists      = newError(1002, 409, "角色 sid 已存在")
 	ErrRoleNameExists     = newError(1003, 409, "角色名已存在")
+
+	// 认证扩展错误按前端可感知状态分配 HTTP 码，业务码用于审计区分。
+	ErrUserDisabled   = newError(1004, 403, "账号已被禁用，请联系管理员")
+	ErrRefreshReused  = newError(1005, 401, "登录已失效，请重新登录")
+	ErrRefreshExpired = newError(1006, 401, "登录已过期，请重新登录")
 )

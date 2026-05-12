@@ -4,6 +4,7 @@
 package wire
 
 import (
+	"rabc-go/internal/auth"
 	"rabc-go/internal/handler"
 	"rabc-go/internal/job"
 	"rabc-go/internal/repository"
@@ -26,18 +27,23 @@ var repositorySet = wire.NewSet(
 	repository.NewUserRepository,
 	repository.NewCasbinEnforcer,
 	repository.NewAdminRepository,
+	repository.NewRedis,
+	repository.NewAuthRepository,
 )
 
 var serviceSet = wire.NewSet(
 	service.NewService,
 	service.NewUserService,
 	service.NewAdminService,
+	service.NewAuthService,
+	auth.LoadAuthConfig,
 )
 
 var handlerSet = wire.NewSet(
 	handler.NewHandler,
 	handler.NewUserHandler,
 	handler.NewAdminHandler,
+	handler.NewAuthHandler,
 )
 
 var jobSet = wire.NewSet(

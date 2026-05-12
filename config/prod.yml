@@ -9,7 +9,10 @@ http:
 # prod 必填项缺失时，应用会在启动期 panic，避免空 JWT key / 空 DSN 带病上线。
 #
 # 环境变量映射（前缀 APP，点号 → 下划线）：
-#   APP_SECURITY_JWT_KEY               JWT 签名密钥
+#   APP_SECURITY_JWT_KEY               JWT 签名密钥（必填）
+#   APP_SECURITY_JWT_ACCESS_TTL        Access Token TTL（默认 30m）
+#   APP_SECURITY_JWT_REFRESH_TTL       Refresh Token TTL（默认 168h = 7d）
+#   APP_SECURITY_AUTH_ROTATION_TOMB_TTL 轮换墓碑 TTL（默认 30m，上限 refresh_ttl）
 #   APP_DATA_DB_USER_DRIVER            业务库驱动（默认 mysql，可选 postgres/sqlite/sqlserver）
 #   APP_DATA_DB_USER_DSN               业务库 DSN
 #   APP_DATA_REDIS_ADDR                Redis 地址
@@ -21,6 +24,12 @@ security:
     app_security: ""
   jwt:
     key: ""
+    # access 仅验签；refresh 存 Redis，支持服务端吊销
+    access_ttl: 30m
+    refresh_ttl: 168h
+  auth:
+    # 墓碑用于识别已轮换 refresh token 的复用；实际生效值不超过 refresh_ttl
+    rotation_tomb_ttl: 30m
 
 data:
   db:

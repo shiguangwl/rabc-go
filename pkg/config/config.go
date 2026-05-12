@@ -26,6 +26,11 @@ const (
 var envBoundKeys = []string{
 	// 安全密钥
 	"security.jwt.key",
+	// access 仅验签；refresh 存 Redis，支持服务端吊销。
+	"security.jwt.access_ttl",
+	"security.jwt.refresh_ttl",
+	// 轮换墓碑 TTL：闭合"已轮换 RT 再被使用"的复用检测窗口
+	"security.auth.rotation_tomb_ttl",
 
 	// 数据源
 	"data.db.user.driver",
