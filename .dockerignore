@@ -1,2 +1,10 @@
 .git
 .idea
+bin
+web/node_modules
+web/.output
+storage
+scripts/.deploy.env
+scripts/.deploy.*.env
+deploy/remote/.env.production
+deploy/remote/.env.*.production

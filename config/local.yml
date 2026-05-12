@@ -19,17 +19,16 @@ security:
     rotation_tomb_ttl: 30m
 
 data:
-  # 本地默认数据库，与 deploy/docker-compose/docker-compose.yml 中 user-db 容器对齐；
+  # 本地默认数据库，指向宿主机 MySQL；首次使用需先创建 user 库。
   # driver 可选 mysql/postgres/sqlite/sqlserver；迁移命令会自动按 driver 选择 schema 方言。
-  # 启动方式: cd deploy/docker-compose && docker compose up -d user-db
   db:
     # 本地默认开 SQL 日志便于排查；非 local 必须显式设置才打开，避免 staging 把 PII 写日志
     debug: true
     user:
       driver: mysql
-      dsn: root:123456@tcp(127.0.0.1:3380)/user?charset=utf8mb4&parseTime=True&loc=Local
+      dsn: root:123456@tcp(127.0.0.1:3306)/user?charset=utf8mb4&parseTime=True&loc=Local
   redis:
-    addr: 127.0.0.1:6350
+    addr: 127.0.0.1:6379
     password: ""
     db: 0
     read_timeout: 0.2s

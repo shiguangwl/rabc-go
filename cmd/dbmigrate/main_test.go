@@ -7,9 +7,6 @@ import (
 	"testing"
 )
 
-// readDriver 是 readConfig 在 driver 读取路径上的薄包装，
-// 仅服务于 TestReadDriver* 验证「文件 + APP_DATA_DB_USER_DRIVER 环境变量覆盖」语义。
-// 留在 _test.go 而不放进生产代码：生产路径直接走 readConfig + GetString。
 func readDriver(path string) (string, error) {
 	conf, err := readConfig(path)
 	if err != nil {
@@ -95,8 +92,8 @@ func TestAtlasURL(t *testing.T) {
 		{
 			name:    "mysql tcp",
 			dialect: "mysql",
-			dsn:     "root:123456@tcp(127.0.0.1:3380)/user?charset=utf8mb4&parseTime=True&loc=Local",
-			want:    "mysql://root:123456@127.0.0.1:3380/user?charset=utf8mb4&parseTime=True&loc=Local",
+			dsn:     "root:123456@tcp(127.0.0.1:3306)/user?charset=utf8mb4&parseTime=True&loc=Local",
+			want:    "mysql://root:123456@127.0.0.1:3306/user?charset=utf8mb4&parseTime=True&loc=Local",
 		},
 		{
 			name:    "mysql empty password drops colon",
@@ -105,8 +102,6 @@ func TestAtlasURL(t *testing.T) {
 			want:    "mysql://root@127.0.0.1:3306/db",
 		},
 		{
-			// 这是 strings.Cut → mysql.ParseDSN 切换的核心动机：
-			// 手写按 ":" / "@" 切片对密码内含 "@" 会切错。
 			name:    "mysql password with at sign",
 			dialect: "mysql",
 			dsn:     "root:p@ssw0rd@tcp(127.0.0.1:3306)/db",
@@ -152,6 +147,40 @@ func TestAtlasURL(t *testing.T) {
 	}
 }
 
+func TestActionSpecs(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		action      string
+		ensureDevDB bool
+	}{
+		{action: "diff", ensureDevDB: true},
+		{action: "push", ensureDevDB: true},
+		{action: "apply", ensureDevDB: false},
+		{action: "status", ensureDevDB: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			t.Parallel()
+			if actions[tt.action].ensureDevDB != tt.ensureDevDB {
+				t.Fatalf("actions[%q].ensureDevDB = %v, want %v", tt.action, actions[tt.action].ensureDevDB, tt.ensureDevDB)
+			}
+		})
+	}
+}
+
+func TestPostgresAdminDSN(t *testing.T) {
+	t.Parallel()
+	got, err := postgresAdminDSN("postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable")
+	if err != nil {
+		t.Fatalf("postgresAdminDSN() error = %v", err)
+	}
+	want := "postgres://postgres:123456@127.0.0.1:5432/postgres?sslmode=disable"
+	if got != want {
+		t.Fatalf("postgresAdminDSN() = %q, want %q", got, want)
+	}
+}
+
 func TestBuildAtlasArgs(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -179,7 +208,13 @@ func TestBuildAtlasArgs(t *testing.T) {
 			name:    "validate",
 			action:  "validate",
 			dialect: "mysql",
-			want:    []string{"migrate", "validate", "--env", "local_mysql"},
+			want:    []string{"migrate", "validate", "--dir", "file://db/migrations/mysql"},
+		},
+		{
+			name:    "hash",
+			action:  "hash",
+			dialect: "postgres",
+			want:    []string{"migrate", "hash", "--dir", "file://db/migrations/postgres"},
 		},
 		{
 			name:    "lint default latest 1",
@@ -224,9 +259,7 @@ func TestIsLocalDSN(t *testing.T) {
 	}{
 		{name: "mysql 127.0.0.1", dialect: "mysql", dsn: "root:s@tcp(127.0.0.1:3306)/db", want: true},
 		{name: "mysql localhost", dialect: "mysql", dsn: "root:s@tcp(localhost:3306)/db", want: true},
-		// 回归用例：DSN 解析后保留 host 原始大小写，isLocalHost 必须做大小写归一化。
 		{name: "mysql LOCALHOST upper", dialect: "mysql", dsn: "root:s@tcp(LOCALHOST:3306)/db", want: true},
-		// 回归用例：unix socket 显式判定，避免 net.SplitHostPort 报错被吞而"巧合通过"。
 		{name: "mysql unix socket", dialect: "mysql", dsn: "root:s@unix(/tmp/mysql.sock)/db", want: true},
 		{name: "mysql ipv6 loopback", dialect: "mysql", dsn: "root:s@tcp([::1]:3306)/db", want: true},
 		{name: "mysql lan ip is not local", dialect: "mysql", dsn: "root:s@tcp(10.0.0.5:3306)/db", want: false},

@@ -1,8 +1,8 @@
-// Package main 是 atlas migrate 子命令的薄包装层。
+// Package main 提供 Atlas migration 的项目级命令入口。
 //
-// 设计：dbmigrate 不直接接触 schema，仅做"读配置 → 拼 atlas argv → exec atlas"
-// 三件事。schema 真相源在 internal/model 与 db/atlas/main.go；migration 文件
-// 在 db/migrations/{mysql,postgres}/。
+// dbmigrate 只负责读取配置、准备本地 dev 库、组装 atlas 参数并执行 atlas。
+// schema 真相源在 internal/model 与 db/atlas/main.go，migration 文件在
+// db/migrations/{mysql,postgres}/。
 //
 // 支持的 atlas action：
 //
@@ -18,6 +18,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -28,29 +29,33 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/viper"
 )
 
 const envPrefix = "APP"
 
-// actionSpec 描述每个 action 对配置/参数的需求，集中在一处便于扩展，
-// 避免 if/else 链散落在 run() 里。
+// actionSpec 描述命令运行前必须满足的配置和安全边界。
 type actionSpec struct {
-	requiresName  bool // diff
-	requiresDSN   bool // apply / status / push
-	requiresLocal bool // push 安全栅栏：拒绝非本地 DSN，避免误推 staging/prod
+	requiresName  bool
+	requiresDSN   bool
+	requiresLocal bool
+	ensureDevDB   bool
+	allDialects   bool
 }
 
-// actions 为只读查表；新增 action 同步更新 buildAtlasArgs 即可。
+// actions 是 dbmigrate 支持的命令清单；新增命令时必须同步 buildAtlasArgs。
 var actions = map[string]actionSpec{
-	"diff":     {requiresName: true},
+	"diff":     {requiresName: true, requiresDSN: true, ensureDevDB: true},
 	"apply":    {requiresDSN: true},
 	"status":   {requiresDSN: true},
-	"hash":     {},
-	"validate": {},
+	"hash":     {allDialects: true},
+	"validate": {allDialects: true},
 	"lint":     {},
-	"push":     {requiresDSN: true, requiresLocal: true},
+	"push":     {requiresDSN: true, requiresLocal: true, ensureDevDB: true},
 }
+
+var migrationDialects = []string{"mysql", "postgres"}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -62,47 +67,61 @@ func main() {
 func run(args []string) error {
 	flags := flag.NewFlagSet("dbmigrate", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
-	confPath := flags.String("conf", configPath(), "config path")
-	name := flags.String("name", "", "migration name for diff (e.g. add_user_email)")
-	base := flags.String("base", "", "git base ref for lint (e.g. origin/main); default uses --latest 1")
+	confPath := flags.String("conf", configPath(), "配置文件路径")
+	name := flags.String("name", "", "迁移名称（用于 diff，例如 add_user_email）")
+	base := flags.String("base", "", "lint 的 git 基准引用（例如 origin/main）；默认使用 --latest 1")
 	if err := flags.Parse(args); err != nil {
-		return fmt.Errorf("parse flags: %w", err)
+		return fmt.Errorf("解析命令行参数失败: %w", err)
 	}
 	if flags.NArg() != 1 {
-		return errors.New("usage: dbmigrate [-conf config/local.yml] [-name X] [-base ref] " +
+		return errors.New("使用方法: dbmigrate [-conf config/local.yml] [-name X] [-base ref] " +
 			"<diff|apply|status|hash|validate|lint|push>")
 	}
 
 	action := flags.Arg(0)
 	spec, ok := actions[action]
 	if !ok {
-		return fmt.Errorf("unsupported migrate command %q", action)
+		return fmt.Errorf("不支持的迁移命令: %q", action)
 	}
 	if spec.requiresName && strings.TrimSpace(*name) == "" {
-		return errors.New("migration name is required: -name <value>")
+		return errors.New("迁移名称是必填项: -name <值>")
+	}
+
+	if spec.allDialects {
+		for _, dialect := range migrationDialects {
+			if err := runAtlas(action, dialect, buildAtlasArgs(action, dialect, *name, *base)); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	conf, err := readConfig(*confPath)
 	if err != nil {
-		return fmt.Errorf("read config %q: %w", *confPath, err)
+		return fmt.Errorf("读取配置文件 %q 失败: %w", *confPath, err)
 	}
 	driver := conf.GetString("data.db.user.driver")
 	dsn := strings.TrimSpace(conf.GetString("data.db.user.dsn"))
 	dialect, err := normalizeDialect(driver)
 	if err != nil {
-		return fmt.Errorf("normalize dialect: %w", err)
+		return fmt.Errorf("标准化数据库方言失败: %w", err)
 	}
 	if spec.requiresDSN && dsn == "" {
-		return fmt.Errorf("data.db.user.dsn is required for migrate %s", action)
+		return fmt.Errorf("执行迁移 %s 需要 data.db.user.dsn 配置", action)
 	}
 	if spec.requiresLocal {
 		local, err := isLocalDSN(dialect, dsn)
 		if err != nil {
-			return fmt.Errorf("check local dsn: %w", err)
+			return fmt.Errorf("检查本地 DSN 失败: %w", err)
 		}
 		if !local {
 			return errors.New("push 仅限本地开发：DSN 必须指向 localhost / 127.0.0.1 / ::1 或 unix socket；" +
 				"非本地环境请走 migrate-diff + migrate-apply 版本化流程")
+		}
+	}
+	if spec.ensureDevDB && dsn != "" {
+		if err := ensureAtlasDevDB(dialect, dsn); err != nil {
+			return fmt.Errorf("确保 Atlas 开发数据库存在失败: %w", err)
 		}
 	}
 
@@ -110,45 +129,122 @@ func run(args []string) error {
 	if spec.requiresDSN {
 		atlasURL, err := atlasURL(dialect, dsn)
 		if err != nil {
-			return fmt.Errorf("build atlas url: %w", err)
+			return fmt.Errorf("构建 Atlas URL 失败: %w", err)
 		}
 		argv = append(argv, "--url", atlasURL)
 	}
 
+	return runAtlas(action, dialect, argv)
+}
+
+func ensureAtlasDevDB(dialect, dsn string) error {
+	local, err := isLocalDSN(dialect, dsn)
+	if err != nil {
+		return fmt.Errorf("检查本地 DSN 失败: %w", err)
+	}
+	if !local {
+		return nil
+	}
+	switch dialect {
+	case "mysql":
+		return ensureMySQLAtlasDevDB(dsn)
+	case "postgres":
+		return ensurePostgresAtlasDevDB(dsn)
+	default:
+		return fmt.Errorf("不支持的数据库: %q", dialect)
+	}
+}
+
+func ensureMySQLAtlasDevDB(dsn string) error {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return fmt.Errorf("解析 MySQL DSN 失败: %w", err)
+	}
+	if cfg.Net != "tcp" {
+		return fmt.Errorf("MySQL 迁移仅支持 TCP 协议的 DSN，当前为 %q", cfg.Net)
+	}
+	cfg.DBName = ""
+	db, err := sql.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS `atlas_dev` DEFAULT CHARACTER SET utf8mb4")
+	return err
+}
+
+func ensurePostgresAtlasDevDB(dsn string) error {
+	adminDSN, err := postgresAdminDSN(dsn)
+	if err != nil {
+		return err
+	}
+	db, err := sql.Open("pgx", adminDSN)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var exists bool
+	if err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = 'atlas_dev')").Scan(&exists); err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+	_, err = db.Exec(`CREATE DATABASE atlas_dev`)
+	return err
+}
+
+func postgresAdminDSN(dsn string) (string, error) {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", fmt.Errorf("解析 PostgreSQL DSN 失败: %w", err)
+	}
+	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+		return "", fmt.Errorf("PostgreSQL DSN 必须使用 postgres/postgresql 协议，当前为 %q", u.Scheme)
+	}
+	u.Path = "/postgres"
+	u.RawPath = ""
+	return u.String(), nil
+}
+
+func runAtlas(action, dialect string, argv []string) error {
 	cmd := exec.Command("atlas", argv...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), "ATLAS_DIALECT="+dialect)
+	cmd.Env = os.Environ()
+	if dialect != "" {
+		cmd.Env = append(cmd.Env, "ATLAS_DIALECT="+dialect)
+	}
 	if err := cmd.Run(); err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
 			return errors.New("atlas CLI 未安装或不在 PATH，请先安装 Atlas")
 		}
-		return fmt.Errorf("run atlas %s: %w", action, err)
+		return fmt.Errorf("执行 atlas %s 失败: %w", action, err)
 	}
 	return nil
 }
 
-// buildAtlasArgs 把 dbmigrate 的 action 翻译成 atlas CLI 的参数序列。
+// buildAtlasArgs 将项目命令映射为 atlas CLI 参数。
 //
-// 设计：atlas 自身命名不一致——dbmigrate 的 push 对应 atlas 的 `schema apply`，
-// 其他 action 名字一致。把这种命名映射收敛在一处，避免散在 run() 各 if 分支。
+// atlas 的 declarative schema apply 在本项目暴露为 push，避免调用方接触
+// atlas 子命令命名差异。
 func buildAtlasArgs(action, dialect, name, base string) []string {
 	env := []string{"--env", "local_" + dialect}
 	switch action {
 	case "diff":
 		return append([]string{"migrate", "diff", name}, env...)
+	case "hash":
+		return []string{"migrate", "hash", "--dir", "file://db/migrations/" + dialect}
+	case "validate":
+		return []string{"migrate", "validate", "--dir", "file://db/migrations/" + dialect}
 	case "lint":
 		args := append([]string{"migrate", "lint"}, env...)
 		if base != "" {
 			return append(args, "--git-base", base)
 		}
-		// 默认 lint 最近 1 个 migration：local 开发最常用语义；
-		// CI 跑 PR 检查时建议传 -base=origin/main 覆盖。
 		return append(args, "--latest", "1")
 	case "push":
-		// drizzle-push 风格：把 GORM struct 描述的目标 schema 直接同步到 DB，
-		// 不生成 migration 文件。atlas 的 declarative 模式（schema apply）即此功能。
-		// --auto-approve 跳过交互确认；安全性由 requiresLocal 在 run() 里强制保证。
 		return append([]string{"schema", "apply", "--auto-approve"}, env...)
 	default:
 		return append([]string{"migrate", action}, env...)
@@ -192,7 +288,7 @@ func normalizeDialect(driver string) (string, error) {
 	case "postgres", "postgresql":
 		return "postgres", nil
 	default:
-		return "", fmt.Errorf("migration only supports mysql/postgres, current driver=%q", driver)
+		return "", fmt.Errorf("迁移仅支持 mysql/postgres，当前驱动为 %q", driver)
 	}
 }
 
@@ -203,28 +299,24 @@ func atlasURL(dialect, dsn string) (string, error) {
 	case "postgres":
 		return dsn, nil
 	default:
-		return "", fmt.Errorf("unsupported atlas dialect %q", dialect)
+		return "", fmt.Errorf("不支持的 Atlas 方言: %q", dialect)
 	}
 }
 
-// mysqlAtlasURL 把 GORM/go-sql-driver 风格的 MySQL DSN 转成 atlas URL。
+// mysqlAtlasURL 将 go-sql-driver/mysql DSN 转为 atlas URL。
 //
-// 用 mysql.ParseDSN 而非手写 strings.Cut 切片：后者对密码含 @ / 等特殊字符
-// 直接出错，且不能识别非 tcp 协议；前者是上游官方解析器，行为稳定。
-//
-// 但 query string 不走 cfg.FormatDSN()——FormatDSN 会按字典序重排参数，并把
-// parseTime=True 转成小写 parseTime=true，影响某些 atlas 旧版本的兼容性。
-// 改为从原 DSN 直接截取 ? 之后保留原顺序与大小写。
+// 调用方必须传入 TCP DSN 且包含数据库名；query string 保留原始顺序与大小写，
+// 以兼容依赖参数原文的 atlas 版本。
 func mysqlAtlasURL(dsn string) (string, error) {
 	cfg, err := mysql.ParseDSN(dsn)
 	if err != nil {
-		return "", fmt.Errorf("invalid mysql dsn: %w", err)
+		return "", fmt.Errorf("无效的 MySQL DSN: %w", err)
 	}
 	if cfg.Net != "tcp" {
-		return "", fmt.Errorf("mysql migration only supports tcp DSN, got %q", cfg.Net)
+		return "", fmt.Errorf("MySQL 迁移仅支持 TCP 协议的 DSN，当前为 %q", cfg.Net)
 	}
 	if cfg.DBName == "" {
-		return "", errors.New("invalid mysql dsn: database is empty")
+		return "", errors.New("无效的 MySQL DSN: 数据库名称为空")
 	}
 	u := url.URL{
 		Scheme: "mysql",
@@ -238,7 +330,6 @@ func mysqlAtlasURL(dsn string) (string, error) {
 	return u.String(), nil
 }
 
-// userInfo 在密码为空时退化成 `user@host`，避免输出冗余的 `user:@host`。
 func userInfo(user, passwd string) *url.Userinfo {
 	if user == "" {
 		return nil
@@ -251,46 +342,37 @@ func userInfo(user, passwd string) *url.Userinfo {
 
 // isLocalDSN 在 DSN 指向本地 host 时返回 true，是 push 的安全栅栏。
 //
-// 必要性：push（atlas schema apply）会直接执行 DDL，跳过版本化 SQL；
-// 如果 DSN 指向 staging/prod，会绕过 review 流程造成不可挽回的破坏。
-// 在 Go 层做检查而不是放在 Makefile/shell，是因为下面已经有 mysql.ParseDSN
-// 与 net/url.Parse 可复用，shell 解析 DSN 易碎且不可测。
+// push 会直接执行 DDL，调用前必须拒绝非本地 DSN。
 func isLocalDSN(dialect, dsn string) (bool, error) {
 	var host string
 	switch dialect {
 	case "mysql":
 		cfg, err := mysql.ParseDSN(dsn)
 		if err != nil {
-			return false, fmt.Errorf("parse mysql dsn: %w", err)
+			return false, fmt.Errorf("解析 MySQL DSN 失败: %w", err)
 		}
-		// unix socket 显式视为本地：避免依赖 SplitHostPort 报错被静默吞而"巧合通过"。
 		if cfg.Net == "unix" {
 			return true, nil
 		}
 		host, _, err = net.SplitHostPort(cfg.Addr)
 		if err != nil {
-			return false, fmt.Errorf("split mysql addr %q: %w", cfg.Addr, err)
+			return false, fmt.Errorf("分割 MySQL 地址 %q 失败: %w", cfg.Addr, err)
 		}
 	case "postgres":
 		u, err := url.Parse(dsn)
 		if err != nil {
-			return false, fmt.Errorf("parse postgres dsn: %w", err)
+			return false, fmt.Errorf("解析 PostgreSQL DSN 失败: %w", err)
 		}
 		host = u.Hostname()
 	default:
-		return false, fmt.Errorf("unsupported dialect %q", dialect)
+		return false, fmt.Errorf("不支持的数据库方言: %q", dialect)
 	}
 	return isLocalHost(host), nil
 }
 
 // isLocalHost 把"本地"显式枚举，避免把 10.x/192.168.x 等 LAN 段当本地。
-// LAN 段可能是同事的开发机或测试环境，push 不该自动信任。
 //
-// 0.0.0.0 故意不放入白名单：它是"监听 0.0.0.0"语义而非"客户端连接 0.0.0.0"，
-// 出现在 DSN 里基本是配置错误，宁可让 push 失败让用户排查。
-//
-// 大小写归一化：mysql/postgres DSN 解析后均保留 host 原始大小写，
-// 这里统一转小写后比较，避免 LOCALHOST/Localhost 被判为远程。
+// 0.0.0.0 是监听地址语义，不属于可被 push 信任的客户端连接地址。
 func isLocalHost(host string) bool {
 	switch strings.ToLower(host) {
 	case "127.0.0.1", "localhost", "::1", "":

@@ -13,16 +13,11 @@
 # ------------------------------------------------------------------------------
 # 工具版本：Wire / mockgen / swag 通过 go.mod 的 tool 指令锁定（Go 1.24+），
 # `go install tool` 一次性安装到 GOBIN，调用处用 `go tool <name>` 复用同一版本。
-# nunu 只负责本地热加载，不参与构建产物，保留 @latest 降低维护成本。
+# nunu 只负责本地热加载，不参与构建产物。
 NUNU_PKG := github.com/go-nunu/nunu
 
-# Docker 镜像：CI/CD 覆盖示例 → make docker-server REGISTRY=registry.io VERSION=v1.2.3
-REGISTRY     ?= registry.local:5000
-VERSION      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
-IMAGE_PREFIX := rabc-go
-
-# Docker Compose 文件路径（避免 recipe 里 cd——cd 在每行 recipe 后即失效）
-DOCKER_COMPOSE := docker compose -f deploy/docker-compose/docker-compose.yml
+# 前端包管理器与 web/pnpm-lock.yaml 保持一致
+PNPM ?= pnpm
 
 .DEFAULT_GOAL := help
 
@@ -39,7 +34,7 @@ help:  ## 显示所有可用命令及说明
 	@echo ""
 
 # ------------------------------------------------------------------------------
-# 工具与一键启动
+# 工具
 # ------------------------------------------------------------------------------
 
 .PHONY: init
@@ -51,13 +46,6 @@ init:  ## 安装 Go 工具链（版本由 go.mod 的 tool 指令锁定）
 	@echo "    Atlas         : brew install ariga/tap/atlas   (或 curl -sSf https://atlasgo.sh | sh)"
 	@echo "    golangci-lint : brew install golangci-lint     (或 https://golangci-lint.run/usage/install/)"
 
-.PHONY: bootstrap
-bootstrap:  ## 起依赖容器 → migrate-apply → seed → nunu run（Docker 路径）
-	$(DOCKER_COMPOSE) up -d --wait
-	$(MAKE) migrate-apply
-	go run ./cmd/seed
-	nunu run ./cmd/server
-
 # ------------------------------------------------------------------------------
 # 代码生成
 # ------------------------------------------------------------------------------
@@ -68,8 +56,8 @@ mock:  ## 重生成 service/repository 的 mock（来源：源文件 //go:genera
 	go generate ./internal/...
 
 .PHONY: swag
-swag:  ## 刷新 Swagger 文档到 ./docs
-	go tool swag init -g cmd/server/main.go -o ./docs --parseDependency
+swag:  ## 刷新 Swagger 文档到 ./docs/swagger
+	go tool swag init -g cmd/server/main.go -o ./docs/swagger --parseDependency
 
 # ------------------------------------------------------------------------------
 # 质量门禁
@@ -99,7 +87,7 @@ build: web-build server-build  ## 构建前端 + 后端二进制
 
 .PHONY: web-build
 web-build:
-	cd web && npm run build
+	cd web && $(PNPM) build
 
 .PHONY: server-build
 server-build:
@@ -108,20 +96,6 @@ server-build:
 .PHONY: clean
 clean:  ## 清理本地构建产物（不删除已纳入版本控制的生成文件）
 	rm -rf bin web/dist
-
-# ------------------------------------------------------------------------------
-# Docker（生产部署用；本地开发走 bootstrap）
-# ------------------------------------------------------------------------------
-
-.PHONY: docker-server
-docker-server:  ## 构建 server 镜像（覆盖参数：REGISTRY / VERSION）
-	docker build -f deploy/build/Dockerfile --build-arg APP_RELATIVE_PATH=./cmd/server \
-		-t $(REGISTRY)/$(IMAGE_PREFIX)-server:$(VERSION) .
-
-.PHONY: docker-task
-docker-task:  ## 构建 task 镜像（定时任务用，非常驻）
-	docker build -f deploy/build/Dockerfile --build-arg APP_RELATIVE_PATH=./cmd/task \
-		-t $(REGISTRY)/$(IMAGE_PREFIX)-task:$(VERSION) .
 
 # ------------------------------------------------------------------------------
 # Atlas schema migration（详见 db/README.md）

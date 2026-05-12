@@ -12,7 +12,7 @@ func TestIsLocalDSN(t *testing.T) {
 		{
 			name:   "mysql tcp localhost",
 			driver: "mysql",
-			dsn:    "root:123456@tcp(127.0.0.1:3380)/user?charset=utf8mb4&parseTime=True&loc=Local",
+			dsn:    "root:123456@tcp(127.0.0.1:3306)/user?charset=utf8mb4&parseTime=True&loc=Local",
 			want:   true,
 		},
 		{

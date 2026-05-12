@@ -3,6 +3,10 @@ storage/logs
 *.log
 deploy/docker-compose/conf
 deploy/docker-compose/data
+deploy/remote/.env.production
+deploy/remote/.env.*.production
+scripts/.deploy.env
+scripts/.deploy.*.env
 .omc/
 
 .ace-tool/

@@ -1,6 +1,7 @@
 {
   "name": "n-admin",
   "type": "module",
+  "packageManager": "pnpm@10.20.0",
   "engines": {
     "node": ">=18.15.0"
   },
