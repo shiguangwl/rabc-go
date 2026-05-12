@@ -1,4 +1,3 @@
--- Create "admin_users" table
 CREATE TABLE `admin_users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) NULL,
@@ -9,11 +8,13 @@ CREATE TABLE `admin_users` (
   `password` varchar(255) NOT NULL COMMENT '密码',
   `email` varchar(100) NOT NULL COMMENT '电子邮件',
   `phone` varchar(20) NOT NULL COMMENT '手机号',
+  `is_disabled` BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否禁用',
+  `last_login_at` DATETIME NULL COMMENT '最后登录时间',
   PRIMARY KEY (`id`),
   INDEX `idx_admin_users_deleted_at` (`deleted_at`),
   UNIQUE INDEX `idx_admin_users_username` (`username`)
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
--- Create "api" table
+
 CREATE TABLE `api` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) NULL,
@@ -24,16 +25,17 @@ CREATE TABLE `api` (
   `path` varchar(255) NOT NULL COMMENT 'API路径',
   `method` varchar(20) NOT NULL COMMENT 'HTTP方法',
   PRIMARY KEY (`id`),
-  INDEX `idx_api_deleted_at` (`deleted_at`)
+  INDEX `idx_api_deleted_at` (`deleted_at`),
+  UNIQUE INDEX `idx_api_path_method` (`path`, `method`)
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
--- Create "menu" table
+
 CREATE TABLE `menu` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) NULL,
   `updated_at` datetime(3) NULL,
   `deleted_at` datetime(3) NULL,
   `parent_id` bigint unsigned NULL COMMENT "父级菜单的id，使用整数表示",
-  `path` varchar(255) NULL COMMENT "地址",
+  `path` varchar(255) NOT NULL COMMENT '前端路由路径',
   `title` varchar(100) NULL COMMENT "标题，使用字符串表示",
   `name` varchar(100) NULL COMMENT "同路由中的name，用于保活",
   `component` varchar(255) NULL COMMENT "绑定的组件",
@@ -47,9 +49,10 @@ CREATE TABLE `menu` (
   `weight` bigint NULL DEFAULT 0 COMMENT "排序权重",
   PRIMARY KEY (`id`),
   INDEX `idx_menu_deleted_at` (`deleted_at`),
-  INDEX `idx_menu_parent_id` (`parent_id`)
+  INDEX `idx_menu_parent_id` (`parent_id`),
+  UNIQUE INDEX `idx_menu_path` (`path`)
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
--- Create "roles" table
+
 CREATE TABLE `roles` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_at` datetime(3) NULL,
@@ -62,7 +65,7 @@ CREATE TABLE `roles` (
   UNIQUE INDEX `idx_roles_name` (`name`),
   UNIQUE INDEX `idx_roles_sid` (`sid`)
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
--- Create "casbin_rule" table
+
 CREATE TABLE `casbin_rule` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `ptype` varchar(100) NULL,

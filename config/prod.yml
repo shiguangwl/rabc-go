@@ -57,9 +57,17 @@ log:
   max_age: 7               # 日志保留天数
   max_size: 1024           # 单文件大小上限（MB）
   compress: true
+  request:
+    headers:
+      # 生产默认关闭请求头打印；调试时可临时通过 APP_LOG_REQUEST_HEADERS_ENABLED=true 注入
+      enabled: false
+    body:
+      # 生产默认关闭请求体打印，避免 PII 与日志膨胀
+      enabled: false
+  response:
+    body:
+      # 生产默认关闭响应体打印，避免 PII 与日志膨胀
+      enabled: false
   body:
-    # 生产关闭请求/响应 body 打印，避免 PII 与日志膨胀；
-    # 调试需要时可临时通过 APP_LOG_BODY_ENABLED=true 注入
-    enabled: false
     # 启用时单条 body 写入日志的字节上限；超出时记 [truncated ...] 占位，不写原文
     max_bytes: 8192

@@ -47,8 +47,17 @@ log:
   max_age: 7
   max_size: 1024
   compress: true
+  request:
+    headers:
+      # 请求头默认关闭；调试时可通过 APP_LOG_REQUEST_HEADERS_ENABLED=true 临时打开
+      enabled: false
+    body:
+      # 请求体默认关闭，避免本地联调误写敏感字段
+      enabled: false
+  response:
+    body:
+      # 响应体默认关闭，避免大响应拖慢日志路径
+      enabled: false
   body:
-    # 本地开发打开方便调试请求/响应；prod 关闭以避免 PII 泄露与日志膨胀
-    enabled: true
     # 单条 body 写入日志的字节上限；超出时记 [truncated ...] 占位，不写原文
     max_bytes: 8192

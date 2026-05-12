@@ -71,11 +71,13 @@ func NewHTTPServer(
 		}))
 	}
 
-	logBody := conf.GetBool("log.body.enabled")
+	logRequestHeaders := conf.GetBool("log.request.headers.enabled")
+	logRequestBody := conf.GetBool("log.request.body.enabled")
+	logResponseBody := conf.GetBool("log.response.body.enabled")
 	maxBodyBytes := conf.GetInt("log.body.max_bytes")
 	s.Use(
-		middleware.RequestLogMiddleware(logger, logBody, maxBodyBytes),
-		middleware.ResponseLogMiddleware(logger, logBody, maxBodyBytes),
+		middleware.RequestLogMiddleware(logger, logRequestHeaders, logRequestBody, maxBodyBytes),
+		middleware.ResponseLogMiddleware(logger, logResponseBody, maxBodyBytes),
 		gin.Recovery(),
 	)
 

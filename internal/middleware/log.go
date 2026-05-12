@@ -78,7 +78,7 @@ func resolveMaxBodyBytes(maxBytes int) int {
 //
 // maxBytes：单条 body 写入日志的字节上限，<=0 时取 defaultMaxLogBodyBytes。
 // 这里也作为 io.LimitReader 的硬上限，防止恶意/超大 body 把整个 raw 数据吃进内存。
-func RequestLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.HandlerFunc {
+func RequestLogMiddleware(logger *log.Logger, logHeaders bool, logBody bool, maxBytes int) gin.HandlerFunc {
 	limit := resolveMaxBodyBytes(maxBytes)
 	return func(ctx *gin.Context) {
 		// trace 标识：UUID 失败时回退到 crypto/rand 16 字节 hex；避免直接走时间戳兜底，
@@ -96,7 +96,9 @@ func RequestLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.Ha
 		trace := cryptor.Md5String(uuid)
 		logger.WithValue(ctx, zap.String("trace", trace))
 		logger.WithValue(ctx, zap.String("request_method", ctx.Request.Method))
-		logger.WithValue(ctx, zap.Any("request_headers", maskHeaders(ctx.Request.Header)))
+		if logHeaders {
+			logger.WithValue(ctx, zap.Any("request_headers", maskHeaders(ctx.Request.Header)))
+		}
 		logger.WithValue(ctx, zap.String("request_url", maskURL(ctx.Request.URL.String())))
 		if logBody && ctx.Request.Body != nil && shouldLogBody(ctx.Request.Header.Get("Content-Type")) {
 			// 旧实现走 ctx.GetRawData() 一次性读全量到内存，攻击者发 100MB body

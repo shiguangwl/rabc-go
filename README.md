@@ -103,7 +103,10 @@ cd web && pnpm install && pnpm dev
 | `data.redis.addr` | `APP_DATA_REDIS_ADDR` |
 | `data.redis.password` | `APP_DATA_REDIS_PASSWORD` |
 | `seed.initial_password` | `APP_SEED_INITIAL_PASSWORD` |
-| `log.body.enabled` | `APP_LOG_BODY_ENABLED` |
+| `log.request.headers.enabled` | `APP_LOG_REQUEST_HEADERS_ENABLED` |
+| `log.request.body.enabled` | `APP_LOG_REQUEST_BODY_ENABLED` |
+| `log.response.body.enabled` | `APP_LOG_RESPONSE_BODY_ENABLED` |
+| `log.body.max_bytes` | `APP_LOG_BODY_MAX_BYTES` |
 
 Atlas 迁移目标库复用 `APP_DATA_DB_USER_DRIVER` / `APP_DATA_DB_USER_DSN`。
 

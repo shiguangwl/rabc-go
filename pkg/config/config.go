@@ -43,8 +43,10 @@ var envBoundKeys = []string{
 	"seed.initial_password",
 	"seed.reset",
 
-	// 日志：是否打印请求/响应 body（prod 默认关闭，调试时可临时 env 打开）
-	"log.body.enabled",
+	// 日志：请求细节默认关闭，调试时可临时 env 打开。
+	"log.request.headers.enabled",
+	"log.request.body.enabled",
+	"log.response.body.enabled",
 	"log.body.max_bytes",
 }
 
