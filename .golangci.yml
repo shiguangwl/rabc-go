@@ -1,0 +1,132 @@
+version: "2"
+
+run:
+  timeout: 5m
+  relative-path-mode: gomod
+  modules-download-mode: readonly
+  tests: true
+
+output:
+  path-mode: abs
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - revive
+    - godoclint
+    - gocritic
+    - errcheck
+    - errorlint
+    - nilerr
+    - nilnil
+    - ineffassign
+    - unused
+    - unconvert
+    - wastedassign
+    - misspell
+    - nolintlint
+    - copyloopvar
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - noctx
+    - predeclared
+    - unparam
+    - usestdlibvars
+    - whitespace
+
+  exclusions:
+    generated: lax
+    warn-unused: false
+    rules:
+      - path: "docs/swagger/.*"
+        linters:
+          - revive
+          - godoclint
+      - path: "test/mocks/.*"
+        linters:
+          - revive
+          - godoclint
+          - unused
+      - path: ".*_test\\.go"
+        linters:
+          - errcheck
+          - godoclint
+
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+
+    revive:
+      severity: warning
+      enable-default-rules: false
+      directives:
+        - name: specify-disable-reason
+          severity: error
+      rules:
+        - name: package-directory-mismatch
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: receiver-naming
+          arguments:
+            - max-length: 2
+        - name: var-declaration
+        - name: import-shadowing
+        - name: duplicated-imports
+        - name: redundant-import-alias
+        - name: bare-return
+        - name: if-return
+        - name: indent-error-flow
+        - name: range
+        - name: range-val-in-closure
+        - name: range-val-address
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unreachable-code
+        - name: unexported-return
+        - name: waitgroup-by-value
+        - name: unused-parameter
+          arguments:
+            - allow-regex: "^_"
+        - name: unused-receiver
+          arguments:
+            - allow-regex: "^_"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+  exclusions:
+    generated: strict
+    paths:
+      - "docs/swagger/.*"
+      - "test/mocks/.*"
+
+  settings:
+    gofumpt:
+      module-path: rabc-go
+      extra-rules: true
+    goimports:
+      local-prefixes:
+        - rabc-go

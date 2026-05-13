@@ -1,6 +1,7 @@
 # Makefile 只封装项目约定流程。
 
 NUNU_PKG := github.com/go-nunu/nunu
+GOLANGCI_LINT := go tool -modfile=tools/lint/go.mod golangci-lint
 
 PNPM ?= pnpm
 DOCKER ?= docker
@@ -21,11 +22,27 @@ help:  ## 显示所有可用命令及说明
 .PHONY: init
 init:  ## 安装本地开发工具
 	go install tool
+	go install -modfile=tools/lint/go.mod tool
 	go install $(NUNU_PKG)@latest
 	@echo ""
 	@echo ">>> 以下工具不在 Go module 范围，请按需手装："
 	@echo "    Atlas         : brew install ariga/tap/atlas   (或 curl -sSf https://atlasgo.sh | sh)"
-	@echo "    golangci-lint : brew install golangci-lint     (或 https://golangci-lint.run/usage/install/)"
+
+.PHONY: fmt
+fmt:  ## 格式化 Go 代码
+	$(GOLANGCI_LINT) fmt ./...
+
+.PHONY: lint-fast
+lint-fast:  ## 执行编辑器同级快速 Go lint
+	$(GOLANGCI_LINT) run --path-mode=abs --fast-only ./...
+
+.PHONY: lint
+lint:  ## 执行新增代码 Go lint
+	$(GOLANGCI_LINT) run --path-mode=abs --new ./...
+
+.PHONY: lint-full
+lint-full:  ## 执行全量 Go lint 债务扫描
+	$(GOLANGCI_LINT) run --path-mode=abs ./...
 
 .PHONY: mock
 mock:  ## 重生成 service/repository 的 mock（来源：源文件 //go:generate 注释）
@@ -41,9 +58,10 @@ test:  ## 执行全量 Go race 测试
 	go test -race ./...
 
 .PHONY: check
-check:  ## 提交前完整质量门禁（vet + lint + race test + migrate validate）
+check:  ## 提交前完整质量门禁（fmt + vet + lint + race test + migrate validate）
+	$(MAKE) fmt
 	go vet ./...
-	golangci-lint run ./...
+	$(MAKE) lint
 	$(MAKE) test
 	$(MAKE) migrate-validate
 

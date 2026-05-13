@@ -1,0 +1,32 @@
+{
+  "go.useLanguageServer": true,
+  "go.lintOnSave": "package",
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": [
+    "--path-mode=abs",
+    "--fast-only"
+  ],
+  "go.formatTool": "custom",
+  "go.alternateTools": {
+    "customFormatter": "golangci-lint"
+  },
+  "go.formatFlags": [
+    "fmt",
+    "--stdin"
+  ],
+  "gopls": {
+    "staticcheck": false,
+    "gofumpt": false,
+    "analyses": {
+      "unusedparams": true,
+      "unusedwrite": true,
+      "shadow": true
+    }
+  },
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  }
+}
