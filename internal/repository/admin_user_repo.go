@@ -18,7 +18,7 @@ func (r *adminRepository) AdminUserCreateAtomic(ctx context.Context, m *model.Ad
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(m).Error; err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
-				return fmt.Errorf("%w: %v", ErrUsernameDuplicated, err)
+				return fmt.Errorf("%w: %w", ErrUsernameDuplicated, err)
 			}
 			return err
 		}
@@ -66,7 +66,7 @@ func (r *adminRepository) AdminUserUpdateAtomic(ctx context.Context, m *model.Ad
 			result := tx.Model(&model.AdminUser{}).Where("id = ?", m.ID).Updates(updates)
 			if result.Error != nil {
 				if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
-					return fmt.Errorf("%w: %v", ErrUsernameDuplicated, result.Error)
+					return fmt.Errorf("%w: %w", ErrUsernameDuplicated, result.Error)
 				}
 				return result.Error
 			}

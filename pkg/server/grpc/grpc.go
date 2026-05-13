@@ -33,11 +33,13 @@ func NewServer(logger *log.Logger, opts ...Option) *Server {
 	}
 	return s
 }
+
 func WithServerHost(host string) Option {
 	return func(s *Server) {
 		s.host = host
 	}
 }
+
 func WithServerPort(port int) Option {
 	return func(s *Server) {
 		s.port = port
@@ -49,16 +51,17 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
-	lis, err := net.Listen("tcp", addr)
+	var lc net.ListenConfig
+	lis, err := lc.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("监听 gRPC 地址 %s 失败: %w", addr, err)
 	}
-	if err = s.Server.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+	if err = s.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 		return fmt.Errorf("启动 gRPC 服务 %s 失败: %w", addr, err)
 	}
 	return nil
-
 }
+
 func (s *Server) Stop(ctx context.Context) error {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
@@ -68,7 +71,7 @@ func (s *Server) Stop(ctx context.Context) error {
 
 	stopped := make(chan struct{})
 	go func() {
-		s.Server.GracefulStop()
+		s.GracefulStop()
 		close(stopped)
 	}()
 

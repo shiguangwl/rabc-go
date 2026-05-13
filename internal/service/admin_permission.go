@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/model"
 )
 
-func (s *adminService) GetUserPermissions(ctx context.Context, uid uint) (*v1.GetUserPermissionsData, error) {
-	data := &v1.GetUserPermissionsData{List: []string{}}
+func (s *adminService) GetUserPermissions(ctx context.Context, uid uint) (*apiv1.GetUserPermissionsData, error) {
+	data := &apiv1.GetUserPermissionsData{List: []string{}}
 	list, err := s.adminRepository.GetUserPermissions(ctx, uid)
 	if err != nil {
 		return nil, repositoryError(err)
@@ -23,8 +23,8 @@ func (s *adminService) GetUserPermissions(ctx context.Context, uid uint) (*v1.Ge
 	return data, nil
 }
 
-func (s *adminService) GetRolePermissions(ctx context.Context, role string) (*v1.GetRolePermissionsData, error) {
-	data := &v1.GetRolePermissionsData{List: []string{}}
+func (s *adminService) GetRolePermissions(ctx context.Context, role string) (*apiv1.GetRolePermissionsData, error) {
+	data := &apiv1.GetRolePermissionsData{List: []string{}}
 	list, err := s.adminRepository.GetRolePermissions(ctx, role)
 	if err != nil {
 		return nil, repositoryError(err)
@@ -37,11 +37,11 @@ func (s *adminService) GetRolePermissions(ctx context.Context, role string) (*v1
 	return data, nil
 }
 
-func (s *adminService) UpdateRolePermission(ctx context.Context, req *v1.UpdateRolePermissionRequest) error {
+func (s *adminService) UpdateRolePermission(ctx context.Context, req *apiv1.UpdateRolePermissionRequest) error {
 	permissions := map[string]struct{}{}
 	for _, v := range req.List {
 		if !isValidPermission(v) {
-			return v1.ErrBadRequest
+			return apiv1.ErrBadRequest
 		}
 		permissions[v] = struct{}{}
 	}
@@ -59,7 +59,7 @@ func isValidPermission(raw string) bool {
 		return false
 	}
 	switch {
-	case strings.HasPrefix(resource, model.ApiResourcePrefix):
+	case strings.HasPrefix(resource, model.APIResourcePrefix):
 		switch action {
 		case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions, http.MethodHead:
 			return true

@@ -17,6 +17,7 @@ var repositorySet = wire.NewSet(
 	repository.NewDB,
 	repository.NewCasbinEnforcer,
 )
+
 var serverSet = wire.NewSet(
 	server.NewSeedServer,
 )

@@ -41,10 +41,10 @@ type MyCustomClaims struct {
 
 func (c *MyCustomClaims) UnmarshalJSON(data []byte) error {
 	aux := struct {
-		UserID       *uint          `json:"uid"`
-		LegacyUserID *uint          `json:"userId"`
-		LegacyUserId *uint          `json:"UserId"`
-		Extras       map[string]any `json:"ext,omitempty"`
+		UserID            *uint          `json:"uid"`
+		LegacyUserID      *uint          `json:"userID"`
+		LegacyUpperUserID *uint          `json:"UserId"`
+		Extras            map[string]any `json:"ext,omitempty"`
 		jwt.RegisteredClaims
 	}{}
 	if err := json.Unmarshal(data, &aux); err != nil {
@@ -57,8 +57,8 @@ func (c *MyCustomClaims) UnmarshalJSON(data []byte) error {
 		c.UserID = *aux.UserID
 	case aux.LegacyUserID != nil:
 		c.UserID = *aux.LegacyUserID
-	case aux.LegacyUserId != nil:
-		c.UserID = *aux.LegacyUserId
+	case aux.LegacyUpperUserID != nil:
+		c.UserID = *aux.LegacyUpperUserID
 	}
 	return nil
 }
@@ -117,13 +117,13 @@ func NewJwt(conf *viper.Viper) *JWT {
 // 传 nil 时不序列化 ext 字段（omitempty）。
 //
 // jti（RegisteredClaims.ID）由 uuid.NewString() 自动生成，供吊销和审计使用。
-func (j *JWT) GenToken(userId uint, expiresAt time.Time, extras map[string]any) (string, error) {
+func (j *JWT) GenToken(userID uint, expiresAt time.Time, extras map[string]any) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyCustomClaims{
-		UserID: userId,
+		UserID: userID,
 		Extras: extras,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   strconv.FormatUint(uint64(userId), 10),
+			Subject:   strconv.FormatUint(uint64(userID), 10),
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
@@ -143,7 +143,7 @@ func (j *JWT) ParseToken(tokenString string) (*MyCustomClaims, error) {
 	if strings.TrimSpace(tokenString) == "" {
 		return nil, ErrTokenEmpty
 	}
-	token, err := jwt.ParseWithClaims(tokenString, &MyCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &MyCustomClaims{}, func(_ *jwt.Token) (interface{}, error) {
 		return j.key, nil
 	},
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),

@@ -18,7 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/db/seed"
 	"rabc-go/internal/model"
 	"rabc-go/internal/repository"
@@ -48,16 +48,16 @@ type SeedServer struct {
 
 func NewSeedServer(
 	db *gorm.DB,
-	log *log.Logger,
-	sid *sid.Sid,
+	logger *log.Logger,
+	sidGenerator *sid.Sid,
 	e *casbin.SyncedEnforcer,
 	conf *viper.Viper,
 ) *SeedServer {
 	return &SeedServer{
 		e:    e,
 		db:   db,
-		log:  log,
-		sid:  sid,
+		log:  logger,
+		sid:  sidGenerator,
 		conf: conf,
 	}
 }
@@ -282,10 +282,11 @@ func (m *SeedServer) areSeedTablesEmpty(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (m *SeedServer) Stop(ctx context.Context) error {
+func (m *SeedServer) Stop(_ context.Context) error {
 	m.log.Info("种子任务已停止")
 	return nil
 }
+
 func (m *SeedServer) initialAdminUser(ctx context.Context, db *gorm.DB) error {
 	// 初始密码取值优先级：APP_SEED_INITIAL_PASSWORD env > seed.initial_password yml。
 	// 非 local 环境必须显式提供，缺失直接报错，避免弱密码进 prod。
@@ -302,14 +303,12 @@ func (m *SeedServer) initialAdminUser(ctx context.Context, db *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	if err := db.WithContext(ctx).Create(&[]model.AdminUser{
+	return db.WithContext(ctx).Create(&[]model.AdminUser{
 		{Model: gorm.Model{ID: 1}, Username: "admin", Password: string(hashedPassword), Nickname: "Admin"},
 		{Model: gorm.Model{ID: 2}, Username: "user", Password: string(hashedPassword), Nickname: "运营人员"},
-	}).Error; err != nil {
-		return err
-	}
-	return nil
+	}).Error
 }
+
 func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnforcer) error {
 	roles := []model.Role{
 		{Sid: model.AdminRole, Name: "超级管理员"},
@@ -325,7 +324,7 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 		return fmt.Errorf("AddRoleForUser admin: %w", err)
 	}
 
-	menuList := make([]v1.MenuDataItem, 0)
+	menuList := make([]apiv1.MenuDataItem, 0)
 	if err := json.Unmarshal([]byte(seed.MenuJSON), &menuList); err != nil {
 		return fmt.Errorf("unmarshal menu data: %w", err)
 	}
@@ -334,12 +333,12 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 			return err
 		}
 	}
-	apiList := make([]model.Api, 0)
+	apiList := make([]model.API, 0)
 	if err := db.WithContext(ctx).Find(&apiList).Error; err != nil {
 		return fmt.Errorf("load api list: %w", err)
 	}
 	for _, api := range apiList {
-		if err := m.addPermissionForRole(e, model.AdminRole, model.ApiResourcePrefix+api.Path, api.Method); err != nil {
+		if err := m.addPermissionForRole(e, model.AdminRole, model.APIResourcePrefix+api.Path, api.Method); err != nil {
 			return err
 		}
 	}
@@ -361,8 +360,8 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 		{model.MenuResourcePrefix + "/account/settings", "read"},
 		{model.MenuResourcePrefix + "/account/center", "read"},
 		{model.MenuResourcePrefix + "/account", "read"},
-		{model.ApiResourcePrefix + "/v1/menus", http.MethodGet},
-		{model.ApiResourcePrefix + "/v1/admin/user", http.MethodGet},
+		{model.APIResourcePrefix + "/v1/menus", http.MethodGet},
+		{model.APIResourcePrefix + "/v1/admin/user", http.MethodGet},
 	}
 	for _, p := range operatorPerms {
 		if err := m.addPermissionForRole(e, "1000", p.resource, p.action); err != nil {
@@ -386,9 +385,9 @@ func (m *SeedServer) addPermissionForRole(e casbin.IEnforcer, role, resource, ac
 	)
 	return nil
 }
-func (m *SeedServer) initialApisData(ctx context.Context, db *gorm.DB) error {
-	initialApis := []model.Api{
 
+func (*SeedServer) initialApisData(ctx context.Context, db *gorm.DB) error {
+	initialApis := []model.API{
 		{Group: "基础API", Name: "获取用户菜单列表", Path: "/v1/menus", Method: http.MethodGet},
 		{Group: "基础API", Name: "获取管理员信息", Path: "/v1/admin/user", Method: http.MethodGet},
 
@@ -422,16 +421,17 @@ func (m *SeedServer) initialApisData(ctx context.Context, db *gorm.DB) error {
 
 	return db.WithContext(ctx).Create(&initialApis).Error
 }
+
 func (m *SeedServer) initialMenuData(ctx context.Context, db *gorm.DB) error {
-	menuList := make([]v1.MenuDataItem, 0)
+	menuList := make([]apiv1.MenuDataItem, 0)
 	err := json.Unmarshal([]byte(seed.MenuJSON), &menuList)
 	if err != nil {
 		m.log.Error("解析菜单种子数据失败", zap.Error(err))
 		return err
 	}
-	menuListDb := make([]model.Menu, 0)
+	menuListDB := make([]model.Menu, 0)
 	for _, item := range menuList {
-		menuListDb = append(menuListDb, model.Menu{
+		menuListDB = append(menuListDB, model.Menu{
 			Model: gorm.Model{
 				ID: item.ID,
 			},
@@ -449,5 +449,5 @@ func (m *SeedServer) initialMenuData(ctx context.Context, db *gorm.DB) error {
 			HideInMenu: item.HideInMenu,
 		})
 	}
-	return db.WithContext(ctx).Create(&menuListDb).Error
+	return db.WithContext(ctx).Create(&menuListDB).Error
 }

@@ -40,7 +40,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rabc-go_api_v1.ApiUpdateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.APIUpdateRequest"
                         }
                     }
                 ],
@@ -77,7 +77,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rabc-go_api_v1.ApiCreateRequest"
+                            "$ref": "#/definitions/rabc-go_api_v1.APICreateRequest"
                         }
                     }
                 ],
@@ -993,7 +993,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rabc-go_api_v1.ApiCreateRequest": {
+        "rabc-go_api_v1.APICreateRequest": {
             "type": "object",
             "required": [
                 "group",
@@ -1029,7 +1029,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rabc-go_api_v1.ApiDataItem": {
+        "rabc-go_api_v1.APIDataItem": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -1055,7 +1055,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rabc-go_api_v1.ApiUpdateRequest": {
+        "rabc-go_api_v1.APIUpdateRequest": {
             "type": "object",
             "required": [
                 "group",
@@ -1203,7 +1203,7 @@ const docTemplate = `{
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rabc-go_api_v1.ApiDataItem"
+                        "$ref": "#/definitions/rabc-go_api_v1.APIDataItem"
                     }
                 },
                 "total": {

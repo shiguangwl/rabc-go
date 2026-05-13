@@ -27,12 +27,12 @@ func (r *adminRepository) RoleCreateIfAbsent(ctx context.Context, m *model.Role)
 	}
 	var existing model.Role
 	if e := r.db.WithContext(ctx).Unscoped().Where("name = ?", m.Name).Limit(1).First(&existing).Error; e == nil {
-		return fmt.Errorf("%w: %v", ErrRoleNameDuplicated, err)
+		return fmt.Errorf("%w: %w", ErrRoleNameDuplicated, err)
 	}
 	if e := r.db.WithContext(ctx).Unscoped().Where("sid = ?", m.Sid).Limit(1).First(&existing).Error; e == nil {
-		return fmt.Errorf("%w: %v", ErrRoleSIDDuplicated, err)
+		return fmt.Errorf("%w: %w", ErrRoleSIDDuplicated, err)
 	}
-	return fmt.Errorf("%w: %v", ErrRoleSIDDuplicated, err)
+	return fmt.Errorf("%w: %w", ErrRoleSIDDuplicated, err)
 }
 
 func (r *adminRepository) GetRoles(ctx context.Context, q RoleQuery) ([]model.Role, int64, error) {

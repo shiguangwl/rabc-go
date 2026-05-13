@@ -14,10 +14,10 @@ type Service struct {
 
 func NewService(
 	logger *log.Logger,
-	jwt *jwt.JWT,
+	jwtUtil *jwt.JWT,
 ) *Service {
 	return &Service{
 		logger: logger,
-		jwt:    jwt,
+		jwt:    jwtUtil,
 	}
 }

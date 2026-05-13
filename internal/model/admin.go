@@ -12,7 +12,7 @@ const (
 	AdminUserID        = "1" // casbin policy subject 必须为 string，统一在此声明
 	RoleSubjectPrefix  = "role:"
 	MenuResourcePrefix = "menu:"
-	ApiResourcePrefix  = "api:"
+	APIResourcePrefix  = "api:"
 	PermSep            = ","
 )
 
@@ -44,7 +44,7 @@ type AdminUser struct {
 	LastLoginAt *time.Time `gorm:"comment:最后登录时间"`
 }
 
-func (m *AdminUser) TableName() string {
+func (*AdminUser) TableName() string {
 	return "admin_users"
 }
 
@@ -54,11 +54,11 @@ type Role struct {
 	Sid  string `json:"sid" gorm:"column:sid;type:varchar(100);uniqueIndex;comment:角色标识"`
 }
 
-func (m *Role) TableName() string {
+func (*Role) TableName() string {
 	return "roles"
 }
 
-type Api struct {
+type API struct {
 	gorm.Model
 	// group 是 SQL 保留字，落库使用 group_name，避免多方言查询依赖手写引用符。
 	Group  string `gorm:"column:group_name;type:varchar(100);not null;comment:API分组"`
@@ -67,6 +67,6 @@ type Api struct {
 	Method string `gorm:"type:varchar(20);not null;uniqueIndex:idx_api_path_method,priority:2;comment:HTTP方法"`
 }
 
-func (m *Api) TableName() string {
+func (*API) TableName() string {
 	return "api"
 }

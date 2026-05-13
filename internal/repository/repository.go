@@ -171,7 +171,7 @@ func NewCasbinModel() (model.Model, error) {
 
 // NewCasbinEnforcer 关掉 adapter 隐式 AutoMigrate 让 schema 全走 atlas，
 // 启用 10s 轮询同步多副本策略；权限低延迟敏感场景可后续接入 Casbin Watcher。
-func NewCasbinEnforcer(conf *viper.Viper, l *log.Logger, db *gorm.DB) (*casbin.SyncedEnforcer, func(), error) {
+func NewCasbinEnforcer(_ *viper.Viper, _ *log.Logger, db *gorm.DB) (*casbin.SyncedEnforcer, func(), error) {
 	// 关掉 adapter 的隐式 AutoMigrate / CREATE UNIQUE INDEX：
 	// casbin_rule 已纳入 atlas 管控（见 db/atlas/main.go 与 db/migrations），
 	// 应用启动期保持"零 DDL"，避免多副本同时启动抢着建表/建索引，也防止

@@ -1,4 +1,4 @@
-// internal/handler/auth.go 处理 Auth 子系统的 HTTP 入口：
+// Package handler 处理 Auth 子系统的 HTTP 入口：
 //
 //	POST /v1/auth/refresh  → 刷新 access + refresh
 //	POST /v1/auth/logout   → 主动登出（删除 session，不连坐）
@@ -12,7 +12,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/service"
 )
 
@@ -34,21 +34,21 @@ func NewAuthHandler(handler *Handler, authService service.AuthService) *AuthHand
 // @Tags 用户模块
 // @Accept json
 // @Produce json
-// @Param request body v1.RefreshRequest true "params"
-// @Success 200 {object} v1.RefreshResponse
+// @Param request body apiv1.RefreshRequest true "params"
+// @Success 200 {object} apiv1.RefreshResponse
 // @Router /v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(ctx *gin.Context) {
-	var req v1.RefreshRequest
+	var req apiv1.RefreshRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	result, err := h.authService.Refresh(ctx, &req)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, v1.RefreshResponseData{
+	apiv1.HandleSuccess(ctx, apiv1.RefreshResponseData{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		ExpiresIn:    result.ExpiresIn,
@@ -61,18 +61,18 @@ func (h *AuthHandler) Refresh(ctx *gin.Context) {
 // @Tags 用户模块
 // @Accept json
 // @Produce json
-// @Param request body v1.LogoutRequest true "params"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.LogoutRequest true "params"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/auth/logout [post]
 func (h *AuthHandler) Logout(ctx *gin.Context) {
-	var req v1.LogoutRequest
+	var req apiv1.LogoutRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.authService.Logout(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }

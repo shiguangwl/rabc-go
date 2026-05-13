@@ -37,7 +37,7 @@ func TestParseTokenLegacyUserID(t *testing.T) {
 	j := NewJwt(conf)
 
 	token := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, jwtv5.MapClaims{
-		"userId": float64(7),
+		"userID": float64(7),
 		"exp":    time.Now().Add(time.Hour).Unix(),
 	})
 	raw, err := token.SignedString(j.key)

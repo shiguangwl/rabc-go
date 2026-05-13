@@ -28,7 +28,7 @@ type RoleQuery struct {
 	Name string
 }
 
-type ApiQuery struct {
+type APIQuery struct {
 	PageQuery
 	Group  string
 	Name   string

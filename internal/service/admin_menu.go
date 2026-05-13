@@ -8,11 +8,11 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/model"
 )
 
-func (s *adminService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest) error {
+func (s *adminService) MenuUpdate(ctx context.Context, req *apiv1.MenuUpdateRequest) error {
 	return repositoryError(s.adminRepository.MenuUpdateAtomic(ctx, &model.Menu{
 		Component:  req.Component,
 		Icon:       req.Icon,
@@ -32,7 +32,7 @@ func (s *adminService) MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest
 	}))
 }
 
-func (s *adminService) MenuCreate(ctx context.Context, req *v1.MenuCreateRequest) error {
+func (s *adminService) MenuCreate(ctx context.Context, req *apiv1.MenuCreateRequest) error {
 	return repositoryError(s.adminRepository.MenuCreate(ctx, &model.Menu{
 		Component:  req.Component,
 		Icon:       req.Icon,
@@ -53,14 +53,14 @@ func (s *adminService) MenuDelete(ctx context.Context, id uint) error {
 	return repositoryError(s.adminRepository.MenuDeleteAtomic(ctx, id))
 }
 
-func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuResponseData, error) {
+func (s *adminService) GetMenus(ctx context.Context, uid uint) (*apiv1.GetMenuResponseData, error) {
 	menuList, err := s.adminRepository.GetMenuList(ctx)
 	if err != nil {
 		s.logger.WithContext(ctx).Error("获取菜单列表失败", zap.Error(err))
 		return nil, repositoryError(err)
 	}
-	data := &v1.GetMenuResponseData{
-		List: make([]v1.MenuDataItem, 0),
+	data := &apiv1.GetMenuResponseData{
+		List: make([]apiv1.MenuDataItem, 0),
 	}
 	isAdmin := strconv.FormatUint(uint64(uid), 10) == model.AdminUserID
 	if isAdmin {
@@ -94,14 +94,15 @@ func (s *adminService) GetMenus(ctx context.Context, uid uint) (*v1.GetMenuRespo
 	}
 	return data, nil
 }
-func (s *adminService) GetAdminMenus(ctx context.Context) (*v1.GetMenuResponseData, error) {
+
+func (s *adminService) GetAdminMenus(ctx context.Context) (*apiv1.GetMenuResponseData, error) {
 	menuList, err := s.adminRepository.GetMenuList(ctx)
 	if err != nil {
 		s.logger.WithContext(ctx).Error("获取菜单列表失败", zap.Error(err))
 		return nil, repositoryError(err)
 	}
-	data := &v1.GetMenuResponseData{
-		List: make([]v1.MenuDataItem, 0),
+	data := &apiv1.GetMenuResponseData{
+		List: make([]apiv1.MenuDataItem, 0),
 	}
 	for _, menu := range menuList {
 		data.List = append(data.List, menuDataItem(menu))
@@ -109,8 +110,8 @@ func (s *adminService) GetAdminMenus(ctx context.Context) (*v1.GetMenuResponseDa
 	return data, nil
 }
 
-func menuDataItem(menu model.Menu) v1.MenuDataItem {
-	return v1.MenuDataItem{
+func menuDataItem(menu model.Menu) apiv1.MenuDataItem {
+	return apiv1.MenuDataItem{
 		ID:         menu.ID,
 		Name:       menu.Name,
 		Title:      menu.Title,

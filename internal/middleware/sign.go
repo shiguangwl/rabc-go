@@ -9,18 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/pkg/log"
 )
 
-func SignMiddleware(logger *log.Logger, conf *viper.Viper) gin.HandlerFunc {
+func SignMiddleware(_ *log.Logger, conf *viper.Viper) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		requiredHeaders := []string{"Timestamp", "Nonce", "Sign", "App-Version"}
 
 		for _, header := range requiredHeaders {
 			value, ok := ctx.Request.Header[header]
 			if !ok || len(value) == 0 {
-				v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+				apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 				ctx.Abort()
 				return
 			}
@@ -43,7 +43,7 @@ func SignMiddleware(logger *log.Logger, conf *viper.Viper) gin.HandlerFunc {
 		actual := ctx.Request.Header.Get("Sign")
 
 		if subtle.ConstantTimeCompare([]byte(expected), []byte(actual)) != 1 {
-			v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 			ctx.Abort()
 			return
 		}

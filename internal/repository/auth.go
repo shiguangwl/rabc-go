@@ -178,10 +178,10 @@ func NewAuthRepository(rdb *redis.Client) AuthRepository {
 //
 // 严格不变量：长度必须等于 rtRawLen=32B；任何长度不符或 base64 错误直接返回
 // ErrRefreshFormat，service 层据此判 401。
-func ParseRT(raw string) (sid string, rnd string, err error) {
+func ParseRT(raw string) (sid, rnd string, err error) {
 	decoded, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil {
-		return "", "", fmt.Errorf("%w: base64 decode: %v", ErrRefreshFormat, err)
+		return "", "", fmt.Errorf("%w: base64 decode: %w", ErrRefreshFormat, err)
 	}
 	if len(decoded) != rtRawLen {
 		return "", "", fmt.Errorf("%w: expected %dB, got %dB",
@@ -195,7 +195,7 @@ func ParseRT(raw string) (sid string, rnd string, err error) {
 // GenRT 生成新的 Refresh Token raw 字符串与对应 sid。
 //
 // sid 与 rand 必须各保留 16B 不可预测性；sid 使用 hex 作为 Redis key 后缀。
-func GenRT() (raw string, sid string, err error) {
+func GenRT() (raw, sid string, err error) {
 	buf := make([]byte, rtRawLen)
 	if _, err := rand.Read(buf); err != nil {
 		return "", "", fmt.Errorf("crypto/rand read: %w", err)
@@ -301,7 +301,7 @@ func (r *authRepo) GetRefreshRecord(ctx context.Context, sid string) (*RefreshRe
 	}
 	var rec RefreshRecord
 	if err := json.Unmarshal([]byte(raw), &rec); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrRefreshRecordCorrupted, err)
+		return nil, fmt.Errorf("%w: %w", ErrRefreshRecordCorrupted, err)
 	}
 	return &rec, nil
 }

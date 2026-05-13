@@ -1,4 +1,4 @@
-// internal/service/auth.go 是 Auth 子系统的应用层，负责双 Token 颁发、轮换、
+// Package service 是 Auth 子系统的应用层，负责双 Token 颁发、轮换、
 // 复用检测、主动登出与会话吊销。
 //
 // Handler 只处理 HTTP 绑定与响应，Redis key、RT hash 和轮换语义必须收敛在本层。
@@ -15,16 +15,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/auth"
 	"rabc-go/internal/repository"
 )
 
 // AuthService Auth 子系统应用层接口。
 type AuthService interface {
-	Login(ctx context.Context, req *v1.LoginRequest) (*LoginResult, error)
-	Refresh(ctx context.Context, req *v1.RefreshRequest) (*RefreshResult, error)
-	Logout(ctx context.Context, req *v1.LogoutRequest) error
+	Login(ctx context.Context, req *apiv1.LoginRequest) (*LoginResult, error)
+	Refresh(ctx context.Context, req *apiv1.RefreshRequest) (*RefreshResult, error)
+	Logout(ctx context.Context, req *apiv1.LogoutRequest) error
 	RevokeAllUserSessions(ctx context.Context, uid uint, reason string) (int, error)
 	ListUserSessions(ctx context.Context, uid uint) ([]repository.SessionInfo, error)
 	KickSession(ctx context.Context, uid uint, sid string) error
@@ -72,44 +72,45 @@ type authService struct {
 //
 // 登录失败路径必须避免暴露用户名是否存在；成功后必须同时写入 refresh 记录与
 // sessions 索引，保证后续吊销能覆盖该会话。
-func (s *authService) Login(ctx context.Context, req *v1.LoginRequest) (*LoginResult, error) {
+func (s *authService) Login(ctx context.Context, req *apiv1.LoginRequest) (*LoginResult, error) {
 	user, err := s.adminRepo.GetAdminUserByUsername(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// 保持用户名不存在与密码错误的耗时接近，避免登录枚举侧信道。
 			_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(req.Password))
-			return nil, v1.ErrUnauthorized
+			return nil, apiv1.ErrUnauthorized
 		}
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 
 	if user.IsDisabled {
 		s.logger.WithContext(ctx).Warn("auth.login_disabled",
 			zap.Uint("uid", user.ID), zap.String("username", user.Username))
-		return nil, v1.ErrUserDisabled
+		return nil, apiv1.ErrUserDisabled
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return nil, v1.ErrUnauthorized
+	compareErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if compareErr != nil {
+		if errors.Is(compareErr, bcrypt.ErrMismatchedHashAndPassword) {
+			return nil, apiv1.ErrUnauthorized
 		}
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(compareErr)
 	}
 
 	rt, sid, err := repository.GenRT()
 	if err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 	access, err := s.jwt.GenToken(user.ID, time.Now().Add(s.cfg.AccessTTL),
 		map[string]any{"sid": sid})
 	if err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 
 	exp := time.Now().Add(s.cfg.RefreshTTL).Unix()
 	recordJSON, err := buildRefreshRecord(rt, user.ID, exp)
 	if err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 	if err := s.authRepo.LoginCreate(ctx, repository.LoginCreateParams{
 		UID:           user.ID,
@@ -118,7 +119,7 @@ func (s *authService) Login(ctx context.Context, req *v1.LoginRequest) (*LoginRe
 		RefreshTTLSec: int(s.cfg.RefreshTTL.Seconds()),
 		ExpTS:         exp,
 	}); err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 
 	// 最后登录时间仅用于审计展示，写入失败不影响本次登录。
@@ -140,11 +141,11 @@ func (s *authService) Login(ctx context.Context, req *v1.LoginRequest) (*LoginRe
 // Refresh 刷新路径。
 //
 // 刷新必须轮换 refresh token；检测到旧 RT 复用时必须吊销该用户全部会话。
-func (s *authService) Refresh(ctx context.Context, req *v1.RefreshRequest) (*RefreshResult, error) {
+func (s *authService) Refresh(ctx context.Context, req *apiv1.RefreshRequest) (*RefreshResult, error) {
 	sid, _, err := repository.ParseRT(req.RefreshToken)
 	if err != nil {
 		// 对外不暴露 refresh token 的具体格式错误。
-		return nil, v1.ErrUnauthorized
+		return nil, apiv1.ErrUnauthorized
 	}
 
 	rec, err := s.authRepo.GetRefreshRecord(ctx, sid)
@@ -158,9 +159,9 @@ func (s *authService) Refresh(ctx context.Context, req *v1.RefreshRequest) (*Ref
 					zap.Uint("uid", tombUID), zap.String("sid", sid),
 					zap.String("via", "tomb"),
 					zap.Int("revoked_count", count), zap.Error(revokeErr))
-				return nil, v1.ErrRefreshReused
+				return nil, apiv1.ErrRefreshReused
 			}
-			return nil, v1.ErrRefreshExpired
+			return nil, apiv1.ErrRefreshExpired
 		}
 		if errors.Is(err, repository.ErrRefreshRecordCorrupted) {
 			tombUID, tombErr := s.authRepo.GetTombUID(ctx, sid)
@@ -170,29 +171,29 @@ func (s *authService) Refresh(ctx context.Context, req *v1.RefreshRequest) (*Ref
 					zap.Uint("uid", tombUID), zap.String("sid", sid),
 					zap.String("via", "corrupted_record_tomb"),
 					zap.Int("revoked_count", count), zap.Error(revokeErr))
-				return nil, v1.ErrRefreshReused
+				return nil, apiv1.ErrRefreshReused
 			}
 			s.logger.WithContext(ctx).Warn("auth.refresh_record_corrupted",
 				zap.String("sid", sid), zap.Error(err))
-			return nil, v1.ErrRefreshReused
+			return nil, apiv1.ErrRefreshReused
 		}
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 	uid := rec.UID
 
 	newRT, newSID, err := repository.GenRT()
 	if err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 	newAccess, err := s.jwt.GenToken(uid, time.Now().Add(s.cfg.AccessTTL),
 		map[string]any{"sid": newSID})
 	if err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 	newExp := time.Now().Add(s.cfg.RefreshTTL).Unix()
 	newRecord, err := buildRefreshRecord(newRT, uid, newExp)
 	if err != nil {
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 
 	err = s.authRepo.RotateRefresh(ctx, repository.RotateParams{
@@ -217,7 +218,7 @@ func (s *authService) Refresh(ctx context.Context, req *v1.RefreshRequest) (*Ref
 		}, nil
 
 	case errors.Is(err, repository.ErrRotateExpired):
-		return nil, v1.ErrRefreshExpired
+		return nil, apiv1.ErrRefreshExpired
 
 	case errors.Is(err, repository.ErrRotateReused):
 		// hash mismatch 表示当前 sid 的 RT 被复用或篡改，必须吊销该用户全部会话。
@@ -226,21 +227,21 @@ func (s *authService) Refresh(ctx context.Context, req *v1.RefreshRequest) (*Ref
 			zap.Uint("uid", uid), zap.String("sid", sid),
 			zap.String("via", "lua"),
 			zap.Int("revoked_count", count), zap.Error(revokeErr))
-		return nil, v1.ErrRefreshReused
+		return nil, apiv1.ErrRefreshReused
 
 	default:
-		return nil, v1.ErrInternalServerError.WithCause(err)
+		return nil, apiv1.ErrInternalServerError.WithCause(err)
 	}
 }
 
 // Logout 登出路径：删除单个 session，不连坐其他 session。
 //
 // 不要求 access 有效——即便 access 过期用户也能完成登出。
-func (s *authService) Logout(ctx context.Context, req *v1.LogoutRequest) error {
-	sid, _, err := repository.ParseRT(req.RefreshToken)
-	if err != nil {
+func (s *authService) Logout(ctx context.Context, req *apiv1.LogoutRequest) error {
+	sid, _, parseErr := repository.ParseRT(req.RefreshToken)
+	if parseErr != nil {
 		// 格式错也算成功登出（前端清 token 即可，不必报错）
-		return nil
+		return logoutMalformedRT()
 	}
 	rec, err := s.authRepo.GetRefreshRecord(ctx, sid)
 	if err != nil {
@@ -248,14 +249,18 @@ func (s *authService) Logout(ctx context.Context, req *v1.LogoutRequest) error {
 			// 已不存在，幂等成功
 			return nil
 		}
-		return v1.ErrInternalServerError.WithCause(err)
+		return apiv1.ErrInternalServerError.WithCause(err)
 	}
 	if err := s.authRepo.DeleteSession(ctx, rec.UID, sid); err != nil &&
 		!errors.Is(err, repository.ErrSessionNotFound) {
-		return v1.ErrInternalServerError.WithCause(err)
+		return apiv1.ErrInternalServerError.WithCause(err)
 	}
 	s.logger.WithContext(ctx).Info("auth.logout",
 		zap.Uint("uid", rec.UID), zap.String("sid", sid))
+	return nil
+}
+
+func logoutMalformedRT() error {
 	return nil
 }
 
@@ -270,7 +275,7 @@ func (s *authService) RevokeAllUserSessions(ctx context.Context, uid uint, reaso
 		zap.Int("sid_count", count),
 		zap.Error(err))
 	if err != nil {
-		return count, v1.ErrInternalServerError.WithCause(err)
+		return count, apiv1.ErrInternalServerError.WithCause(err)
 	}
 	return count, nil
 }
@@ -284,7 +289,7 @@ func (s *authService) ListUserSessions(ctx context.Context, uid uint) ([]reposit
 func (s *authService) KickSession(ctx context.Context, uid uint, sid string) error {
 	if err := s.authRepo.DeleteSession(ctx, uid, sid); err != nil &&
 		!errors.Is(err, repository.ErrSessionNotFound) {
-		return v1.ErrInternalServerError.WithCause(err)
+		return apiv1.ErrInternalServerError.WithCause(err)
 	}
 	s.logger.WithContext(ctx).Warn("auth.admin_kick",
 		zap.Uint("uid", uid), zap.String("sid", sid))

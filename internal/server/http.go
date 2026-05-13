@@ -14,8 +14,8 @@ import (
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	v1 "rabc-go/api/v1"
-	swagger "rabc-go/docs/swagger"
+	"rabc-go/api/apiv1"
+	docs "rabc-go/docs/swagger"
 	"rabc-go/internal/handler"
 	"rabc-go/internal/middleware"
 	"rabc-go/pkg/config"
@@ -34,7 +34,7 @@ var devOriginRe = regexp.MustCompile(`^https?://(?:localhost|127\.0\.0\.1|\[::1\
 func NewHTTPServer(
 	logger *log.Logger,
 	conf *viper.Viper,
-	jwt *jwt.JWT,
+	jwtUtil *jwt.JWT,
 	e *casbin.SyncedEnforcer,
 	adminHandler *handler.AdminHandler,
 	authHandler *handler.AuthHandler,
@@ -84,7 +84,7 @@ func NewHTTPServer(
 	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))
 	s.NoRoute(func(c *gin.Context) {
 		if !isSPAFallback(c.Request) {
-			v1.WriteResponse(c, v1.ErrNotFound, nil)
+			apiv1.WriteResponse(c, apiv1.ErrNotFound, nil)
 			return
 		}
 		indexPageData, err := web.Assets().ReadFile("dist/index.html")
@@ -94,7 +94,7 @@ func NewHTTPServer(
 		}
 		c.Data(nethttp.StatusOK, "text/html; charset=utf-8", indexPageData)
 	})
-	swagger.SwaggerInfo.BasePath = "/"
+	docs.SwaggerInfo.BasePath = "/"
 	s.GET("/swagger/*any", ginSwagger.WrapHandler(
 		swaggerfiles.Handler,
 		ginSwagger.DefaultModelsExpandDepth(-1),
@@ -112,7 +112,7 @@ func NewHTTPServer(
 			noAuthRouter.POST("/auth/logout", authHandler.Logout)
 		}
 
-		strictAuthRouter := v1Group.Group("/").Use(middleware.StrictAuth(jwt, logger), middleware.AuthMiddleware(e))
+		strictAuthRouter := v1Group.Group("/").Use(middleware.StrictAuth(jwtUtil, logger), middleware.AuthMiddleware(e))
 		{
 			strictAuthRouter.GET("/menus", adminHandler.GetMenus)
 			strictAuthRouter.GET("/admin/menus", adminHandler.GetAdminMenus)
@@ -137,10 +137,9 @@ func NewHTTPServer(
 			strictAuthRouter.DELETE("/admin/role", adminHandler.RoleDelete)
 
 			strictAuthRouter.GET("/admin/apis", adminHandler.GetApis)
-			strictAuthRouter.POST("/admin/api", adminHandler.ApiCreate)
-			strictAuthRouter.PUT("/admin/api", adminHandler.ApiUpdate)
-			strictAuthRouter.DELETE("/admin/api", adminHandler.ApiDelete)
-
+			strictAuthRouter.POST("/admin/api", adminHandler.APICreate)
+			strictAuthRouter.PUT("/admin/api", adminHandler.APIUpdate)
+			strictAuthRouter.DELETE("/admin/api", adminHandler.APIDelete)
 		}
 	}
 	return s

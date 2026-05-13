@@ -1,6 +1,6 @@
 package repository
 
-//go:generate go tool mockgen -destination=../../test/mocks/repository/admin.go rabc-go/internal/repository AdminRepository,AdminAuthRepository,AdminUserRepository,PermissionRepository,MenuRepository,RoleRepository,ApiRepository
+//go:generate go tool mockgen -destination=../../test/mocks/repository/admin.go rabc-go/internal/repository AdminRepository,AdminAuthRepository,AdminUserRepository,PermissionRepository,MenuRepository,RoleRepository,APIRepository
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type AdminRepository interface {
 	PermissionRepository
 	MenuRepository
 	RoleRepository
-	ApiRepository
+	APIRepository
 }
 
 type AdminAuthRepository interface {
@@ -67,12 +67,12 @@ type RoleRepository interface {
 	GetRole(ctx context.Context, id uint) (model.Role, error)
 }
 
-type ApiRepository interface {
-	GetApis(ctx context.Context, q ApiQuery) ([]model.Api, int64, error)
-	GetApiGroups(ctx context.Context) ([]string, error)
-	ApiCreate(ctx context.Context, m *model.Api) error
-	ApiUpdateAtomic(ctx context.Context, m *model.Api) error
-	ApiDeleteAtomic(ctx context.Context, id uint) error
+type APIRepository interface {
+	GetApis(ctx context.Context, q APIQuery) ([]model.API, int64, error)
+	GetAPIGroups(ctx context.Context) ([]string, error)
+	APICreate(ctx context.Context, m *model.API) error
+	APIUpdateAtomic(ctx context.Context, m *model.API) error
+	APIDeleteAtomic(ctx context.Context, id uint) error
 }
 
 func NewAdminRepository(
@@ -106,7 +106,7 @@ type adminRepository struct {
 //     索引在应用启动时由全局 NewCasbinEnforcer 已建好。
 //  2. NewCasbinModel() 重新 parse 得到独立 model 实例，不复用 r.e.GetModel()
 //     （Casbin Model 是 map 值类型，多个并发 tx-bound enforcer 共享会竞态）。
-func (r *adminRepository) newTxEnforcer(tx *gorm.DB) (casbin.IEnforcer, error) {
+func (*adminRepository) newTxEnforcer(tx *gorm.DB) (casbin.IEnforcer, error) {
 	gormadapter.TurnOffAutoMigrate(tx)
 	a, err := gormadapter.NewAdapterByDB(tx)
 	if err != nil {
@@ -237,9 +237,9 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 			return ErrBadRequest
 		}
 		switch {
-		case strings.HasPrefix(resource, model.ApiResourcePrefix):
+		case strings.HasPrefix(resource, model.APIResourcePrefix):
 			apis[apiPermission{
-				path:   strings.TrimPrefix(resource, model.ApiResourcePrefix),
+				path:   strings.TrimPrefix(resource, model.APIResourcePrefix),
 				method: action,
 			}] = struct{}{}
 		case strings.HasPrefix(resource, model.MenuResourcePrefix):
@@ -253,7 +253,7 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 	}
 	for api := range apis {
 		var count int64
-		if err := tx.Model(&model.Api{}).
+		if err := tx.Model(&model.API{}).
 			Where("path = ? AND method = ?", api.path, api.method).
 			Count(&count).Error; err != nil {
 			return fmt.Errorf("count api permission resource: %w", err)
@@ -274,10 +274,10 @@ func ensurePermissionResourcesExist(tx *gorm.DB, permissions map[string]struct{}
 	return nil
 }
 
-func ensureRowsAffected(tx *gorm.DB, result *gorm.DB, modelValue any, id uint) error {
+func ensureRowsAffected(tx, result *gorm.DB, modelValue any, id uint) error {
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
-			return fmt.Errorf("%w: %v", ErrConflict, result.Error)
+			return fmt.Errorf("%w: %w", ErrConflict, result.Error)
 		}
 		return result.Error
 	}

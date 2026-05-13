@@ -1,4 +1,4 @@
-package v1
+package apiv1
 
 // Error 应用层错误类型，承载业务码与 HTTP 状态码。
 //
@@ -6,7 +6,7 @@ package v1
 //   - Code 是给前端的业务码（前端按 code 分支处理），HTTP 是协议层状态码（由 WriteResponse 自动映射）。
 //     handler 因此不再硬编码 http.StatusXxx，避免 service 已返回 ErrBadRequest 却被 handler 覆盖成 500。
 //   - Is 按 Code 相等判定：sentinel 经 WithCause 包装、或被上层 fmt.Errorf("...: %w", err) 进一步包装后，
-//     errors.Is(wrapped, v1.ErrXxx) 仍可命中，彻底替代旧版按指针查 map 的脆弱方式。
+//     errors.Is(wrapped, apiv1.ErrXxx) 仍可命中，彻底替代旧版按指针查 map 的脆弱方式。
 //   - WithCause 返回带原因的副本（不修改原 sentinel），用于在保留业务码的同时附带底层错误链供日志使用。
 type Error struct {
 	Code    int
@@ -68,12 +68,12 @@ var (
 	ErrConflict            = newError(409, 409, "资源已存在")
 	ErrInternalServerError = newError(500, 500, "服务器错误~")
 
-	// 业务扩展错误：业务码独立编号（>=1001），HTTP 码按语义映射
+	// ErrUsernameAlreadyUse 表示用户名唯一性冲突。
 	ErrUsernameAlreadyUse = newError(1001, 409, "用户名已被占用")
 	ErrRoleSidExists      = newError(1002, 409, "角色 sid 已存在")
 	ErrRoleNameExists     = newError(1003, 409, "角色名已存在")
 
-	// 认证扩展错误按前端可感知状态分配 HTTP 码，业务码用于审计区分。
+	// ErrUserDisabled 表示账号已被禁用。
 	ErrUserDisabled   = newError(1004, 403, "账号已被禁用，请联系管理员")
 	ErrRefreshReused  = newError(1005, 401, "登录已失效，请重新登录")
 	ErrRefreshExpired = newError(1006, 401, "登录已过期，请重新登录")

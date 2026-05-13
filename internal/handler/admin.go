@@ -3,7 +3,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/service"
 )
 
@@ -33,22 +33,22 @@ func NewAdminHandler(
 // @Tags 用户模块
 // @Accept json
 // @Produce json
-// @Param request body v1.LoginRequest true "params"
-// @Success 200 {object} v1.LoginResponse
+// @Param request body apiv1.LoginRequest true "params"
+// @Success 200 {object} apiv1.LoginResponse
 // @Router /v1/login [post]
 func (h *AdminHandler) Login(ctx *gin.Context) {
-	var req v1.LoginRequest
+	var req apiv1.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 
 	result, err := h.authService.Login(ctx, &req)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, v1.LoginResponseData{
+	apiv1.HandleSuccess(ctx, apiv1.LoginResponseData{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		ExpiresIn:    result.ExpiresIn,
@@ -62,20 +62,20 @@ func (h *AdminHandler) Login(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} v1.GetMenuResponse
+// @Success 200 {object} apiv1.GetMenuResponse
 // @Router /v1/menus [get]
 func (h *AdminHandler) GetMenus(ctx *gin.Context) {
 	uid, ok := UserIDFromCtx(ctx)
 	if !ok {
-		v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 		return
 	}
 	data, err := h.adminService.GetMenus(ctx, uid)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
 // GetAdminMenus godoc
@@ -85,15 +85,15 @@ func (h *AdminHandler) GetMenus(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} v1.GetMenuResponse
+// @Success 200 {object} apiv1.GetMenuResponse
 // @Router /v1/admin/menus [get]
 func (h *AdminHandler) GetAdminMenus(ctx *gin.Context) {
 	data, err := h.adminService.GetAdminMenus(ctx)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
 // GetUserPermissions godoc
@@ -103,20 +103,20 @@ func (h *AdminHandler) GetAdminMenus(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} v1.GetUserPermissionsData
+// @Success 200 {object} apiv1.GetUserPermissionsData
 // @Router /v1/admin/user/permissions [get]
 func (h *AdminHandler) GetUserPermissions(ctx *gin.Context) {
 	uid, ok := UserIDFromCtx(ctx)
 	if !ok {
-		v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 		return
 	}
 	data, err := h.adminService.GetUserPermissions(ctx, uid)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
 // GetRolePermissions godoc
@@ -127,20 +127,20 @@ func (h *AdminHandler) GetUserPermissions(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param role query string true "角色名称"
-// @Success 200 {object} v1.GetRolePermissionsData
+// @Success 200 {object} apiv1.GetRolePermissionsData
 // @Router /v1/admin/role/permissions [get]
 func (h *AdminHandler) GetRolePermissions(ctx *gin.Context) {
-	var req v1.GetRolePermissionsRequest
+	var req apiv1.GetRolePermissionsRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetRolePermissions(ctx, req.Role)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
 // UpdateRolePermission godoc
@@ -150,20 +150,20 @@ func (h *AdminHandler) GetRolePermissions(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.UpdateRolePermissionRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.UpdateRolePermissionRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/role/permission [put]
 func (h *AdminHandler) UpdateRolePermission(ctx *gin.Context) {
-	var req v1.UpdateRolePermissionRequest
+	var req apiv1.UpdateRolePermissionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.UpdateRolePermission(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // MenuUpdate godoc
@@ -173,20 +173,20 @@ func (h *AdminHandler) UpdateRolePermission(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.MenuUpdateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.MenuUpdateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/menu [put]
 func (h *AdminHandler) MenuUpdate(ctx *gin.Context) {
-	var req v1.MenuUpdateRequest
+	var req apiv1.MenuUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.MenuUpdate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // MenuCreate godoc
@@ -196,20 +196,20 @@ func (h *AdminHandler) MenuUpdate(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.MenuCreateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.MenuCreateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/menu [post]
 func (h *AdminHandler) MenuCreate(ctx *gin.Context) {
-	var req v1.MenuCreateRequest
+	var req apiv1.MenuCreateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.MenuCreate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // MenuDelete godoc
@@ -220,19 +220,19 @@ func (h *AdminHandler) MenuCreate(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id query uint true "菜单ID"
-// @Success 200 {object} v1.Response
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/menu [delete]
 func (h *AdminHandler) MenuDelete(ctx *gin.Context) {
-	var req v1.MenuDeleteRequest
+	var req apiv1.MenuDeleteRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.MenuDelete(ctx, req.ID); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // GetRoles godoc
@@ -246,20 +246,20 @@ func (h *AdminHandler) MenuDelete(ctx *gin.Context) {
 // @Param pageSize query int true "每页数量"
 // @Param sid query string false "角色ID"
 // @Param name query string false "角色名称"
-// @Success 200 {object} v1.GetRolesResponse
+// @Success 200 {object} apiv1.GetRolesResponse
 // @Router /v1/admin/roles [get]
 func (h *AdminHandler) GetRoles(ctx *gin.Context) {
-	var req v1.GetRoleListRequest
+	var req apiv1.GetRoleListRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetRoles(ctx, &req)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
 // RoleCreate godoc
@@ -269,20 +269,20 @@ func (h *AdminHandler) GetRoles(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.RoleCreateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.RoleCreateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/role [post]
 func (h *AdminHandler) RoleCreate(ctx *gin.Context) {
-	var req v1.RoleCreateRequest
+	var req apiv1.RoleCreateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.RoleCreate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // RoleUpdate godoc
@@ -292,20 +292,20 @@ func (h *AdminHandler) RoleCreate(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.RoleUpdateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.RoleUpdateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/role [put]
 func (h *AdminHandler) RoleUpdate(ctx *gin.Context) {
-	var req v1.RoleUpdateRequest
+	var req apiv1.RoleUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.RoleUpdate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // RoleDelete godoc
@@ -316,19 +316,19 @@ func (h *AdminHandler) RoleUpdate(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id query uint true "角色ID"
-// @Success 200 {object} v1.Response
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/role [delete]
 func (h *AdminHandler) RoleDelete(ctx *gin.Context) {
-	var req v1.RoleDeleteRequest
+	var req apiv1.RoleDeleteRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.RoleDelete(ctx, req.ID); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // GetApis godoc
@@ -344,69 +344,69 @@ func (h *AdminHandler) RoleDelete(ctx *gin.Context) {
 // @Param name query string false "API名称"
 // @Param path query string false "API路径"
 // @Param method query string false "请求方法"
-// @Success 200 {object} v1.GetApisResponse
+// @Success 200 {object} apiv1.GetApisResponse
 // @Router /v1/admin/apis [get]
 func (h *AdminHandler) GetApis(ctx *gin.Context) {
-	var req v1.GetApisRequest
+	var req apiv1.GetApisRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetApis(ctx, &req)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
-// ApiCreate godoc
+// APICreate godoc
 // @Summary 创建API
 // @Description 创建新的API
 // @Tags API模块
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.ApiCreateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.APICreateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/api [post]
-func (h *AdminHandler) ApiCreate(ctx *gin.Context) {
-	var req v1.ApiCreateRequest
+func (h *AdminHandler) APICreate(ctx *gin.Context) {
+	var req apiv1.APICreateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
-	if err := h.adminService.ApiCreate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+	if err := h.adminService.APICreate(ctx, &req); err != nil {
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
-// ApiUpdate godoc
+// APIUpdate godoc
 // @Summary 更新API
 // @Description 更新API信息
 // @Tags API模块
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.ApiUpdateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.APIUpdateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/api [put]
-func (h *AdminHandler) ApiUpdate(ctx *gin.Context) {
-	var req v1.ApiUpdateRequest
+func (h *AdminHandler) APIUpdate(ctx *gin.Context) {
+	var req apiv1.APIUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
-	if err := h.adminService.ApiUpdate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+	if err := h.adminService.APIUpdate(ctx, &req); err != nil {
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
-// ApiDelete godoc
+// APIDelete godoc
 // @Summary 删除API
 // @Description 删除指定API
 // @Tags API模块
@@ -414,19 +414,19 @@ func (h *AdminHandler) ApiUpdate(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id query uint true "API ID"
-// @Success 200 {object} v1.Response
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/api [delete]
-func (h *AdminHandler) ApiDelete(ctx *gin.Context) {
-	var req v1.ApiDeleteRequest
+func (h *AdminHandler) APIDelete(ctx *gin.Context) {
+	var req apiv1.APIDeleteRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
-	if err := h.adminService.ApiDelete(ctx, req.ID); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+	if err := h.adminService.APIDelete(ctx, req.ID); err != nil {
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // AdminUserUpdate godoc
@@ -436,20 +436,20 @@ func (h *AdminHandler) ApiDelete(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.AdminUserUpdateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.AdminUserUpdateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/user [put]
 func (h *AdminHandler) AdminUserUpdate(ctx *gin.Context) {
-	var req v1.AdminUserUpdateRequest
+	var req apiv1.AdminUserUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.AdminUserUpdate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // AdminUserCreate godoc
@@ -459,20 +459,20 @@ func (h *AdminHandler) AdminUserUpdate(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body v1.AdminUserCreateRequest true "参数"
-// @Success 200 {object} v1.Response
+// @Param request body apiv1.AdminUserCreateRequest true "参数"
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/user [post]
 func (h *AdminHandler) AdminUserCreate(ctx *gin.Context) {
-	var req v1.AdminUserCreateRequest
+	var req apiv1.AdminUserCreateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.AdminUserCreate(ctx, &req); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // AdminUserDelete godoc
@@ -483,19 +483,19 @@ func (h *AdminHandler) AdminUserCreate(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id query uint true "用户ID"
-// @Success 200 {object} v1.Response
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/user [delete]
 func (h *AdminHandler) AdminUserDelete(ctx *gin.Context) {
-	var req v1.AdminUserDeleteRequest
+	var req apiv1.AdminUserDeleteRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.adminService.AdminUserDelete(ctx, req.ID); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // GetAdminUsers godoc
@@ -511,20 +511,20 @@ func (h *AdminHandler) AdminUserDelete(ctx *gin.Context) {
 // @Param nickname query string false "昵称"
 // @Param phone query string false "手机号"
 // @Param email query string false "邮箱"
-// @Success 200 {object} v1.GetAdminUsersResponse
+// @Success 200 {object} apiv1.GetAdminUsersResponse
 // @Router /v1/admin/users [get]
 func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
-	var req v1.GetAdminUsersRequest
+	var req apiv1.GetAdminUsersRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	data, err := h.adminService.GetAdminUsers(ctx, &req)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }
 
 // GetUserSessions godoc
@@ -533,24 +533,24 @@ func (h *AdminHandler) GetAdminUsers(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id query uint true "用户ID"
-// @Success 200 {object} v1.GetUserSessionsResponse
+// @Success 200 {object} apiv1.GetUserSessionsResponse
 // @Router /v1/admin/user/sessions [get]
 func (h *AdminHandler) GetUserSessions(ctx *gin.Context) {
-	var req v1.GetUserSessionsRequest
+	var req apiv1.GetUserSessionsRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	sessions, err := h.authService.ListUserSessions(ctx, req.ID)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	out := make([]v1.UserSessionItem, 0, len(sessions))
+	out := make([]apiv1.UserSessionItem, 0, len(sessions))
 	for _, s := range sessions {
-		out = append(out, v1.UserSessionItem{SID: s.SID, Exp: s.Exp})
+		out = append(out, apiv1.UserSessionItem{SID: s.SID, Exp: s.Exp})
 	}
-	v1.HandleSuccess(ctx, v1.GetUserSessionsResponseData{List: out})
+	apiv1.HandleSuccess(ctx, apiv1.GetUserSessionsResponseData{List: out})
 }
 
 // RevokeUserSessions godoc
@@ -559,19 +559,19 @@ func (h *AdminHandler) GetUserSessions(ctx *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param id query uint true "用户ID"
-// @Success 200 {object} v1.Response
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/user/sessions [delete]
 func (h *AdminHandler) RevokeUserSessions(ctx *gin.Context) {
-	var req v1.RevokeUserSessionsRequest
+	var req apiv1.RevokeUserSessionsRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if _, err := h.authService.RevokeAllUserSessions(ctx, req.ID, "admin_kick_all"); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // KickUserSession godoc
@@ -581,19 +581,19 @@ func (h *AdminHandler) RevokeUserSessions(ctx *gin.Context) {
 // @Security Bearer
 // @Param id query uint true "用户ID"
 // @Param sessionID query string true "会话ID"
-// @Success 200 {object} v1.Response
+// @Success 200 {object} apiv1.Response
 // @Router /v1/admin/user/session [delete]
 func (h *AdminHandler) KickUserSession(ctx *gin.Context) {
-	var req v1.KickUserSessionRequest
+	var req apiv1.KickUserSessionRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
 		return
 	}
 	if err := h.authService.KickSession(ctx, req.ID, req.SessionID); err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, nil)
+	apiv1.HandleSuccess(ctx, nil)
 }
 
 // GetAdminUser godoc
@@ -602,18 +602,18 @@ func (h *AdminHandler) KickUserSession(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Success 200 {object} v1.GetAdminUserResponse
+// @Success 200 {object} apiv1.GetAdminUserResponse
 // @Router /v1/admin/user [get]
 func (h *AdminHandler) GetAdminUser(ctx *gin.Context) {
 	uid, ok := UserIDFromCtx(ctx)
 	if !ok {
-		v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+		apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 		return
 	}
 	data, err := h.adminService.GetAdminUser(ctx, uid)
 	if err != nil {
-		v1.WriteResponse(ctx, err, nil)
+		apiv1.WriteResponse(ctx, err, nil)
 		return
 	}
-	v1.HandleSuccess(ctx, data)
+	apiv1.HandleSuccess(ctx, data)
 }

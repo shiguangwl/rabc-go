@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 
 	"go.uber.org/zap"
 	gormlogger "gorm.io/gorm/logger"
@@ -50,7 +51,7 @@ func (l *Logger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 }
 
 // ParamsFilter 让 GORM 在 Explain SQL 前丢弃参数，避免 Debug SQL 泄露 PII。
-func (l Logger) ParamsFilter(ctx context.Context, sql string, params ...interface{}) (string, []interface{}) {
+func (l Logger) ParamsFilter(_ context.Context, sql string, params ...interface{}) (string, []interface{}) {
 	if l.ParameterizedQueries {
 		return sql, nil
 	}
@@ -91,32 +92,18 @@ func (l Logger) Trace(ctx context.Context, begin time.Time, fc func() (string, i
 	switch {
 	case err != nil && l.LogLevel >= gormlogger.Error && (!errors.Is(err, gormlogger.ErrRecordNotFound) || !l.IgnoreRecordNotFoundError):
 		sql, rows := fc()
-		if rows == -1 {
-			logger.Error("SQL 执行失败", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
-		} else {
-			logger.Error("SQL 执行失败", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
-		}
+		logger.Error("SQL 执行失败", zap.Error(err), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 	case elapsed > l.SlowThreshold && l.SlowThreshold != 0 && l.LogLevel >= gormlogger.Warn:
 		sql, rows := fc()
 		slowLog := fmt.Sprintf("慢 SQL 阈值 >= %v", l.SlowThreshold)
-		if rows == -1 {
-			logger.Warn("SQL 执行过慢", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
-		} else {
-			logger.Warn("SQL 执行过慢", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
-		}
+		logger.Warn("SQL 执行过慢", zap.String("slow", slowLog), zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 	case l.LogLevel == gormlogger.Info:
 		sql, rows := fc()
-		if rows == -1 {
-			logger.Info("SQL 已执行", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
-		} else {
-			logger.Info("SQL 已执行", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
-		}
+		logger.Info("SQL 已执行", zap.String("elapsed", elapsedStr), zap.Int64("rows", rows), zap.String("sql", sql))
 	}
 }
 
-var (
-	gormPackage = filepath.Join("gorm.io", "gorm")
-)
+var gormPackage = filepath.Join("gorm.io", "gorm")
 
 func (l Logger) logger(ctx context.Context) *zap.Logger {
 	logger := l.ZapLogger

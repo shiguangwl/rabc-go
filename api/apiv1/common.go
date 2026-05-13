@@ -1,4 +1,4 @@
-package v1
+package apiv1
 
 // 分页默认值与上限。集中放在 api 层，避免 handler/service/repository 各自硬编码。
 const (

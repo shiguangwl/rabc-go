@@ -8,12 +8,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/model"
 	"rabc-go/internal/repository"
 )
 
-func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdminUserResponseData, error) {
+func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*apiv1.GetAdminUserResponseData, error) {
 	user, err := s.adminRepository.GetAdminUser(ctx, uid)
 	if err != nil {
 		return nil, repositoryError(err)
@@ -26,7 +26,7 @@ func (s *adminService) GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdmin
 		roles = []string{}
 	}
 
-	return &v1.GetAdminUserResponseData{
+	return &apiv1.GetAdminUserResponseData{
 		Email:       user.Email,
 		ID:          user.ID,
 		Username:    user.Username,
@@ -47,7 +47,7 @@ func formatNullableTime(t *time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
-func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersRequest) (*v1.GetAdminUsersResponseData, error) {
+func (s *adminService) GetAdminUsers(ctx context.Context, req *apiv1.GetAdminUsersRequest) (*apiv1.GetAdminUsersResponseData, error) {
 	req.Normalize()
 	list, total, err := s.adminRepository.GetAdminUsers(ctx, repository.AdminUserQuery{
 		PageQuery: pageQuery(req.Pagination),
@@ -59,8 +59,8 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 	if err != nil {
 		return nil, repositoryError(err)
 	}
-	data := &v1.GetAdminUsersResponseData{
-		List:  make([]v1.AdminUserDataItem, 0),
+	data := &apiv1.GetAdminUsersResponseData{
+		List:  make([]apiv1.AdminUserDataItem, 0),
 		Total: total,
 	}
 	for _, user := range list {
@@ -70,7 +70,7 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 			s.logger.WithContext(ctx).Error("获取用户角色失败", zap.Uint("user_id", user.ID), zap.Error(err))
 			return nil, repositoryError(err)
 		}
-		data.List = append(data.List, v1.AdminUserDataItem{
+		data.List = append(data.List, apiv1.AdminUserDataItem{
 			Email:       user.Email,
 			ID:          user.ID,
 			Nickname:    user.Nickname,
@@ -85,7 +85,7 @@ func (s *adminService) GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersR
 	return data, nil
 }
 
-func (s *adminService) AdminUserUpdate(ctx context.Context, req *v1.AdminUserUpdateRequest) error {
+func (s *adminService) AdminUserUpdate(ctx context.Context, req *apiv1.AdminUserUpdateRequest) error {
 	// 密码为空表示不修改密码列；当前请求模型不支持显式清空密码。
 	passwordHash := ""
 	if req.Password != "" {
@@ -116,7 +116,7 @@ func (s *adminService) AdminUserUpdate(ctx context.Context, req *v1.AdminUserUpd
 	return nil
 }
 
-func (s *adminService) AdminUserCreate(ctx context.Context, req *v1.AdminUserCreateRequest) error {
+func (s *adminService) AdminUserCreate(ctx context.Context, req *apiv1.AdminUserCreateRequest) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err

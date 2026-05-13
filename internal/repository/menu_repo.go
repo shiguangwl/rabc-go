@@ -13,7 +13,7 @@ import (
 func (r *adminRepository) MenuCreate(ctx context.Context, m *model.Menu) error {
 	if err := r.DB(ctx).Create(m).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return fmt.Errorf("%w: %v", ErrConflict, err)
+			return fmt.Errorf("%w: %w", ErrConflict, err)
 		}
 		return err
 	}

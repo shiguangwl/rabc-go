@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os/signal"
-	"rabc-go/pkg/log"
-	"rabc-go/pkg/server"
 	"syscall"
 	"time"
+
+	"rabc-go/pkg/log"
+	"rabc-go/pkg/server"
 )
 
 type App struct {

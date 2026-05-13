@@ -10,18 +10,18 @@ import (
 	"rabc-go/internal/model"
 )
 
-func (r *adminRepository) GetApiGroups(ctx context.Context) ([]string, error) {
+func (r *adminRepository) GetAPIGroups(ctx context.Context) ([]string, error) {
 	res := make([]string, 0)
-	if err := r.DB(ctx).Model(&model.Api{}).Distinct().Order("group_name ASC").Pluck("group_name", &res).Error; err != nil {
+	if err := r.DB(ctx).Model(&model.API{}).Distinct().Order("group_name ASC").Pluck("group_name", &res).Error; err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func (r *adminRepository) GetApis(ctx context.Context, q ApiQuery) ([]model.Api, int64, error) {
-	var list []model.Api
+func (r *adminRepository) GetApis(ctx context.Context, q APIQuery) ([]model.API, int64, error) {
+	var list []model.API
 	var total int64
-	scope := r.DB(ctx).Model(&model.Api{})
+	scope := r.DB(ctx).Model(&model.API{})
 	if q.Name != "" {
 		scope = scope.Where("name LIKE ?", "%"+q.Name+"%")
 	}
@@ -43,17 +43,17 @@ func (r *adminRepository) GetApis(ctx context.Context, q ApiQuery) ([]model.Api,
 	return list, total, nil
 }
 
-func (r *adminRepository) ApiCreate(ctx context.Context, m *model.Api) error {
+func (r *adminRepository) APICreate(ctx context.Context, m *model.API) error {
 	if err := r.DB(ctx).Create(m).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return fmt.Errorf("%w: %v", ErrConflict, err)
+			return fmt.Errorf("%w: %w", ErrConflict, err)
 		}
 		return err
 	}
 	return nil
 }
 
-func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api) error {
+func (r *adminRepository) APIUpdateAtomic(ctx context.Context, m *model.API) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	updates := map[string]any{
@@ -63,12 +63,12 @@ func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api) err
 		"method":     m.Method,
 	}
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var old model.Api
+		var old model.API
 		if err := tx.Where("id = ?", m.ID).First(&old).Error; err != nil {
 			return err
 		}
 		pathChanged := old.Path != m.Path || old.Method != m.Method
-		if err := ensureRowsAffected(tx, tx.Model(&model.Api{}).Where("id = ?", m.ID).Updates(updates), &model.Api{}, m.ID); err != nil {
+		if err := ensureRowsAffected(tx, tx.Model(&model.API{}).Where("id = ?", m.ID).Updates(updates), &model.API{}, m.ID); err != nil {
 			return err
 		}
 		if !pathChanged {
@@ -78,7 +78,7 @@ func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api) err
 		if err != nil {
 			return err
 		}
-		return removePoliciesByObjectActOn(e, model.ApiResourcePrefix+old.Path, old.Method)
+		return removePoliciesByObjectActOn(e, model.APIResourcePrefix+old.Path, old.Method)
 	}); err != nil {
 		return err
 	}
@@ -86,11 +86,11 @@ func (r *adminRepository) ApiUpdateAtomic(ctx context.Context, m *model.Api) err
 	return nil
 }
 
-func (r *adminRepository) ApiDeleteAtomic(ctx context.Context, id uint) error {
+func (r *adminRepository) APIDeleteAtomic(ctx context.Context, id uint) error {
 	r.rbacMu.Lock()
 	defer r.rbacMu.Unlock()
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var old model.Api
+		var old model.API
 		if err := tx.Where("id = ?", id).First(&old).Error; err != nil {
 			return err
 		}
@@ -99,10 +99,10 @@ func (r *adminRepository) ApiDeleteAtomic(ctx context.Context, id uint) error {
 			return err
 		}
 		// 撤权先：清 Casbin 策略后再删 DB 行
-		if err := removePoliciesByObjectActOn(e, model.ApiResourcePrefix+old.Path, old.Method); err != nil {
+		if err := removePoliciesByObjectActOn(e, model.APIResourcePrefix+old.Path, old.Method); err != nil {
 			return err
 		}
-		return ensureRowsAffected(tx, tx.Unscoped().Where("id = ?", id).Delete(&model.Api{}), &model.Api{}, id)
+		return ensureRowsAffected(tx, tx.Unscoped().Where("id = ?", id).Delete(&model.API{}), &model.API{}, id)
 	}); err != nil {
 		return err
 	}

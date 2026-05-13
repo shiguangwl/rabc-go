@@ -39,11 +39,13 @@ func NewServer(engine *gin.Engine, logger *log.Logger, opts ...Option) *Server {
 	}
 	return s
 }
+
 func WithServerHost(host string) Option {
 	return func(s *Server) {
 		s.host = host
 	}
 }
+
 func WithServerPort(port int) Option {
 	return func(s *Server) {
 		s.port = port
@@ -70,6 +72,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	return nil
 }
+
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.Info("HTTP 服务正在停止")
 	if s.httpSrv == nil {

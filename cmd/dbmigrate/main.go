@@ -18,10 +18,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -168,8 +170,8 @@ func ensureMySQLAtlasDevDB(dsn string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
-	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS `atlas_dev` DEFAULT CHARACTER SET utf8mb4")
+	defer closeWithError(&err, db)
+	_, err = db.ExecContext(context.Background(), "CREATE DATABASE IF NOT EXISTS `atlas_dev` DEFAULT CHARACTER SET utf8mb4")
 	return err
 }
 
@@ -182,16 +184,17 @@ func ensurePostgresAtlasDevDB(dsn string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer closeWithError(&err, db)
 
 	var exists bool
-	if err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = 'atlas_dev')").Scan(&exists); err != nil {
+	if queryErr := db.QueryRowContext(context.Background(), "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = 'atlas_dev')").Scan(&exists); queryErr != nil {
+		err = queryErr
 		return err
 	}
 	if exists {
 		return nil
 	}
-	_, err = db.Exec(`CREATE DATABASE atlas_dev`)
+	_, err = db.ExecContext(context.Background(), `CREATE DATABASE atlas_dev`)
 	return err
 }
 
@@ -209,7 +212,7 @@ func postgresAdminDSN(dsn string) (string, error) {
 }
 
 func runAtlas(action, dialect string, argv []string) error {
-	cmd := exec.Command("atlas", argv...)
+	cmd := exec.CommandContext(context.Background(), "atlas", argv...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
@@ -263,7 +266,7 @@ func readConfig(path string) (*viper.Viper, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer closeWithError(&err, f)
 
 	conf := viper.New()
 	conf.SetConfigType("yaml")
@@ -279,6 +282,12 @@ func readConfig(path string) (*viper.Viper, error) {
 		}
 	}
 	return conf, nil
+}
+
+func closeWithError(errp *error, closer io.Closer) {
+	if closeErr := closer.Close(); closeErr != nil && *errp == nil {
+		*errp = closeErr
+	}
 }
 
 func normalizeDialect(driver string) (string, error) {

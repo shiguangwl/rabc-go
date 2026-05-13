@@ -87,15 +87,15 @@ func (r *adminRepository) UpdateRolePermission(ctx context.Context, role string,
 	return nil
 }
 
-func (r *adminRepository) GetUserPermissions(ctx context.Context, uid uint) ([][]string, error) {
+func (r *adminRepository) GetUserPermissions(_ context.Context, uid uint) ([][]string, error) {
 	return r.e.GetImplicitPermissionsForUser(strconv.FormatUint(uint64(uid), 10))
 }
 
-func (r *adminRepository) GetRolePermissions(ctx context.Context, role string) ([][]string, error) {
+func (r *adminRepository) GetRolePermissions(_ context.Context, role string) ([][]string, error) {
 	return r.e.GetPermissionsForUser(model.RoleSubject(role))
 }
 
-func (r *adminRepository) GetUserRoles(ctx context.Context, uid uint) ([]string, error) {
+func (r *adminRepository) GetUserRoles(_ context.Context, uid uint) ([]string, error) {
 	roles, err := r.e.GetRolesForUser(strconv.FormatUint(uint64(uid), 10))
 	if err != nil {
 		return nil, err

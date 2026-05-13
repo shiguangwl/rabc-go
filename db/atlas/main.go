@@ -53,7 +53,7 @@ func models() []any {
 		&model.AdminUser{},
 		&model.Menu{},
 		&model.Role{},
-		&model.Api{},
+		&model.API{},
 		&casbinRule{},
 	}
 }

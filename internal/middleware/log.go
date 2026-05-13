@@ -17,7 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/pkg/log"
 )
 
@@ -78,7 +78,7 @@ func resolveMaxBodyBytes(maxBytes int) int {
 //
 // maxBytes：单条 body 写入日志的字节上限，<=0 时取 defaultMaxLogBodyBytes。
 // 这里也作为 io.LimitReader 的硬上限，防止恶意/超大 body 把整个 raw 数据吃进内存。
-func RequestLogMiddleware(logger *log.Logger, logHeaders bool, logBody bool, maxBytes int) gin.HandlerFunc {
+func RequestLogMiddleware(logger *log.Logger, logHeaders, logBody bool, maxBytes int) gin.HandlerFunc {
 	limit := resolveMaxBodyBytes(maxBytes)
 	return func(ctx *gin.Context) {
 		// trace 标识：UUID 失败时回退到 crypto/rand 16 字节 hex；避免直接走时间戳兜底，
@@ -153,10 +153,10 @@ func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.H
 		logger.WithContext(ctx).Info("Res", fields...)
 
 		// 5xx 错误链统一在此记录，handler/service 不再各自打错误日志，避免重复刷屏。
-		// v1.WriteResponse 在 5xx 路径会把原始 err（含 wrap 链）放入 ctx，这里读出后输出。
+		// apiv1.WriteResponse 在 5xx 路径会把原始 err（含 wrap 链）放入 ctx，这里读出后输出。
 		// 兜底：若 status>=500 但 ctx 中无 biz_err（典型来自 gin.Recovery 处理的 panic），
 		// 仍发一条带 trace 的 ERROR，让告警与排查不至于丢线索。
-		if v, ok := ctx.Get(v1.CtxBizErrKey); ok {
+		if v, ok := ctx.Get(apiv1.CtxBizErrKey); ok {
 			if e, ok := v.(error); ok {
 				logger.WithContext(ctx).Error("请求处理失败", zap.Error(e))
 			}

@@ -12,7 +12,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-const ctxLoggerKey = "zapLogger"
+type ctxLoggerKey struct{}
 
 // Logger 是 zap.Logger 的项目包装：通过 WithValue/WithContext 把请求级
 // trace/user 等字段挂到 ctx，让下游各层无须显式传 logger 即可复用同一上下文。
@@ -99,10 +99,10 @@ func jsonEncoderConfig() zapcore.EncoderConfig {
 func (l *Logger) WithValue(ctx context.Context, fields ...zapcore.Field) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
 		ctx = c.Request.Context()
-		c.Request = c.Request.WithContext(context.WithValue(ctx, ctxLoggerKey, l.WithContext(ctx).With(fields...)))
+		c.Request = c.Request.WithContext(context.WithValue(ctx, ctxLoggerKey{}, l.WithContext(ctx).With(fields...)))
 		return c
 	}
-	return context.WithValue(ctx, ctxLoggerKey, l.WithContext(ctx).With(fields...))
+	return context.WithValue(ctx, ctxLoggerKey{}, l.WithContext(ctx).With(fields...))
 }
 
 // WithContext 优先返回上下文 logger；缺失时回退到全局 logger，避免调用方做空值分支。
@@ -110,7 +110,7 @@ func (l *Logger) WithContext(ctx context.Context) *Logger {
 	if c, ok := ctx.(*gin.Context); ok {
 		ctx = c.Request.Context()
 	}
-	zl := ctx.Value(ctxLoggerKey)
+	zl := ctx.Value(ctxLoggerKey{})
 	ctxLogger, ok := zl.(*zap.Logger)
 	if ok {
 		return &Logger{ctxLogger}

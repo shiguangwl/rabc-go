@@ -5,14 +5,14 @@ import (
 
 	"gorm.io/gorm"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/model"
 	"rabc-go/internal/repository"
 )
 
-func (s *adminService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1.GetApisResponseData, error) {
+func (s *adminService) GetApis(ctx context.Context, req *apiv1.GetApisRequest) (*apiv1.GetApisResponseData, error) {
 	req.Normalize()
-	list, total, err := s.adminRepository.GetApis(ctx, repository.ApiQuery{
+	list, total, err := s.adminRepository.GetApis(ctx, repository.APIQuery{
 		PageQuery: pageQuery(req.Pagination),
 		Group:     req.Group,
 		Name:      req.Name,
@@ -22,17 +22,17 @@ func (s *adminService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1
 	if err != nil {
 		return nil, repositoryError(err)
 	}
-	groups, err := s.adminRepository.GetApiGroups(ctx)
+	groups, err := s.adminRepository.GetAPIGroups(ctx)
 	if err != nil {
 		return nil, repositoryError(err)
 	}
-	data := &v1.GetApisResponseData{
-		List:   make([]v1.ApiDataItem, 0),
+	data := &apiv1.GetApisResponseData{
+		List:   make([]apiv1.APIDataItem, 0),
 		Total:  total,
 		Groups: groups,
 	}
 	for _, api := range list {
-		data.List = append(data.List, v1.ApiDataItem{
+		data.List = append(data.List, apiv1.APIDataItem{
 			CreatedAt: api.CreatedAt.Format("2006-01-02 15:04:05"),
 			Group:     api.Group,
 			ID:        api.ID,
@@ -45,10 +45,10 @@ func (s *adminService) GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1
 	return data, nil
 }
 
-func (s *adminService) ApiUpdate(ctx context.Context, req *v1.ApiUpdateRequest) error {
+func (s *adminService) APIUpdate(ctx context.Context, req *apiv1.APIUpdateRequest) error {
 	// path/method 变更时 repo 在同一事务内读取旧值并清旧 Casbin 策略；
 	// 避免 service 先读旧值再更新导致并发修改时清错资源 key。
-	return repositoryError(s.adminRepository.ApiUpdateAtomic(ctx, &model.Api{
+	return repositoryError(s.adminRepository.APIUpdateAtomic(ctx, &model.API{
 		Group:  req.Group,
 		Method: req.Method,
 		Name:   req.Name,
@@ -57,10 +57,10 @@ func (s *adminService) ApiUpdate(ctx context.Context, req *v1.ApiUpdateRequest) 
 	}))
 }
 
-// ApiCreate 不需要事务：新登记的 API 资源默认无任何 Casbin 策略绑定，
+// APICreate 不需要事务：新登记的 API 资源默认无任何 Casbin 策略绑定，
 // 需要管理员通过"角色权限管理"页面显式分配。直接走 repo 单写即可。
-func (s *adminService) ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) error {
-	return repositoryError(s.adminRepository.ApiCreate(ctx, &model.Api{
+func (s *adminService) APICreate(ctx context.Context, req *apiv1.APICreateRequest) error {
+	return repositoryError(s.adminRepository.APICreate(ctx, &model.API{
 		Group:  req.Group,
 		Method: req.Method,
 		Name:   req.Name,
@@ -68,6 +68,6 @@ func (s *adminService) ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) 
 	}))
 }
 
-func (s *adminService) ApiDelete(ctx context.Context, id uint) error {
-	return repositoryError(s.adminRepository.ApiDeleteAtomic(ctx, id))
+func (s *adminService) APIDelete(ctx context.Context, id uint) error {
+	return repositoryError(s.adminRepository.APIDeleteAtomic(ctx, id))
 }

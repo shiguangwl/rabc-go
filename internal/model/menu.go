@@ -19,6 +19,6 @@ type Menu struct {
 	Weight     int    `json:"weight" gorm:"column:weight;type:int;default:0;comment:排序权重，越大越靠前"`
 }
 
-func (m *Menu) TableName() string {
+func (*Menu) TableName() string {
 	return "menu"
 }

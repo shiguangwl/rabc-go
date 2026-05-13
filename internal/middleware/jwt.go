@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/pkg/jwt"
 	"rabc-go/pkg/log"
 )
@@ -17,7 +17,7 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 				zap.String("request_url", ctx.Request.URL.String()),
 				zap.Any("request_params", ctx.Params),
 			)
-			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
 		}
@@ -29,7 +29,7 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 				zap.Any("request_params", ctx.Params),
 				zap.Error(err),
 			)
-			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
 		}

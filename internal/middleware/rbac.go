@@ -6,7 +6,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/model"
 	"rabc-go/pkg/jwt"
 )
@@ -15,13 +15,13 @@ func AuthMiddleware(e *casbin.SyncedEnforcer) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		v, exists := ctx.Get("claims")
 		if !exists {
-			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
 		}
 		userInfo, ok := v.(*jwt.MyCustomClaims)
 		if !ok {
-			v1.WriteResponse(ctx, v1.ErrUnauthorized, nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
 			ctx.Abort()
 			return
 		}
@@ -33,19 +33,19 @@ func AuthMiddleware(e *casbin.SyncedEnforcer) gin.HandlerFunc {
 		}
 
 		sub := strconv.FormatUint(uint64(uid), 10)
-		obj := model.ApiResourcePrefix + ctx.Request.URL.Path
+		obj := model.APIResourcePrefix + ctx.Request.URL.Path
 		act := ctx.Request.Method
 
 		// Enforce 出错代表 Casbin 内部异常（数据库不可达等），不是"无权限"。
 		// 区分语义：err != nil → 500（鉴权器故障，需告警）；!allowed → 403（无权限）。
 		allowed, err := e.Enforce(sub, obj, act)
 		if err != nil {
-			v1.WriteResponse(ctx, v1.ErrInternalServerError.WithCause(err), nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrInternalServerError.WithCause(err), nil)
 			ctx.Abort()
 			return
 		}
 		if !allowed {
-			v1.WriteResponse(ctx, v1.ErrForbidden, nil)
+			apiv1.WriteResponse(ctx, apiv1.ErrForbidden, nil)
 			ctx.Abort()
 			return
 		}

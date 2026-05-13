@@ -11,24 +11,24 @@ type stringArrayEncoder struct {
 	values []string
 }
 
-func (e *stringArrayEncoder) AppendBool(bool)             {}
-func (e *stringArrayEncoder) AppendByteString([]byte)     {}
-func (e *stringArrayEncoder) AppendComplex128(complex128) {}
-func (e *stringArrayEncoder) AppendComplex64(complex64)   {}
-func (e *stringArrayEncoder) AppendFloat64(float64)       {}
-func (e *stringArrayEncoder) AppendFloat32(float32)       {}
-func (e *stringArrayEncoder) AppendInt(int)               {}
-func (e *stringArrayEncoder) AppendInt64(int64)           {}
-func (e *stringArrayEncoder) AppendInt32(int32)           {}
-func (e *stringArrayEncoder) AppendInt16(int16)           {}
-func (e *stringArrayEncoder) AppendInt8(int8)             {}
-func (e *stringArrayEncoder) AppendString(value string)   { e.values = append(e.values, value) }
-func (e *stringArrayEncoder) AppendUint(uint)             {}
-func (e *stringArrayEncoder) AppendUint64(uint64)         {}
-func (e *stringArrayEncoder) AppendUint32(uint32)         {}
-func (e *stringArrayEncoder) AppendUint16(uint16)         {}
-func (e *stringArrayEncoder) AppendUint8(uint8)           {}
-func (e *stringArrayEncoder) AppendUintptr(uintptr)       {}
+func (*stringArrayEncoder) AppendBool(bool)             {}
+func (*stringArrayEncoder) AppendByteString([]byte)     {}
+func (*stringArrayEncoder) AppendComplex128(complex128) {}
+func (*stringArrayEncoder) AppendComplex64(complex64)   {}
+func (*stringArrayEncoder) AppendFloat64(float64)       {}
+func (*stringArrayEncoder) AppendFloat32(float32)       {}
+func (*stringArrayEncoder) AppendInt(int)               {}
+func (*stringArrayEncoder) AppendInt64(int64)           {}
+func (*stringArrayEncoder) AppendInt32(int32)           {}
+func (*stringArrayEncoder) AppendInt16(int16)           {}
+func (*stringArrayEncoder) AppendInt8(int8)             {}
+func (e *stringArrayEncoder) AppendString(value string) { e.values = append(e.values, value) }
+func (*stringArrayEncoder) AppendUint(uint)             {}
+func (*stringArrayEncoder) AppendUint64(uint64)         {}
+func (*stringArrayEncoder) AppendUint32(uint32)         {}
+func (*stringArrayEncoder) AppendUint16(uint16)         {}
+func (*stringArrayEncoder) AppendUint8(uint8)           {}
+func (*stringArrayEncoder) AppendUintptr(uintptr)       {}
 
 // 守护文件日志走 ShortCallerEncoder：一旦有人改成 FullCallerEncoder，
 // 日志会暴露开发机绝对路径（含 $HOME/$GOPATH），既泄露环境又把列撑爆。

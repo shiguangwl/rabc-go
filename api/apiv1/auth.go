@@ -1,4 +1,4 @@
-package v1
+package apiv1
 
 // RefreshRequest 刷新接口请求载荷。
 //

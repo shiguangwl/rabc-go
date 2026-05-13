@@ -4,36 +4,36 @@ import (
 	"context"
 	"errors"
 
-	v1 "rabc-go/api/v1"
+	"rabc-go/api/apiv1"
 	"rabc-go/internal/repository"
 )
 
 type AdminService interface {
-	GetAdminUsers(ctx context.Context, req *v1.GetAdminUsersRequest) (*v1.GetAdminUsersResponseData, error)
-	GetAdminUser(ctx context.Context, uid uint) (*v1.GetAdminUserResponseData, error)
-	AdminUserUpdate(ctx context.Context, req *v1.AdminUserUpdateRequest) error
-	AdminUserCreate(ctx context.Context, req *v1.AdminUserCreateRequest) error
+	GetAdminUsers(ctx context.Context, req *apiv1.GetAdminUsersRequest) (*apiv1.GetAdminUsersResponseData, error)
+	GetAdminUser(ctx context.Context, uid uint) (*apiv1.GetAdminUserResponseData, error)
+	AdminUserUpdate(ctx context.Context, req *apiv1.AdminUserUpdateRequest) error
+	AdminUserCreate(ctx context.Context, req *apiv1.AdminUserCreateRequest) error
 	AdminUserDelete(ctx context.Context, id uint) error
 
-	GetUserPermissions(ctx context.Context, uid uint) (*v1.GetUserPermissionsData, error)
-	GetRolePermissions(ctx context.Context, role string) (*v1.GetRolePermissionsData, error)
-	UpdateRolePermission(ctx context.Context, req *v1.UpdateRolePermissionRequest) error
+	GetUserPermissions(ctx context.Context, uid uint) (*apiv1.GetUserPermissionsData, error)
+	GetRolePermissions(ctx context.Context, role string) (*apiv1.GetRolePermissionsData, error)
+	UpdateRolePermission(ctx context.Context, req *apiv1.UpdateRolePermissionRequest) error
 
-	GetAdminMenus(ctx context.Context) (*v1.GetMenuResponseData, error)
-	GetMenus(ctx context.Context, uid uint) (*v1.GetMenuResponseData, error)
-	MenuUpdate(ctx context.Context, req *v1.MenuUpdateRequest) error
-	MenuCreate(ctx context.Context, req *v1.MenuCreateRequest) error
+	GetAdminMenus(ctx context.Context) (*apiv1.GetMenuResponseData, error)
+	GetMenus(ctx context.Context, uid uint) (*apiv1.GetMenuResponseData, error)
+	MenuUpdate(ctx context.Context, req *apiv1.MenuUpdateRequest) error
+	MenuCreate(ctx context.Context, req *apiv1.MenuCreateRequest) error
 	MenuDelete(ctx context.Context, id uint) error
 
-	GetRoles(ctx context.Context, req *v1.GetRoleListRequest) (*v1.GetRolesResponseData, error)
-	RoleUpdate(ctx context.Context, req *v1.RoleUpdateRequest) error
-	RoleCreate(ctx context.Context, req *v1.RoleCreateRequest) error
+	GetRoles(ctx context.Context, req *apiv1.GetRoleListRequest) (*apiv1.GetRolesResponseData, error)
+	RoleUpdate(ctx context.Context, req *apiv1.RoleUpdateRequest) error
+	RoleCreate(ctx context.Context, req *apiv1.RoleCreateRequest) error
 	RoleDelete(ctx context.Context, id uint) error
 
-	GetApis(ctx context.Context, req *v1.GetApisRequest) (*v1.GetApisResponseData, error)
-	ApiUpdate(ctx context.Context, req *v1.ApiUpdateRequest) error
-	ApiCreate(ctx context.Context, req *v1.ApiCreateRequest) error
-	ApiDelete(ctx context.Context, id uint) error
+	GetApis(ctx context.Context, req *apiv1.GetApisRequest) (*apiv1.GetApisResponseData, error)
+	APIUpdate(ctx context.Context, req *apiv1.APIUpdateRequest) error
+	APICreate(ctx context.Context, req *apiv1.APICreateRequest) error
+	APIDelete(ctx context.Context, id uint) error
 }
 
 func NewAdminService(
@@ -59,7 +59,7 @@ type adminService struct {
 
 const dummyPasswordHash = "$2a$10$C6UzMDM.H6dfI/f/IKcEeO6DGw4ZSLiZUj2Ip7yUpfI2KI2Zg7W6e"
 
-func pageQuery(p v1.Pagination) repository.PageQuery {
+func pageQuery(p apiv1.Pagination) repository.PageQuery {
 	p.Normalize()
 	return repository.PageQuery{Page: p.Page, PageSize: p.PageSize}
 }
@@ -69,19 +69,19 @@ func repositoryError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, repository.ErrBadRequest):
-		return v1.ErrBadRequest.WithCause(err)
+		return apiv1.ErrBadRequest.WithCause(err)
 	case errors.Is(err, repository.ErrConflict):
-		return v1.ErrConflict.WithCause(err)
+		return apiv1.ErrConflict.WithCause(err)
 	case errors.Is(err, repository.ErrForbidden):
-		return v1.ErrForbidden.WithCause(err)
+		return apiv1.ErrForbidden.WithCause(err)
 	case errors.Is(err, repository.ErrNotFound):
-		return v1.ErrNotFound.WithCause(err)
+		return apiv1.ErrNotFound.WithCause(err)
 	case errors.Is(err, repository.ErrUsernameDuplicated):
-		return v1.ErrUsernameAlreadyUse.WithCause(err)
+		return apiv1.ErrUsernameAlreadyUse.WithCause(err)
 	case errors.Is(err, repository.ErrRoleNameDuplicated):
-		return v1.ErrRoleNameExists.WithCause(err)
+		return apiv1.ErrRoleNameExists.WithCause(err)
 	case errors.Is(err, repository.ErrRoleSIDDuplicated):
-		return v1.ErrRoleSidExists.WithCause(err)
+		return apiv1.ErrRoleSidExists.WithCause(err)
 	default:
 		return err
 	}

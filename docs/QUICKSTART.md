@@ -25,7 +25,7 @@ nunu-layout-admin/
 │   ├── seed/               # 初始业务数据写入（不建表）
 │   └── dbmigrate/          # Atlas migration 命令封装
 │
-├── api/v1/                 # 对外 DTO + 错误码
+├── api/apiv1/                 # 对外 DTO + 错误码
 │   ├── v1.go               # 统一响应封装、错误码注册表
 │   ├── errors.go           # 业务错误码常量
 │   └── admin.go            # 后台管理请求/响应结构体
@@ -93,7 +93,7 @@ HTTP 请求
 | 密码      | golang.org/x/crypto/bcrypt | 密码哈希                     | `internal/service/admin.go`                                   |
 | 分布式 ID | sonyflake                  | 雪花 ID + Base62             | `pkg/sid`                                                     |
 | API 文档  | swag                       | 注解生成 Swagger             | `docs/swagger/`（自动生成）                                   |
-| 校验      | go-playground/validator    | binding tag 校验（Gin 内置） | `api/v1/admin.go`                                             |
+| 校验      | go-playground/validator    | binding tag 校验（Gin 内置） | `api/apiv1/admin.go`                                             |
 | 工具库    | duke-git/lancet            | 字符串/MD5/UUID 等工具       | 散见各处                                                      |
 
 ---
@@ -219,7 +219,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) {
 }
 ```
 
-DTO 上的 tag（`api/v1/admin.go`）决定校验规则：
+DTO 上的 tag（`api/apiv1/admin.go`）决定校验规则：
 
 ```go
 type LoginRequest struct {
@@ -506,7 +506,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 | 步骤         | 文件                                  | 干什么                                                            |
 | ------------ | ------------------------------------- | ----------------------------------------------------------------- |
 | ① 模型       | `internal/model/product.go`           | 定义 `Product` struct + GORM tag                                  |
-| ② DTO        | `api/v1/product.go`                   | 定义请求/响应结构体                                               |
+| ② DTO        | `api/apiv1/product.go`                   | 定义请求/响应结构体                                               |
 | ③ Repository | `internal/repository/product.go`      | `ProductRepository` interface + 实现                              |
 | ④ Service    | `internal/service/product.go`         | `ProductService` interface + 业务逻辑                             |
 | ⑤ Handler    | `internal/handler/product.go`         | 解析请求 → 调 service（带 swag 注解）                             |

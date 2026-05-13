@@ -1,4 +1,4 @@
-package v1
+package apiv1
 
 type LoginRequest struct {
 	Username string `json:"username" binding:"required" example:"1234@gmail.com"`
@@ -123,7 +123,6 @@ type MenuCreateRequest struct {
 	KeepAlive  bool   `json:"keepAlive,omitempty"`
 	HideInMenu bool   `json:"hideInMenu,omitempty"`
 	URL        string `json:"url,omitempty"` // iframe URL 不能与 path 同时作为同一菜单的主跳转来源。
-
 }
 type MenuUpdateRequest struct {
 	ID         uint   `json:"id" binding:"required"`
@@ -182,7 +181,7 @@ type GetApisRequest struct {
 	Path   string `form:"path" example:"/v1/test"`
 	Method string `form:"method" example:"GET"`
 }
-type ApiDataItem struct {
+type APIDataItem struct {
 	ID        uint   `json:"id"`
 	Name      string `json:"name"`
 	Path      string `json:"path"`
@@ -192,7 +191,7 @@ type ApiDataItem struct {
 	CreatedAt string `json:"createdAt"`
 }
 type GetApisResponseData struct {
-	List   []ApiDataItem `json:"list"`
+	List   []APIDataItem `json:"list"`
 	Total  int64         `json:"total"`
 	Groups []string      `json:"groups"`
 }
@@ -200,20 +199,20 @@ type GetApisResponse struct {
 	Response
 	Data GetApisResponseData
 }
-type ApiCreateRequest struct {
+type APICreateRequest struct {
 	Group  string `json:"group" binding:"required" example:"权限管理"`
 	Name   string `json:"name" binding:"required" example:"菜单列表"`
 	Path   string `json:"path" binding:"required,startswith=/" example:"/v1/test"`
 	Method string `json:"method" binding:"required,oneof=GET POST PUT PATCH DELETE OPTIONS HEAD" example:"GET"`
 }
-type ApiUpdateRequest struct {
+type APIUpdateRequest struct {
 	ID     uint   `json:"id" binding:"required" example:"1"`
 	Group  string `json:"group" binding:"required" example:"权限管理"`
 	Name   string `json:"name" binding:"required" example:"菜单列表"`
 	Path   string `json:"path" binding:"required,startswith=/" example:"/v1/test"`
 	Method string `json:"method" binding:"required,oneof=GET POST PUT PATCH DELETE OPTIONS HEAD" example:"GET"`
 }
-type ApiDeleteRequest struct {
+type APIDeleteRequest struct {
 	ID uint `form:"id" binding:"required" example:"1"`
 }
 type GetUserPermissionsData struct {
