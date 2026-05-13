@@ -6,5 +6,5 @@ web/.output
 storage
 scripts/.deploy.env
 scripts/.deploy.*.env
-deploy/remote/.env.production
-deploy/remote/.env.*.production
+deploy/.env.production
+deploy/.env.*.production

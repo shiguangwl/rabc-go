@@ -33,7 +33,7 @@
 | `db/atlas` | GORM → Atlas schema 桥接 |
 | `db/migrations/{mysql,postgres}` | 版本化 SQL |
 | `web/` | Vue3 前端，`web/dist` 由 `web/embed.go` 内嵌 |
-| `deploy/remote` | 远程 Docker Compose 部署配置 |
+| `deploy` | 远程 Docker Compose 部署配置 |
 | `scripts/deploy.sh` | SSH 远程部署脚本 |
 
 ## 环境要求

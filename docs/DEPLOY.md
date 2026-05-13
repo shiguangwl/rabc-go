@@ -8,11 +8,11 @@ docker build -t rabc-go:latest .
 
 ## 远程部署
 
-部署脚本默认读取 `scripts/.deploy.env`，并使用 `deploy/remote/docker-compose.yml`。
+部署脚本默认读取 `scripts/.deploy.env`，并使用 `deploy/docker-compose.yml`。
 
 ```bash
 cp scripts/.deploy.env.example scripts/.deploy.env
-cp deploy/remote/.env.production.example deploy/remote/.env.production
+cp deploy/.env.production.example deploy/.env.production
 scripts/deploy.sh --dry-run
 scripts/deploy.sh
 ```
@@ -24,7 +24,7 @@ SSH_HOST=example.com
 SSH_USER=deploy
 REMOTE_DIR=/opt/rabc-go
 IMAGE_NAME=rabc-go
-ENV_FILES=deploy/remote/.env.production
+ENV_FILES=deploy/.env.production
 ```
 
 生产环境变量文件由 `ENV_FILES` 指定，脚本会上传为远端部署目录下的
@@ -34,7 +34,7 @@ ENV_FILES=deploy/remote/.env.production
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `COMPOSE_FILE` | `deploy/remote/docker-compose.yml` | 本地 Compose 模板 |
+| `COMPOSE_FILE` | `deploy/docker-compose.yml` | 本地 Compose 模板 |
 | `APP_PORT` | `8000` | 远端宿主机暴露端口 |
 | `CONTAINER_NAME` | `rabc-go` | 容器名称 |
 | `IMAGE_TAG` | 当前时间戳 | 本次部署镜像标签 |

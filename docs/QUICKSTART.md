@@ -54,7 +54,7 @@ nunu-layout-admin/
 │   └── seed/               # 菜单等初始数据
 ├── docs/                   # 项目文档
 │   └── swagger/            # Swagger 生成产物（勿手改）
-├── deploy/remote/          # 远程部署配置
+├── deploy/                 # 远程部署配置
 ├── storage/                # 运行时日志等本地文件
 ├── web/                    # Vue3 前端，构建产物由 web/embed.go 内嵌
 └── Makefile                # help/init/build/test/migrate/seed
@@ -80,21 +80,21 @@ HTTP 请求
 
 ## 三、技术栈速览
 
-| 类别      | 框架                       | 作用                         | 项目里的位置                                                  |
-| --------- | -------------------------- | ---------------------------- | ------------------------------------------------------------- |
-| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件  | `internal/handler`、`internal/middleware`                     |
-| ORM       | GORM v2                    | 多驱动数据库操作             | `internal/repository`                                         |
-| 权限      | Casbin                     | RBAC 策略引擎                | `internal/middleware/rbac.go`、`internal/repository/admin.go` |
-| 依赖注入  | Wire                       | 编译期生成装配代码           | `cmd/*/wire/`                                                 |
-| 配置      | Viper                      | YAML 配置加载                | `pkg/config`                                                  |
-| 日志      | zap + lumberjack           | 结构化日志 + 滚动切割        | `pkg/log`                                                     |
-| 认证      | golang-jwt v5              | JWT 签发解析                 | `pkg/jwt`                                                     |
+| 类别      | 框架                       | 作用                          | 项目里的位置                                                  |
+| --------- | -------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/handler`、`internal/middleware`                     |
+| ORM       | GORM v2                    | 多驱动数据库操作              | `internal/repository`                                         |
+| 权限      | Casbin                     | RBAC 策略引擎                 | `internal/middleware/rbac.go`、`internal/repository/admin.go` |
+| 依赖注入  | Wire                       | 编译期生成装配代码            | `cmd/*/wire/`                                                 |
+| 配置      | Viper                      | YAML 配置加载                 | `pkg/config`                                                  |
+| 日志      | zap + lumberjack           | 结构化日志 + 滚动切割         | `pkg/log`                                                     |
+| 认证      | golang-jwt v5              | JWT 签发解析                  | `pkg/jwt`                                                     |
 | 会话      | redis/go-redis v9          | refresh token、会话索引、吊销 | `internal/repository/auth.go`、`internal/service/auth.go`     |
-| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                     | `internal/service/admin.go`                                   |
-| 分布式 ID | sonyflake                  | 雪花 ID + Base62             | `pkg/sid`                                                     |
-| API 文档  | swag                       | 注解生成 Swagger             | `docs/swagger/`（自动生成）                                   |
-| 校验      | go-playground/validator    | binding tag 校验（Gin 内置） | `api/apiv1/admin.go`                                             |
-| 工具库    | duke-git/lancet            | 字符串/MD5/UUID 等工具       | 散见各处                                                      |
+| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                      | `internal/service/admin.go`                                   |
+| 分布式 ID | sonyflake                  | 雪花 ID + Base62              | `pkg/sid`                                                     |
+| API 文档  | swag                       | 注解生成 Swagger              | `docs/swagger/`（自动生成）                                   |
+| 校验      | go-playground/validator    | binding tag 校验（Gin 内置）  | `api/apiv1/admin.go`                                          |
+| 工具库    | duke-git/lancet            | 字符串/MD5/UUID 等工具        | 散见各处                                                      |
 
 ---
 
@@ -506,7 +506,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 | 步骤         | 文件                                  | 干什么                                                            |
 | ------------ | ------------------------------------- | ----------------------------------------------------------------- |
 | ① 模型       | `internal/model/product.go`           | 定义 `Product` struct + GORM tag                                  |
-| ② DTO        | `api/apiv1/product.go`                   | 定义请求/响应结构体                                               |
+| ② DTO        | `api/apiv1/product.go`                | 定义请求/响应结构体                                               |
 | ③ Repository | `internal/repository/product.go`      | `ProductRepository` interface + 实现                              |
 | ④ Service    | `internal/service/product.go`         | `ProductService` interface + 业务逻辑                             |
 | ⑤ Handler    | `internal/handler/product.go`         | 解析请求 → 调 service（带 swag 注解）                             |
