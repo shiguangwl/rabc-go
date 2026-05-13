@@ -13,3 +13,11 @@
 # (binary is a macro for -text -diff)
 *.png binary
 *.db binary
+
+# Web files
+web/** linguist-vendored
+
+# GitHub Linguist: 仅统计后端与运维脚本语言占比。
+* linguist-vendored
+*.go -linguist-vendored
+*.sh -linguist-vendored
