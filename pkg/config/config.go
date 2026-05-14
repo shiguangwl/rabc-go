@@ -38,6 +38,7 @@ var envBoundKeys = []string{
 	"data.db.debug",
 	"data.redis.addr",
 	"data.redis.password",
+	"data.redis.db",
 
 	// seed 命令控制
 	"seed.initial_password",

@@ -17,6 +17,7 @@ http:
 #   APP_DATA_DB_USER_DSN               业务库 DSN
 #   APP_DATA_REDIS_ADDR                Redis 地址
 #   APP_DATA_REDIS_PASSWORD            Redis 密码
+#   APP_DATA_REDIS_DB                  Redis DB 编号
 #   APP_SEED_INITIAL_PASSWORD          首次 seed 写入的 admin 初始密码
 security:
   api_sign:

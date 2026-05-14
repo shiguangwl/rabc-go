@@ -102,6 +102,7 @@ cd web && pnpm install && pnpm dev
 | `data.db.debug` | `APP_DATA_DB_DEBUG` |
 | `data.redis.addr` | `APP_DATA_REDIS_ADDR` |
 | `data.redis.password` | `APP_DATA_REDIS_PASSWORD` |
+| `data.redis.db` | `APP_DATA_REDIS_DB` |
 | `seed.initial_password` | `APP_SEED_INITIAL_PASSWORD` |
 | `log.request.headers.enabled` | `APP_LOG_REQUEST_HEADERS_ENABLED` |
 | `log.request.body.enabled` | `APP_LOG_REQUEST_BODY_ENABLED` |

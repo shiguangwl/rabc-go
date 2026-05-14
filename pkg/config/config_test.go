@@ -78,6 +78,22 @@ data:
 	}
 }
 
+func TestNewConfigBindsRedisDBFromEnvWhenYAMLOmitted(t *testing.T) {
+	t.Setenv("APP_DATA_REDIS_DB", "3")
+	path := writeConfig(t, `
+env: local
+data:
+  redis:
+    addr: 127.0.0.1:6379
+`)
+
+	conf := NewConfig(path)
+
+	if got := conf.GetInt("data.redis.db"); got != 3 {
+		t.Fatalf("data.redis.db = %d, want 3", got)
+	}
+}
+
 func writeConfig(t *testing.T, content string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "config.yml")
