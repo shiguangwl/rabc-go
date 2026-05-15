@@ -598,7 +598,7 @@ make init
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
 make migrate-apply
 make seed
-nunu run ./cmd/server
+make dev
 
 # 仅启动 HTTP 服务（开发模式）
 go run ./cmd/server
@@ -610,8 +610,7 @@ make migrate-apply
 make seed
 
 # 重新生成 Wire 装配代码（改完 wire.go 必须执行）
-go tool wire ./cmd/server/wire
-go tool wire ./cmd/seed/wire
+make wire
 
 # 生成 Swagger 文档
 make swag

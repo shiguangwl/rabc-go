@@ -46,7 +46,7 @@
 - Atlas CLI
 
 ```bash
-make init                                      # Go 工具链：Wire / mockgen / swag / nunu
+make init                                      # Go 工具链：Air / Wire / mockgen / swag
 brew install ariga/tap/atlas                   # 或 curl -sSf https://atlasgo.sh | sh
 ```
 
@@ -56,7 +56,7 @@ brew install ariga/tap/atlas                   # 或 curl -sSf https://atlasgo.s
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
 make migrate-apply
 make seed
-nunu run ./cmd/server
+make dev
 ```
 
 | 服务 | 地址 |
@@ -78,7 +78,7 @@ nunu run ./cmd/server
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
 make migrate-apply
 make seed
-go run ./cmd/server          # 或 nunu run ./cmd/server
+go run ./cmd/server          # 或 make dev 热重载启动
 ```
 
 前端独立开发：
@@ -162,7 +162,9 @@ g, <user_id>, <role_sid>
 | 命令 | 作用 |
 |------|------|
 | `make help` | 列出全部 target |
-| `make init` | 安装 Wire / mockgen / swag / nunu |
+| `make init` | 安装 Air / Wire / mockgen / swag |
+| `make dev` | 热重载启动后端服务 |
+| `make wire` | 重生成所有 Wire 装配代码 |
 | `make test` | `go test -race ./...` |
 | `make check` | vet + lint + race test + migrate validate |
 | `make mock` | 重新生成 service/repository mock |

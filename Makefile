@@ -1,7 +1,7 @@
 # Makefile 只封装项目约定流程。
 
-NUNU_PKG := github.com/go-nunu/nunu
 GOLANGCI_LINT := go tool -modfile=tools/lint/go.mod golangci-lint
+AIR ?= air
 
 PNPM ?= pnpm
 DOCKER ?= docker
@@ -22,11 +22,20 @@ help:  ## 显示所有可用命令及说明
 .PHONY: init
 init:  ## 安装本地开发工具
 	go install tool
+	go -C tools/dev install tool
 	go install -modfile=tools/lint/go.mod tool
-	go install $(NUNU_PKG)@latest
 	@echo ""
 	@echo ">>> 以下工具不在 Go module 范围，请按需手装："
 	@echo "    Atlas         : brew install ariga/tap/atlas   (或 curl -sSf https://atlasgo.sh | sh)"
+
+.PHONY: dev
+dev:  ## 热重载启动后端服务
+	$(AIR) -c .air.toml
+
+.PHONY: wire
+wire:  ## 重生成所有 Wire 装配代码
+	go tool wire ./cmd/server/wire
+	go tool wire ./cmd/seed/wire
 
 .PHONY: fmt
 fmt:  ## 格式化 Go 代码

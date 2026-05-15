@@ -7,8 +7,7 @@ go 1.25.0
 //   - 杜绝 `@latest` 在不同时间/不同机器拉到不同版本造成行为漂移；
 //   - 不参与生产构建产物。
 // 升级工具：`go get -u <pkg>` 后 `go mod tidy`。
-// 不登记的工具：nunu 走 @latest（dev 文件监听器，不影响产物）；
-//             atlas / golangci-lint 非 Go 模块，由系统包管理器装。
+// 不登记的工具：atlas / golangci-lint 非 Go 模块，由系统包管理器装。
 tool (
 	github.com/google/wire/cmd/wire
 	github.com/swaggo/swag/cmd/swag

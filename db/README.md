@@ -44,7 +44,7 @@ export APP_DATA_DB_USER_DSN='root:secret@tcp(127.0.0.1:3306)/user?charset=utf8mb
 # 3. 应用 migration、写 seed、启 server
 make migrate-apply
 go run ./cmd/seed
-go run ./cmd/server     # 或 nunu run ./cmd/server 享 hot reload
+go run ./cmd/server     # 或 make dev 热重载启动
 ```
 
 PostgreSQL 路径同理，driver 改 `postgres`，DSN 使用 PostgreSQL URL；Redis 默认读取 `127.0.0.1:6379`。

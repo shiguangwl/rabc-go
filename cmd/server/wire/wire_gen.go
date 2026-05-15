@@ -62,7 +62,6 @@ var handlerSet = wire.NewSet(handler.NewHandler, handler.NewAdminHandler, handle
 
 var serverSet = wire.NewSet(server.NewHTTPServer)
 
-// build App
 func newApp(
 	logger *log.Logger,
 	httpServer *http.Server,
