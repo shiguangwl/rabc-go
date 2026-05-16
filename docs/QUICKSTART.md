@@ -25,10 +25,11 @@ rabc-go/
 │   ├── seed/               # 初始业务数据写入（不建表）
 │   └── dbmigrate/          # Atlas migration 命令封装
 │
-├── api/apiv1/                 # 对外 DTO + 错误码
+├── api/apiv1/              # 对外 DTO + 错误码
 │   ├── v1.go               # 统一响应封装、错误码注册表
 │   ├── errors.go           # 业务错误码常量
-│   └── admin.go            # 后台管理请求/响应结构体
+│   ├── admin.go            # 后台管理请求/响应结构体
+│   └── auth.go             # refresh / logout 请求响应结构体
 │
 ├── internal/               # 私有业务代码（外部模块禁止 import）
 │   ├── admin/rbac/         # RBAC 业务域（vertical slice）
@@ -71,7 +72,7 @@ rabc-go/
 ```
 HTTP 请求
   ↓
-[middleware] CORS → 日志 → JWT → Casbin RBAC
+[middleware] 日志 / Recovery；受保护路由额外经过 JWT → Casbin RBAC
   ↓
 [handler]   解析参数（ctx.ShouldBind）+ 调 service + 返响应
   ↓
@@ -88,7 +89,7 @@ HTTP 请求
 
 | 类别      | 框架                       | 作用                          | 项目里的位置                                                  |
 | --------- | -------------------------- | ----------------------------- | ------------------------------------------------------------- |
-| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/admin/rbac/*/handler.go`、`internal/middleware`                     |
+| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/auth/handler.go`、`internal/admin/rbac/*/handler.go`、`internal/middleware` |
 | ORM       | GORM v2                    | 多驱动数据库操作              | `internal/admin/rbac/*/repository.go`                                         |
 | 权限      | Casbin                     | RBAC 策略引擎                 | `internal/middleware/rbac.go`、`internal/admin/rbac/casbinkit/` |
 | 依赖注入  | Wire                       | 编译期生成装配代码            | `cmd/*/wire/`                                                 |
@@ -96,10 +97,10 @@ HTTP 请求
 | 日志      | zap + lumberjack           | 结构化日志 + 滚动切割         | `pkg/log`                                                     |
 | 认证      | golang-jwt v5              | JWT 签发解析                  | `pkg/jwt`                                                     |
 | 会话      | redis/go-redis v9          | refresh token、会话索引、吊销 | `internal/auth/`     |
-| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                      | `internal/admin/rbac/user/`                                   |
+| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                      | `internal/auth/`、`internal/server/seed.go`                    |
 | 分布式 ID | sonyflake                  | 雪花 ID + Base62              | `pkg/sid`                                                     |
 | API 文档  | swag                       | 注解生成 Swagger              | `docs/swagger/`（自动生成）                                   |
-| 校验      | go-playground/validator    | binding tag 校验（Gin 内置）  | `api/apiv1/admin.go`                                          |
+| 校验      | go-playground/validator    | binding tag 校验（Gin 内置）  | `api/apiv1/admin.go`、`api/apiv1/auth.go`                     |
 | 工具库    | duke-git/lancet            | 字符串/MD5/UUID 等工具        | 散见各处                                                      |
 
 ---
@@ -131,7 +132,7 @@ httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, authHandler,
 // ...继续 20 行
 ```
 
-**痛点**：顺序敏感、改一个依赖牵全身、三个 cmd 入口都要写一遍。
+**痛点**：顺序敏感、改一个依赖牵全身，`cmd/server` 与 `cmd/seed` 都要装配一遍。
 
 #### Wire 怎么解决
 
@@ -156,6 +157,17 @@ var rbacSet = wire.NewSet(         // RBAC vertical slice 构造函数
     role.NewRepo,
     role.NewService,
     role.NewHandler,
+    menu.NewRepo,
+    menu.NewService,
+    menu.NewHandler,
+    rbacapi.NewRepo,
+    rbacapi.NewService,
+    rbacapi.NewHandler,
+    permission.NewRepo,
+    permission.NewService,
+    permission.NewHandler,
+    wire.Bind(new(menu.PermissionReader), new(*permission.Repo)),
+    wire.Bind(new(auth.UserLookup), new(*user.Repo)),
 )
 
 func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
@@ -207,31 +219,36 @@ go tool wire ./cmd/seed/wire
 ```go
 v1 := s.Group("/v1")
 {
-    noAuthRouter := v1.Group("/")              // 公开路由
-    noAuthRouter.POST("/login", adminHandler.Login)
-    noAuthRouter.POST("/auth/refresh", authHandler.Refresh)
-    noAuthRouter.POST("/auth/logout", authHandler.Logout)
+    noAuth := v1.Group("/")                    // 公开路由
+    noAuth.POST("/login", authHandler.Login)
+    noAuth.POST("/auth/refresh", authHandler.Refresh)
+    noAuth.POST("/auth/logout", authHandler.Logout)
 
-    strictAuthRouter := v1.Group("/").Use(     // 鉴权路由（链式中间件）
-        middleware.StrictAuth(jwt, logger),
+    strict := v1.Group("/").Use(               // 鉴权路由（链式中间件）
+        middleware.StrictAuth(jwtUtil, logger),
         middleware.AuthMiddleware(e),
     )
-    strictAuthRouter.GET("/admin/users", adminHandler.GetAdminUsers)
-    strictAuthRouter.POST("/admin/user", adminHandler.AdminUserCreate)
+    strict.GET("/menus", menuHandler.GetMenus)
+    strict.GET("/admin/users", userHandler.GetAdminUsers)
+    strict.POST("/admin/user", userHandler.AdminUserCreate)
 }
 ```
 
-#### 参数绑定 + 校验（`internal/admin/rbac/user/handler.go`）
+#### 参数绑定 + 校验（`internal/auth/handler.go`）
 
 ```go
-func (h *AdminHandler) Login(ctx *gin.Context) {
-    var req v1.LoginRequest
+func (h *Handler) Login(ctx *gin.Context) {
+    var req apiv1.LoginRequest
     if err := ctx.ShouldBindJSON(&req); err != nil {  // 自动反序列化 + 校验
-        v1.WriteResponse(ctx, v1.ErrBadRequest, nil)
+        apiv1.WriteResponse(ctx, apiv1.ErrBadRequest, nil)
         return
     }
-    result, _ := h.authService.Login(ctx, &req)
-    v1.HandleSuccess(ctx, v1.LoginResponseData{
+    result, err := h.svc.Login(ctx, &req)
+    if err != nil {
+        apiv1.WriteResponse(ctx, err, nil)
+        return
+    }
+    apiv1.HandleSuccess(ctx, apiv1.LoginResponseData{
         AccessToken:  result.AccessToken,
         RefreshToken: result.RefreshToken,
         ExpiresIn:    result.ExpiresIn,
@@ -256,8 +273,14 @@ type LoginRequest struct {
 func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
     return func(ctx *gin.Context) {
         tokenString := ctx.Request.Header.Get("Authorization")
+        if tokenString == "" {
+            apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
+            ctx.Abort()
+            return
+        }
         claims, err := j.ParseToken(tokenString)
         if err != nil {
+            apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
             ctx.Abort()                  // 中断后续处理
             return
         }
@@ -276,7 +299,7 @@ func StrictAuth(j *jwt.JWT, logger *log.Logger) gin.HandlerFunc {
 ```go
 type AdminUser struct {
     gorm.Model                                                  // 嵌入：自动加 ID/CreatedAt/UpdatedAt/DeletedAt
-    Username string `gorm:"type:varchar(50);uniqueIndex;not null"`
+    Username string `gorm:"type:varchar(50);not null;uniqueIndex;comment:用户名"`
     Nickname string `gorm:"type:varchar(50);not null;comment:昵称"`
     Password string `gorm:"type:varchar(255);not null;comment:密码"`
     Email    string `gorm:"type:varchar(100);not null;comment:电子邮件"`
@@ -310,7 +333,7 @@ case "sqlserver", "mssql":
 
 ```go
 // 链式查询：Model → Where → Order → Offset/Limit → Find
-scope := r.DB(ctx).Model(&model.AdminUser{})
+scope := r.db.WithContext(ctx).Model(&model.AdminUser{})
 if req.Username != "" {
     scope = scope.Where("username LIKE ?", "%"+req.Username+"%")  // 参数化防注入
 }
@@ -318,27 +341,30 @@ scope.Count(&total).Error
 scope.Offset((req.Page-1)*req.PageSize).Limit(req.PageSize).Find(&list)
 
 // 增删改
-r.DB(ctx).Create(m)
-r.DB(ctx).Where("id = ?", id).Updates(m)
-r.DB(ctx).Where("id = ?", id).Delete(&model.AdminUser{})
-r.DB(ctx).Where("id = ?", id).First(&m)
+r.db.WithContext(ctx).Create(m)
+r.db.WithContext(ctx).Where("id = ?", id).Updates(m)
+r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.AdminUser{})
+r.db.WithContext(ctx).Where("id = ?", id).First(&m)
 ```
 
-#### 事务（`internal/admin/rbac/*/service.go`）
+#### 事务（`internal/admin/rbac/*/repository.go`）
 
 ```go
-type Transaction interface {
-    Transaction(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-// 使用：
-s.tm.Transaction(ctx, func(txCtx context.Context) error {
-    if err := s.adminRepository.RoleCreate(txCtx, ...); err != nil { return err }
-    return s.adminRepository.UpdateUserRoles(txCtx, ...)
+err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+    if err := casbinkit.EnsureRole(tx, role); err != nil {
+        return err
+    }
+    e, err := casbinkit.NewTxEnforcer(tx)
+    if err != nil {
+        return err
+    }
+    _, err = e.AddPermissionForUser(model.RoleSubject(role), resource, action)
+    return err
 })
+casbinkit.Reload(ctx, r.e, r.logger)
 ```
 
-巧妙之处：`*gorm.DB` 通过 `context.WithValue` 塞进 ctx，下层 `r.DB(ctx)` 取出，事务内外代码完全一致。
+当前代码在 repository 内直接使用 GORM 事务。涉及 DB 与 Casbin 策略同时变更的接口，会用 `casbinkit.NewTxEnforcer(tx)` 把策略写入同一个事务；提交后再 `Reload` 全局 enforcer，让权限变更尽快可见。
 
 #### Schema 迁移
 
@@ -371,16 +397,22 @@ make seed
 
 加 `g(user, role)` 关系实现 RBAC。
 
-#### 模型定义（`internal/model/`）
+#### 模型定义（`internal/platform/casbin.go`）
 
 ```go
 m, err := model.NewModelFromString(`
 [request_definition]
 r = sub, obj, act
+
 [policy_definition]
 p = sub, obj, act
+
 [role_definition]
 g = _, _
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
 [matchers]
 m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
 `)
@@ -393,30 +425,44 @@ e.EnableAutoSave(true)
 
 ```go
 const (
+    RoleSubjectPrefix  = "role:"   // 角色 subject 命名空间
     MenuResourcePrefix = "menu:"   // 前端菜单可见性
-    ApiResourcePrefix  = "api:"    // 后端 API 鉴权
+    APIResourcePrefix  = "api:"    // 后端 API 鉴权
 )
 ```
 
 策略举例：
 
-- `(admin, menu:/dashboard, read)` → admin 角色能看到 `/dashboard` 菜单
-- `(admin, api:/v1/admin/users, GET)` → admin 能调这个接口
+- `(role:admin, menu:/dashboard, read)` → admin 角色能看到 `/dashboard` 菜单
+- `(role:admin, api:/v1/admin/users, GET)` → admin 能调这个接口
+- `g, 1, role:admin` → 用户 `1` 继承 admin 角色
 
 #### API 鉴权中间件（`internal/middleware/rbac.go:13`）
 
 ```go
 func AuthMiddleware(e *casbin.SyncedEnforcer) gin.HandlerFunc {
     return func(ctx *gin.Context) {
-        uid := ctx.MustGet("claims").(*jwt.MyCustomClaims).UserID
-        if convertor.ToString(uid) == model.AdminUserID {  // 防呆：超管 ID=1 直接放行
+        v, exists := ctx.Get("claims")
+        if !exists {
+            apiv1.WriteResponse(ctx, apiv1.ErrUnauthorized, nil)
+            ctx.Abort()
+            return
+        }
+        uid := v.(*jwt.MyCustomClaims).UserID
+        if strconv.FormatUint(uint64(uid), 10) == model.AdminUserID {
             ctx.Next(); return
         }
-        sub := convertor.ToString(uid)
-        obj := model.ApiResourcePrefix + ctx.Request.URL.Path
+        sub := strconv.FormatUint(uint64(uid), 10)
+        obj := model.APIResourcePrefix + ctx.Request.URL.Path
         act := ctx.Request.Method
-        allowed, _ := e.Enforce(sub, obj, act)             // ← 一行决定通不通
+        allowed, err := e.Enforce(sub, obj, act)
+        if err != nil {
+            apiv1.WriteResponse(ctx, apiv1.ErrInternalServerError.WithCause(err), nil)
+            ctx.Abort()
+            return
+        }
         if !allowed {
+            apiv1.WriteResponse(ctx, apiv1.ErrForbidden, nil)
             ctx.Abort(); return
         }
         ctx.Next()
@@ -427,12 +473,12 @@ func AuthMiddleware(e *casbin.SyncedEnforcer) gin.HandlerFunc {
 #### 常用 Casbin API
 
 ```go
-e.AddRoleForUser("123", "admin")                              // 给用户 123 加 admin 角色
-e.DeleteRoleForUser("123", "admin")                           // 移除角色
+e.AddRoleForUser("123", model.RoleSubject("admin"))            // 给用户 123 加 admin 角色
+e.DeleteRoleForUser("123", model.RoleSubject("admin"))         // 移除角色
 e.GetRolesForUser("123")                                      // 查用户的所有角色
-e.AddPermissionForUser("admin", "api:/users", "GET")          // 给角色加权限
-e.DeletePermissionForUser("admin", "api:/users", "GET")       // 移权限
-e.GetPermissionsForUser("admin")                              // 查角色直接权限
+e.AddPermissionForUser(model.RoleSubject("admin"), "api:/users", "GET")
+e.DeletePermissionForUser(model.RoleSubject("admin"), "api:/users", "GET")
+e.GetPermissionsForUser(model.RoleSubject("admin"))            // 查角色直接权限
 e.GetImplicitPermissionsForUser("123")                        // 查用户所有权限（含角色继承）
 e.Enforce(sub, obj, act)                                      // 判定能不能
 ```
@@ -447,6 +493,9 @@ e.Enforce(sub, obj, act)                                      // 判定能不能
 conf := viper.New()
 conf.SetConfigFile("config/local.yml")
 conf.ReadInConfig()
+conf.SetEnvPrefix("APP")
+conf.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+conf.AutomaticEnv()
 
 // 使用：
 conf.GetString("http.host")
@@ -454,7 +503,7 @@ conf.GetInt("http.port")
 conf.GetString("data.db.user.dsn")
 ```
 
-支持环境变量 `APP_CONF` 覆盖配置路径。
+支持环境变量 `APP_CONF` 覆盖配置路径。配置读取启用了 `AutomaticEnv`，常用键还会显式 `BindEnv`，例如 `data.db.user.dsn` → `APP_DATA_DB_USER_DSN`。完整清单以 `pkg/config/config.go` 的 `envBoundKeys` 为准。
 
 #### Zap 日志（`pkg/log/log.go`）
 
@@ -503,16 +552,16 @@ bcrypt 自带盐和成本因子，**永远不要用 MD5/SHA1 存密码**。
 
 ### 4.6 Swagger
 
-#### Swag 文档（`internal/admin/rbac/*/handler.go`）
+#### Swag 文档（`internal/auth/handler.go` 与 `internal/admin/rbac/*/handler.go`）
 
 ```go
 // Login godoc
 // @Summary 账号登录
 // @Tags 用户模块
-// @Param request body v1.LoginRequest true "params"
-// @Success 200 {object} v1.LoginResponse
+// @Param request body apiv1.LoginRequest true "params"
+// @Success 200 {object} apiv1.LoginResponse
 // @Router /v1/login [post]
-func (h *AdminHandler) Login(ctx *gin.Context) { ... }
+func (h *Handler) Login(ctx *gin.Context) { ... }
 ```
 
 跑 `make swag` → 访问 `http://127.0.0.1:8000/swagger/index.html`。
@@ -535,7 +584,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 5. 跑 `go tool wire ./cmd/server/wire` 生成装配代码
 6. 在 `internal/server/http.go` 注册路由
 7. 在 `db/atlas/main.go` 的 `models()` 登记新实体，执行 `make migrate-diff name=xxx`
-8. 后台界面配置权限（API 管理 → 角色管理）
+8. 如接口需要权限控制，在后台「API 资源管理」登记接口，再到「角色管理」分配权限
 
 参照 `internal/admin/rbac/user/` 或 `internal/admin/rbac/role/` 的结构即可。
 
@@ -577,7 +626,7 @@ make build
 ## 七、推荐学习路径
 
 1. **跑起来**：`make init` → 按常用命令启动 MySQL/Redis、迁移、seed、server → 浏览器访问 `http://127.0.0.1:8000`，local 环境用 `admin/123456` 登录。
-2. **跟一遍 Login 全链路**：从 `internal/admin/rbac/user/handler.go:Login` → `internal/auth/service.go:Login` → `internal/admin/rbac/user/repository.go:GetAdminUserByUsername`，理解三层是怎么传 ctx、传错误和写 refresh session 的。
+2. **跟一遍 Login 全链路**：从 `internal/auth/handler.go:Login` → `internal/auth/service.go:Login` → `internal/admin/rbac/user/repository.go:GetAdminUserByUsername`，理解 handler 怎么传 ctx、service 怎么做认证规则、Redis 怎么写 refresh session。
 3. **看懂 Wire**：对照 `cmd/server/wire/wire.go`（清单）和 `cmd/server/wire/wire_gen.go`（生成产物），看每个 `New*` 函数的入参从哪儿来。
 4. **照葫芦画瓢**：仿照 admin 写一个简单 CRUD（比如 Article 文章），跑通"新增 API → 配权限 → 调通"完整流程。
 5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/admin/rbac/casbinkit/` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
@@ -591,11 +640,11 @@ make build
 | 概念               | 说明                                                   | 项目中的例子                                      |
 | ------------------ | ------------------------------------------------------ | ------------------------------------------------- |
 | 结构体嵌入         | 类似继承但更轻量                                       | `AdminUser` 嵌入 `gorm.Model`                     |
-| Interface 隐式实现 | 不需要 `implements` 关键字，方法集匹配即实现           | `productRepository` 实现 `ProductRepository`      |
+| Interface 隐式实现 | 不需要 `implements` 关键字，方法集匹配即实现           | `*user.Repo` 实现 `auth.UserLookup`               |
 | ctx 传参           | `context.Context` 是 Go 惯用的"请求上下文"，贯穿调用链 | 所有 service/repository 方法第一个参数            |
 | build tag          | 文件顶部 `//go:build xxx` 控制是否参与编译             | `wire.go` 用 `wireinject` 隔离                    |
 | 多返回值           | Go 函数可返回多个值，错误通常是最后一个                | `(token string, err error)`                       |
-| `_ = xxx`          | 忽略返回值                                             | `roles, _ := s.adminRepository.GetUserRoles(...)` |
+| `_ = xxx`          | 忽略返回值                                             | `tokenString, _ = ctx.Cookie("accessToken")`      |
 | panic/recover      | 异常机制，但 Go 提倡用错误返回值而非 panic             | Wire 的 `panic(wire.Build(...))` 是占位符         |
 
 ---
