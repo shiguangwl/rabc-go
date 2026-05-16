@@ -45,7 +45,7 @@
 - Atlas CLI
 
 ```bash
-make init                                      # Go 工具链：Air / Wire / mockgen / swag
+make init                                      # Go 工具链：Air / Wire / swag
 brew install ariga/tap/atlas                   # 或 curl -sSf https://atlasgo.sh | sh
 ```
 
@@ -161,12 +161,11 @@ g, <user_id>, <role_sid>
 | 命令 | 作用 |
 |------|------|
 | `make help` | 列出全部 target |
-| `make init` | 安装 Air / Wire / mockgen / swag |
+| `make init` | 安装 Air / Wire / swag |
 | `make dev` | 热重载启动后端服务 |
 | `make wire` | 重生成所有 Wire 装配代码 |
 | `make test` | `go test -race ./...` |
 | `make check` | vet + lint + race test + migrate validate |
-| `make mock` | 重新生成 service/repository mock |
 | `make swag` | 刷新 Swagger 到 `./docs/swagger` |
 | `make build` | 构建前端 + 后端二进制到 `bin/server` |
 | `make clean` | 清理 `bin/` 与 `web/dist/` |

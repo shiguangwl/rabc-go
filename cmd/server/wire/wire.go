@@ -5,9 +5,9 @@ package wire
 
 import (
 	rbacapi "rabc-go/internal/admin/rbac/api"
+	"rabc-go/internal/admin/rbac/casbinkit"
 	"rabc-go/internal/admin/rbac/menu"
 	"rabc-go/internal/admin/rbac/permission"
-	"rabc-go/internal/admin/rbac/casbinkit"
 	"rabc-go/internal/admin/rbac/role"
 	"rabc-go/internal/admin/rbac/user"
 	"rabc-go/internal/auth"

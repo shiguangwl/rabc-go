@@ -35,7 +35,7 @@ rabc-go/
 │   │   ├── api/            # repository + service + handler
 │   │   ├── menu/           # repository + service + handler
 │   │   ├── permission/     # repository + service + handler
-│   │   ├── policy/         # Casbin enforcer / 互斥锁 / 校验
+│   │   ├── casbinkit/      # Casbin enforcer / 互斥锁 / 校验
 │   │   ├── role/           # repository + service + handler
 │   │   └── user/           # repository + service + handler + types
 │   ├── auth/               # 双 Token 鉴权与会话管理
@@ -114,16 +114,20 @@ HTTP 请求
 
 ```go
 // 假设没有 Wire，你得自己写：
-db := repository.NewDB(conf, logger)
-enforcer := repository.NewCasbinEnforcer(conf, logger, db)
-repo := repository.NewRepository(logger, db, enforcer)
-adminRepo := repository.NewAdminRepository(repo)
-baseService := service.NewService(...)
-authService := service.NewAuthService(baseService, authRepo, adminRepo, authConfig)
-adminService := service.NewAdminService(baseService, adminRepo, authService)
-adminHandler := handler.NewAdminHandler(baseHandler, adminService, authService)
-authHandler := handler.NewAuthHandler(baseHandler, authService)
-httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, adminHandler, authHandler)
+db, cleanupDB, err := platform.NewDB(conf, logger)
+defer cleanupDB()
+enforcer, cleanupCasbin, err := platform.NewCasbinEnforcer(conf, logger, db)
+defer cleanupCasbin()
+redisClient := platform.NewRedis(conf)
+rbacMu := casbinkit.NewRBACMu()
+userRepo := user.NewRepo(db, enforcer, logger, rbacMu)
+authRepo := auth.NewRepository(redisClient)
+authService := auth.NewService(logger, jwtUtil, authRepo, userRepo, auth.LoadConfig(conf, logger))
+userService := user.NewService(logger, userRepo, authService)
+authHandler := auth.NewHandler(authService)
+userHandler := user.NewHandler(userService)
+roleHandler := role.NewHandler(role.NewService(role.NewRepo(db, enforcer, logger, rbacMu)))
+httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, authHandler, userHandler, roleHandler, ...)
 // ...继续 20 行
 ```
 
@@ -138,15 +142,24 @@ httpServer := server.NewHTTPServer(logger, conf, jwtUtil, enforcer, adminHandler
 ```go
 //go:build wireinject              // build tag：只在跑 wire 工具时编译
 
-var repositorySet = wire.NewSet(   // 把构造函数捆成一组
-    repository.NewDB,
-    repository.NewRepository,
-    repository.NewCasbinEnforcer,
-    repository.NewAdminRepository,
+var platformSet = wire.NewSet(     // 基础设施构造函数
+    platform.NewDB,
+    platform.NewCasbinEnforcer,
+    platform.NewRedis,
+)
+
+var rbacSet = wire.NewSet(         // RBAC vertical slice 构造函数
+    casbinkit.NewRBACMu,
+    user.NewRepo,
+    user.NewService,
+    user.NewHandler,
+    role.NewRepo,
+    role.NewService,
+    role.NewHandler,
 )
 
 func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
-    panic(wire.Build(repositorySet, serviceSet, handlerSet, ...))  // panic 不会执行，只给 wire 工具看签名
+    panic(wire.Build(platformSet, rbacSet, authSet, serverSet, jwt.NewJwt, newApp))
 }
 ```
 
@@ -156,9 +169,10 @@ func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
 //go:build !wireinject              // 取反，正常编译只走这个文件
 
 func NewWire(v *viper.Viper, l *log.Logger) (*app.App, func(), error) {
-    db := repository.NewDB(v, l)
-    enforcer := repository.NewCasbinEnforcer(v, l, db)
-    repo := repository.NewRepository(l, db, enforcer)
+    db, cleanup, err := platform.NewDB(v, l)
+    enforcer, cleanup2, err := platform.NewCasbinEnforcer(v, l, db)
+    rbacMu := casbinkit.NewRBACMu()
+    userRepo := user.NewRepo(db, enforcer, l, rbacMu)
     // ...自动按依赖顺序拼出来
 }
 ```
@@ -517,7 +531,7 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
    - `handler.go` — HTTP 解析 + 响应
 2. 在 `api/apiv1/` 新增 DTO 文件（请求/响应结构体）
 3. 在 `internal/model/` 新增对应的 GORM 实体
-4. 在 `cmd/server/wire/wire.go` 的 `rbacSet` 中追加：`NewRepository`、`NewService`、`NewHandler`
+4. 在 `cmd/server/wire/wire.go` 的 `rbacSet` 中追加：`NewRepo`、`NewService`、`NewHandler`
 5. 跑 `go tool wire ./cmd/server/wire` 生成装配代码
 6. 在 `internal/server/http.go` 注册路由
 7. 在 `db/atlas/main.go` 的 `models()` 登记新实体，执行 `make migrate-diff name=xxx`
