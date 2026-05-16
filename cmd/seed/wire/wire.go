@@ -4,7 +4,7 @@
 package wire
 
 import (
-	"rabc-go/internal/repository"
+	"rabc-go/internal/platform"
 	"rabc-go/internal/server"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/sid"
@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-var repositorySet = wire.NewSet(
-	repository.NewDB,
-	repository.NewCasbinEnforcer,
+var platformSet = wire.NewSet(
+	platform.NewDB,
+	platform.NewCasbinEnforcer,
 )
 
 var serverSet = wire.NewSet(
@@ -25,7 +25,7 @@ var serverSet = wire.NewSet(
 // NewWire 返回一次性种子任务，调用方负责显式驱动 Start/Stop 生命周期。
 func NewWire(*viper.Viper, *log.Logger) (*server.SeedServer, func(), error) {
 	panic(wire.Build(
-		repositorySet,
+		platformSet,
 		serverSet,
 		sid.NewSid,
 	))

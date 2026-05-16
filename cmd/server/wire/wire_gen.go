@@ -9,11 +9,15 @@ package wire
 import (
 	"github.com/google/wire"
 	"github.com/spf13/viper"
+	"rabc-go/internal/admin/rbac/api"
+	"rabc-go/internal/admin/rbac/casbinkit"
+	"rabc-go/internal/admin/rbac/menu"
+	"rabc-go/internal/admin/rbac/permission"
+	"rabc-go/internal/admin/rbac/role"
+	"rabc-go/internal/admin/rbac/user"
 	"rabc-go/internal/auth"
-	"rabc-go/internal/handler"
-	"rabc-go/internal/repository"
+	"rabc-go/internal/platform"
 	"rabc-go/internal/server"
-	"rabc-go/internal/service"
 	"rabc-go/pkg/app"
 	"rabc-go/pkg/jwt"
 	"rabc-go/pkg/log"
@@ -24,27 +28,37 @@ import (
 
 func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), error) {
 	jwtJWT := jwt.NewJwt(viperViper)
-	db, cleanup, err := repository.NewDB(viperViper, logger)
+	db, cleanup, err := platform.NewDB(viperViper, logger)
 	if err != nil {
 		return nil, nil, err
 	}
-	syncedEnforcer, cleanup2, err := repository.NewCasbinEnforcer(viperViper, logger, db)
+	syncedEnforcer, cleanup2, err := platform.NewCasbinEnforcer(viperViper, logger, db)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	handlerHandler := handler.NewHandler(logger)
-	serviceService := service.NewService(logger, jwtJWT)
-	repositoryRepository := repository.NewRepository(logger, db, syncedEnforcer)
-	adminRepository := repository.NewAdminRepository(repositoryRepository)
-	client := repository.NewRedis(viperViper)
-	authRepository := repository.NewAuthRepository(client)
-	authConfig := auth.LoadAuthConfig(viperViper, logger)
-	authService := service.NewAuthService(serviceService, authRepository, adminRepository, authConfig)
-	adminService := service.NewAdminService(serviceService, adminRepository, authService)
-	adminHandler := handler.NewAdminHandler(handlerHandler, adminService, authService)
-	authHandler := handler.NewAuthHandler(handlerHandler, authService)
-	httpServer := server.NewHTTPServer(logger, viperViper, jwtJWT, syncedEnforcer, adminHandler, authHandler)
+	client := platform.NewRedis(viperViper)
+	repository := auth.NewRepository(client)
+	rbacMu := casbinkit.NewRBACMu()
+	repo := user.NewRepo(db, syncedEnforcer, logger, rbacMu)
+	config := auth.LoadConfig(viperViper, logger)
+	service := auth.NewService(logger, jwtJWT, repository, repo, config)
+	handler := auth.NewHandler(service)
+	userService := user.NewService(logger, repo, service)
+	userHandler := user.NewHandler(userService)
+	roleRepo := role.NewRepo(db, syncedEnforcer, logger, rbacMu)
+	roleService := role.NewService(roleRepo)
+	roleHandler := role.NewHandler(roleService)
+	menuRepo := menu.NewRepo(db, syncedEnforcer, logger, rbacMu)
+	permissionRepo := permission.NewRepo(db, syncedEnforcer, logger, rbacMu)
+	menuService := menu.NewService(logger, menuRepo, permissionRepo)
+	menuHandler := menu.NewHandler(menuService)
+	apiRepo := api.NewRepo(db, syncedEnforcer, logger, rbacMu)
+	apiService := api.NewService(apiRepo)
+	apiHandler := api.NewHandler(apiService)
+	permissionService := permission.NewService(permissionRepo)
+	permissionHandler := permission.NewHandler(permissionService)
+	httpServer := server.NewHTTPServer(logger, viperViper, jwtJWT, syncedEnforcer, handler, userHandler, roleHandler, menuHandler, apiHandler, permissionHandler)
 	appApp := newApp(logger, httpServer)
 	return appApp, func() {
 		cleanup2()
@@ -54,11 +68,11 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 
 // wire.go:
 
-var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repository.NewTransaction, repository.NewCasbinEnforcer, repository.NewAdminRepository, repository.NewRedis, repository.NewAuthRepository)
+var platformSet = wire.NewSet(platform.NewDB, platform.NewCasbinEnforcer, platform.NewRedis)
 
-var serviceSet = wire.NewSet(service.NewService, service.NewAdminService, service.NewAuthService, auth.LoadAuthConfig)
+var rbacSet = wire.NewSet(casbinkit.NewRBACMu, user.NewRepo, user.NewService, user.NewHandler, role.NewRepo, role.NewService, role.NewHandler, menu.NewRepo, menu.NewService, menu.NewHandler, api.NewRepo, api.NewService, api.NewHandler, permission.NewRepo, permission.NewService, permission.NewHandler, wire.Bind(new(menu.PermissionReader), new(*permission.Repo)), wire.Bind(new(auth.UserLookup), new(*user.Repo)))
 
-var handlerSet = wire.NewSet(handler.NewHandler, handler.NewAdminHandler, handler.NewAuthHandler)
+var authSet = wire.NewSet(auth.LoadConfig, auth.NewRepository, auth.NewService, auth.NewHandler, wire.Bind(new(user.AuthRevoker), new(*auth.Service)))
 
 var serverSet = wire.NewSet(server.NewHTTPServer)
 

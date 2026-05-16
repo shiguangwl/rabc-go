@@ -16,7 +16,12 @@ import (
 
 	"rabc-go/api/apiv1"
 	docs "rabc-go/docs/swagger"
-	"rabc-go/internal/handler"
+	rbacapi "rabc-go/internal/admin/rbac/api"
+	"rabc-go/internal/admin/rbac/menu"
+	"rabc-go/internal/admin/rbac/permission"
+	"rabc-go/internal/admin/rbac/role"
+	"rabc-go/internal/admin/rbac/user"
+	"rabc-go/internal/auth"
 	"rabc-go/internal/middleware"
 	"rabc-go/pkg/config"
 	"rabc-go/pkg/jwt"
@@ -36,8 +41,12 @@ func NewHTTPServer(
 	conf *viper.Viper,
 	jwtUtil *jwt.JWT,
 	e *casbin.SyncedEnforcer,
-	adminHandler *handler.AdminHandler,
-	authHandler *handler.AuthHandler,
+	authHandler *auth.Handler,
+	userHandler *user.Handler,
+	roleHandler *role.Handler,
+	menuHandler *menu.Handler,
+	apiHandler *rbacapi.Handler,
+	permHandler *permission.Handler,
 ) *http.Server {
 	if config.IsProd(conf) {
 		gin.SetMode(gin.ReleaseMode)
@@ -101,45 +110,56 @@ func NewHTTPServer(
 		ginSwagger.PersistAuthorization(true),
 	))
 
-	v1Group := s.Group("/v1")
+	v1 := s.Group("/v1")
 	{
-		noAuthRouter := v1Group.Group("/")
+		// Auth 子系统：login / refresh / logout 不走 StrictAuth。
+		// refresh 自验证 refresh_token；logout 即便 access 过期用户也能登出。
+		noAuth := v1.Group("/")
 		{
-			noAuthRouter.POST("/login", adminHandler.Login)
-			// Auth 子系统：refresh / logout 不走 StrictAuth——
-			// refresh 自验证 refresh_token；logout 即便 access 过期用户也能登出。
-			noAuthRouter.POST("/auth/refresh", authHandler.Refresh)
-			noAuthRouter.POST("/auth/logout", authHandler.Logout)
+			noAuth.POST("/login", authHandler.Login)
+			noAuth.POST("/auth/refresh", authHandler.Refresh)
+			noAuth.POST("/auth/logout", authHandler.Logout)
 		}
 
-		strictAuthRouter := v1Group.Group("/").Use(middleware.StrictAuth(jwtUtil, logger), middleware.AuthMiddleware(e))
+		strict := v1.Group("/").Use(middleware.StrictAuth(jwtUtil, logger), middleware.AuthMiddleware(e))
 		{
-			strictAuthRouter.GET("/menus", adminHandler.GetMenus)
-			strictAuthRouter.GET("/admin/menus", adminHandler.GetAdminMenus)
-			strictAuthRouter.POST("/admin/menu", adminHandler.MenuCreate)
-			strictAuthRouter.PUT("/admin/menu", adminHandler.MenuUpdate)
-			strictAuthRouter.DELETE("/admin/menu", adminHandler.MenuDelete)
+			// 当前用户菜单（按权限过滤）
+			strict.GET("/menus", menuHandler.GetMenus)
 
-			strictAuthRouter.GET("/admin/users", adminHandler.GetAdminUsers)
-			strictAuthRouter.GET("/admin/user", adminHandler.GetAdminUser)
-			strictAuthRouter.PUT("/admin/user", adminHandler.AdminUserUpdate)
-			strictAuthRouter.POST("/admin/user", adminHandler.AdminUserCreate)
-			strictAuthRouter.DELETE("/admin/user", adminHandler.AdminUserDelete)
-			strictAuthRouter.GET("/admin/user/permissions", adminHandler.GetUserPermissions)
-			strictAuthRouter.GET("/admin/user/sessions", adminHandler.GetUserSessions)
-			strictAuthRouter.DELETE("/admin/user/sessions", adminHandler.RevokeUserSessions)
-			strictAuthRouter.DELETE("/admin/user/session", adminHandler.KickUserSession)
-			strictAuthRouter.GET("/admin/role/permissions", adminHandler.GetRolePermissions)
-			strictAuthRouter.PUT("/admin/role/permission", adminHandler.UpdateRolePermission)
-			strictAuthRouter.GET("/admin/roles", adminHandler.GetRoles)
-			strictAuthRouter.POST("/admin/role", adminHandler.RoleCreate)
-			strictAuthRouter.PUT("/admin/role", adminHandler.RoleUpdate)
-			strictAuthRouter.DELETE("/admin/role", adminHandler.RoleDelete)
+			// 菜单管理
+			strict.GET("/admin/menus", menuHandler.GetAdminMenus)
+			strict.POST("/admin/menu", menuHandler.MenuCreate)
+			strict.PUT("/admin/menu", menuHandler.MenuUpdate)
+			strict.DELETE("/admin/menu", menuHandler.MenuDelete)
 
-			strictAuthRouter.GET("/admin/apis", adminHandler.GetApis)
-			strictAuthRouter.POST("/admin/api", adminHandler.APICreate)
-			strictAuthRouter.PUT("/admin/api", adminHandler.APIUpdate)
-			strictAuthRouter.DELETE("/admin/api", adminHandler.APIDelete)
+			// 管理员账户
+			strict.GET("/admin/users", userHandler.GetAdminUsers)
+			strict.GET("/admin/user", userHandler.GetAdminUser)
+			strict.PUT("/admin/user", userHandler.AdminUserUpdate)
+			strict.POST("/admin/user", userHandler.AdminUserCreate)
+			strict.DELETE("/admin/user", userHandler.AdminUserDelete)
+
+			// 用户权限 / 会话
+			strict.GET("/admin/user/permissions", permHandler.GetUserPermissions)
+			strict.GET("/admin/user/sessions", authHandler.GetUserSessions)
+			strict.DELETE("/admin/user/sessions", authHandler.RevokeUserSessions)
+			strict.DELETE("/admin/user/session", authHandler.KickUserSession)
+
+			// 角色权限
+			strict.GET("/admin/role/permissions", permHandler.GetRolePermissions)
+			strict.PUT("/admin/role/permission", permHandler.UpdateRolePermission)
+
+			// 角色管理
+			strict.GET("/admin/roles", roleHandler.GetRoles)
+			strict.POST("/admin/role", roleHandler.RoleCreate)
+			strict.PUT("/admin/role", roleHandler.RoleUpdate)
+			strict.DELETE("/admin/role", roleHandler.RoleDelete)
+
+			// API 资源管理
+			strict.GET("/admin/apis", apiHandler.GetApis)
+			strict.POST("/admin/api", apiHandler.APICreate)
+			strict.PUT("/admin/api", apiHandler.APIUpdate)
+			strict.DELETE("/admin/api", apiHandler.APIDelete)
 		}
 	}
 	return s

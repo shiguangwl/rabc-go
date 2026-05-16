@@ -21,7 +21,7 @@ import (
 	"rabc-go/api/apiv1"
 	"rabc-go/db/seed"
 	"rabc-go/internal/model"
-	"rabc-go/internal/repository"
+	"rabc-go/internal/platform"
 	"rabc-go/pkg/config"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/sid"
@@ -73,7 +73,7 @@ func (m *SeedServer) Start(ctx context.Context) error {
 	return m.seed(ctx)
 }
 
-// seed 在空库上写入初始数据；任一 RBAC 表非空则拒绝，避免半初始化状态继续写入。
+// seed 在空库上写入初始数据；任一 RBAC 表非空即拒绝，避免半初始化状态下重复写入造成主键冲突或脏数据。
 func (m *SeedServer) seed(ctx context.Context) error {
 	empty, err := m.areSeedTablesEmpty(ctx)
 	if err != nil {
@@ -154,14 +154,12 @@ func isLocalHost(host string) bool {
 //
 // 不调 DROP/AutoMigrate；schema 由 atlas 管。
 func (m *SeedServer) reset(ctx context.Context) error {
-	// 第一道防御：仅 local 允许 -reset。
-	// 旧实现用 !IsProd 放行，意外把 staging 测试数据 TRUNCATE 的事故无法兜底。
+	// 仅 local 允许 -reset；不能用 !IsProd 放行，否则 staging/uat 数据会被误 TRUNCATE。
 	if !config.IsLocal(m.conf) {
 		return fmt.Errorf("seed -reset is only allowed in env=local (current env=%q)", m.conf.GetString("env"))
 	}
-	// 第二道防御：dsn host 必须本机。env 字段是配置文件里的字符串标签，
-	// 万一镜像里同时打包了 env=local 的 yml + 远端 dsn（CI 或人为失误），
-	// 单靠 IsLocal 就会把生产/测试数据 TRUNCATE。host 校验是不可绕过的兜底。
+	// dsn host 校验是 IsLocal 之外的不可绕过兜底：
+	// 防御镜像里同时打包 env=local 的 yml + 远端 dsn（CI 或人为失误）的场景。
 	driver := m.conf.GetString("data.db.user.driver")
 	dsn := m.conf.GetString("data.db.user.dsn")
 	if !isLocalDSN(driver, dsn) {
@@ -170,15 +168,13 @@ func (m *SeedServer) reset(ctx context.Context) error {
 	if err := m.truncateBusinessTables(ctx); err != nil {
 		return fmt.Errorf("truncate: %w", err)
 	}
-	// reset 路径已在 truncateBusinessTables 中 TRUNCATE casbin_rule，这里
-	// 只需要让 enforcer 重新从库加载策略即可，无需 ClearPolicy + SavePolicy。
+	// casbin_rule 已随业务表被 TRUNCATE，enforcer 必须重新 LoadPolicy 才能避免读到陈旧内存策略。
 	if err := m.e.LoadPolicy(); err != nil {
 		return fmt.Errorf("reload casbin policy after truncate: %w", err)
 	}
 	return m.runInitialData(ctx)
 }
 
-// truncateBusinessTables 用方言对应的 TRUNCATE 清表并重置自增序列。
 func (m *SeedServer) truncateBusinessTables(ctx context.Context) error {
 	for _, table := range rbacTables {
 		stmt, err := truncateTableSQL(m.conf.GetString("data.db.user.driver"), table)
@@ -214,7 +210,6 @@ func normalizeDBDriver(driver string) string {
 	}
 }
 
-// runInitialData 串行执行所有初始化步骤，任一失败立即返回。
 func (m *SeedServer) runInitialData(ctx context.Context) error {
 	if err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		e, err := newSeedTxEnforcer(tx)
@@ -237,7 +232,7 @@ func newSeedTxEnforcer(tx *gorm.DB) (casbin.IEnforcer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init seed tx casbin adapter: %w", err)
 	}
-	casbinModel, err := repository.NewCasbinModel()
+	casbinModel, err := platform.NewCasbinModel()
 	if err != nil {
 		return nil, fmt.Errorf("init seed tx casbin model: %w", err)
 	}
@@ -289,11 +284,10 @@ func (m *SeedServer) Stop(_ context.Context) error {
 
 func (m *SeedServer) initialAdminUser(ctx context.Context, db *gorm.DB) error {
 	// 初始密码取值优先级：APP_SEED_INITIAL_PASSWORD env > seed.initial_password yml。
-	// 非 local 环境必须显式提供，缺失直接报错，避免弱密码进 prod。
+	// 仅 local 允许回退到弱默认值；staging/uat/prod 必须显式提供，
+	// 防止任何对外环境上线后留下 admin/123456 万能后门。
 	initialPassword := m.conf.GetString("seed.initial_password")
 	if initialPassword == "" {
-		// 仅 env=local 允许 fallback 弱默认。staging/uat/prod 都强制要求显式提供，
-		// 避免任何对外环境上线后留下 admin/123456 这条万能后门。
 		if !config.IsLocal(m.conf) {
 			return errors.New("seed: APP_SEED_INITIAL_PASSWORD must be provided in non-local env")
 		}
@@ -318,8 +312,8 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 	if err := db.WithContext(ctx).Create(&roles).Error; err != nil {
 		return err
 	}
-	// 不在此处 ClearPolicy + SavePolicy：默认 seed 只允许空库初始化，
-	// reset 路径已在 SeedServer.reset 内统一清理，避免误删运行时分配的策略。
+	// 此处不 ClearPolicy + SavePolicy：seed 默认只在空库执行，reset 路径会
+	// 统一在外层清理；在这里清理会误删运行时由 admin 增量分配的策略。
 	if _, err := e.AddRoleForUser(model.AdminUserID, model.RoleSubject(model.AdminRole)); err != nil {
 		return fmt.Errorf("AddRoleForUser admin: %w", err)
 	}
@@ -343,7 +337,6 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 		}
 	}
 
-	// 添加运营人员权限
 	if _, err := e.AddRoleForUser("2", model.RoleSubject("1000")); err != nil {
 		return fmt.Errorf("AddRoleForUser operator: %w", err)
 	}
@@ -371,9 +364,8 @@ func (m *SeedServer) initialRBAC(ctx context.Context, db *gorm.DB, e casbin.IEnf
 	return nil
 }
 
-// addPermissionForRole 为指定角色追加 (resource, action) 权限。
-// Casbin AddPermissionForUser 已存在时返回 (false, nil)，幂等可重放。
-// 失败 return error 让调用方早返，避免静默吞错。
+// addPermissionForRole 幂等追加 (resource, action) 权限；
+// Casbin 对已存在的策略返回 (false, nil)，调用方可安全重放。
 func (m *SeedServer) addPermissionForRole(e casbin.IEnforcer, role, resource, action string) error {
 	if _, err := e.AddPermissionForUser(model.RoleSubject(role), resource, action); err != nil {
 		return fmt.Errorf("AddPermissionForUser %s %s:%s: %w", role, resource, action, err)

@@ -12,10 +12,8 @@ import (
 	"rabc-go/pkg/log"
 )
 
-// cmd/seed 负责写入 RBAC 业务初始数据。
-//
-// 调用前必须先完成 schema migration；默认要求业务表为空，-reset 仅允许在
-// dev/local 清空业务表后重新写入。
+// 调用前必须先完成 schema migration（atlas migrate apply）；默认要求业务表为空，
+// -reset 仅允许在 local 环境清空业务表后重新写入。
 func main() {
 	if err := run(); err != nil {
 		os.Exit(1)

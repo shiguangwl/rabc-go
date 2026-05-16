@@ -22,9 +22,9 @@ import (
 )
 
 // defaultMaxLogBodyBytes 是写入日志的 body 字节上限默认值。
-// 配置项 log.body.max_bytes 可覆盖；调用方在构造中间件时传入实际值。
-// 截断后用 [truncated N bytes, masking skipped] 替换，避免大 body 撑爆日志、
-// 拖慢 marshal，也避免截断中段把敏感字段以未脱敏形式写入日志。
+// 截断后只输出 [truncated ...] 占位符，避免：
+//  1. 大 body 撑爆日志与拖慢 marshal；
+//  2. 截断中段的不完整 JSON 把敏感字段以未脱敏形式落盘。
 const defaultMaxLogBodyBytes = 8 * 1024
 
 // 敏感请求头：使用 http.CanonicalHeaderKey 后的精确匹配。
@@ -101,14 +101,12 @@ func RequestLogMiddleware(logger *log.Logger, logHeaders, logBody bool, maxBytes
 		}
 		logger.WithValue(ctx, zap.String("request_url", maskURL(ctx.Request.URL.String())))
 		if logBody && ctx.Request.Body != nil && shouldLogBody(ctx.Request.Header.Get("Content-Type")) {
-			// 旧实现走 ctx.GetRawData() 一次性读全量到内存，攻击者发 100MB body
-			// 仍会落到 RAM。这里用 LimitReader 截到 limit+1 字节：超出阈值时既能
-			// 识别"被截断"又不会把整段读完。
+			// LimitReader 截到 limit+1 字节：多读 1 字节用来识别"已被截断"，
+			// 同时防止恶意大 body 把全量原文吃进 RAM。
 			limited := io.LimitReader(ctx.Request.Body, int64(limit)+1)
 			bodyBytes, _ := io.ReadAll(limited)
-			// 把读到的 + 未读完的 body 拼回去，业务 handler 仍能正常 BindJSON。
-			// 注意：必须把 bodyBytes 完整（含可能多读出的 1 字节）回放，否则 handler 的
-			// 解析会缺失一个字节。日志侧再单独按 limit 切片即可。
+			// 回放时必须包含可能多读出的那 1 字节，否则下游 BindJSON 会缺一字节；
+			// 日志侧再按 limit 切片即可。
 			ctx.Request.Body = replayReadCloser{
 				Reader: io.MultiReader(bytes.NewReader(bodyBytes), ctx.Request.Body),
 				Closer: ctx.Request.Body,
@@ -125,8 +123,10 @@ func RequestLogMiddleware(logger *log.Logger, logHeaders, logBody bool, maxBytes
 	}
 }
 
-// ResponseLogMiddleware 打印响应摘要。logBody=false 时不再为响应分配镜像 buffer，
-// 完全旁路 bodyLogWriter，省去内存与 marshal 开销。
+// ResponseLogMiddleware 记录响应耗时与（可选）响应体。
+//
+// logBody=false 时完全旁路 bodyLogWriter，避免为大响应分配镜像 buffer。
+// 末段统一记录 5xx 错误链，handler/service 不再自行打错误日志。
 func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.HandlerFunc {
 	limit := resolveMaxBodyBytes(maxBytes)
 	return func(ctx *gin.Context) {
@@ -179,8 +179,6 @@ type bodyLogWriter struct {
 	truncated bool
 }
 
-// mirror 把字节镜像到日志 buffer，截断超过 limit 的部分。
-// 与 Write/WriteString 共用，保证两条路径行为一致。
 func (w *bodyLogWriter) mirror(b []byte) {
 	if w.truncated {
 		return
@@ -197,9 +195,8 @@ func (w *bodyLogWriter) mirror(b []byte) {
 	}
 }
 
-// Write 把响应写到下游的同时镜像一份到 body buffer，供日志输出。
-// 镜像 buffer 受 limit 上限保护：超过后停止往 buffer 写入并设 truncated 标记，
-// 避免大响应在日志路径占用 N 倍内存（下游响应仍按完整字节写出，不影响客户端）。
+// Write 镜像到日志 buffer 时受 limit 保护：超出后设 truncated 标记，
+// 防止大响应在日志路径占用 N 倍内存；下游响应字节不受影响。
 func (w *bodyLogWriter) Write(b []byte) (int, error) {
 	w.mirror(b)
 	return w.ResponseWriter.Write(b)
@@ -212,7 +209,6 @@ func (w *bodyLogWriter) WriteString(s string) (int, error) {
 	return w.ResponseWriter.WriteString(s)
 }
 
-// maskHeaders 返回请求头副本，敏感字段值替换为 "***"。
 func maskHeaders(h http.Header) http.Header {
 	masked := make(http.Header, len(h))
 	for k, v := range h {

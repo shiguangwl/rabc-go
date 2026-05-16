@@ -58,21 +58,20 @@ func (l Logger) ParamsFilter(_ context.Context, sql string, params ...interface{
 	return sql, params
 }
 
-// Info 把 gorm 内部的 Info 级日志桥接到 ctx 派生的 zap.Logger（含 trace/请求字段）。
+// Info 把 gorm 内部日志桥接到 ctx 派生的 zap.Logger（含 trace/请求字段）；
+// Warn/Error 同理，仅级别不同。
 func (l Logger) Info(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormlogger.Info {
 		l.logger(ctx).Sugar().Infof(msg, data...)
 	}
 }
 
-// Warn 同 Info，按 gorm logger 协议处理 Warn 级日志。
 func (l Logger) Warn(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormlogger.Warn {
 		l.logger(ctx).Sugar().Warnf(msg, data...)
 	}
 }
 
-// Error 同 Info，按 gorm logger 协议处理 Error 级日志。
 func (l Logger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormlogger.Error {
 		l.logger(ctx).Sugar().Errorf(msg, data...)

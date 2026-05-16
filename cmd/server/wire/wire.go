@@ -4,11 +4,15 @@
 package wire
 
 import (
+	rbacapi "rabc-go/internal/admin/rbac/api"
+	"rabc-go/internal/admin/rbac/menu"
+	"rabc-go/internal/admin/rbac/permission"
+	"rabc-go/internal/admin/rbac/casbinkit"
+	"rabc-go/internal/admin/rbac/role"
+	"rabc-go/internal/admin/rbac/user"
 	"rabc-go/internal/auth"
-	"rabc-go/internal/handler"
-	"rabc-go/internal/repository"
+	"rabc-go/internal/platform"
 	"rabc-go/internal/server"
-	"rabc-go/internal/service"
 	"rabc-go/pkg/app"
 	"rabc-go/pkg/jwt"
 	"rabc-go/pkg/log"
@@ -18,27 +22,42 @@ import (
 	"github.com/spf13/viper"
 )
 
-var repositorySet = wire.NewSet(
-	repository.NewDB,
-	repository.NewRepository,
-	repository.NewTransaction,
-	repository.NewCasbinEnforcer,
-	repository.NewAdminRepository,
-	repository.NewRedis,
-	repository.NewAuthRepository,
+var platformSet = wire.NewSet(
+	platform.NewDB,
+	platform.NewCasbinEnforcer,
+	platform.NewRedis,
 )
 
-var serviceSet = wire.NewSet(
-	service.NewService,
-	service.NewAdminService,
-	service.NewAuthService,
-	auth.LoadAuthConfig,
+var rbacSet = wire.NewSet(
+	casbinkit.NewRBACMu,
+
+	user.NewRepo,
+	user.NewService,
+	user.NewHandler,
+	role.NewRepo,
+	role.NewService,
+	role.NewHandler,
+	menu.NewRepo,
+	menu.NewService,
+	menu.NewHandler,
+	rbacapi.NewRepo,
+	rbacapi.NewService,
+	rbacapi.NewHandler,
+	permission.NewRepo,
+	permission.NewService,
+	permission.NewHandler,
+
+	// 跨子域依赖反转：消费者侧接口绑定到实现者，避免下游子域反向依赖上游具体类型。
+	wire.Bind(new(menu.PermissionReader), new(*permission.Repo)),
+	wire.Bind(new(auth.UserLookup), new(*user.Repo)),
 )
 
-var handlerSet = wire.NewSet(
-	handler.NewHandler,
-	handler.NewAdminHandler,
-	handler.NewAuthHandler,
+var authSet = wire.NewSet(
+	auth.LoadConfig,
+	auth.NewRepository,
+	auth.NewService,
+	auth.NewHandler,
+	wire.Bind(new(user.AuthRevoker), new(*auth.Service)),
 )
 
 var serverSet = wire.NewSet(
@@ -58,9 +77,9 @@ func newApp(
 
 func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
 	panic(wire.Build(
-		repositorySet,
-		serviceSet,
-		handlerSet,
+		platformSet,
+		rbacSet,
+		authSet,
 		serverSet,
 		jwt.NewJwt,
 		newApp,

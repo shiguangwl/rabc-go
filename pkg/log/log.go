@@ -20,14 +20,10 @@ type Logger struct {
 	*zap.Logger
 }
 
-// NewLog 按 viper 配置构造按 level/encoding 分流的 Logger。
-//
-// 设计要点：stdout 与 lumberjack 文件走两个独立 core（zapcore.NewTee）。
-//   - 控制台路径：encoding=console 时使用 prettyconsole，自动对齐列宽、彩色、
-//     宽字符（中文）按显示宽度计算。
-//   - 文件路径：始终使用 JSON 编码，避免 ANSI 颜色控制字符污染日志文件，
-//     也便于 ELK/Loki 等管道消费结构化日志。
-//   - encoding=json 时控制台也回退到 JSON，prod 场景统一结构化输出。
+// NewLog 用 zapcore.NewTee 同时向 stdout 与 lumberjack 文件写入，但分别使用不同编码器：
+//   - 文件路径强制 JSON，防止 ANSI 颜色控制字符污染日志文件、便于 ELK/Loki 消费
+//   - 控制台在 encoding=console 时用 prettyconsole（对齐列宽、彩色、宽字符按显示宽度计算）
+//   - encoding=json 时控制台也回退 JSON，让 prod 输出全链路结构化
 func NewLog(conf *viper.Viper) *Logger {
 	level := parseLevel(conf.GetString("log.log_level"))
 	hook := lumberjack.Logger{

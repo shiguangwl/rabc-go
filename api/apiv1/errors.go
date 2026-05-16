@@ -56,25 +56,20 @@ func newError(code, httpStatus int, msg string) *Error {
 	return &Error{Code: code, HTTP: httpStatus, Message: msg}
 }
 
-// 业务码保留兼容（前端已在用）：
-//   - 0/400/401/403/404/409/500 这套继续作为 Code 暴露给前端
-//   - HTTP 字段由 WriteResponse 用作 ctx.JSON 的状态码
+// code前两位区分业务模块
 var (
 	ErrSuccess             = newError(0, 200, "ok")
 	ErrBadRequest          = newError(400, 400, "参数错误")
-	ErrUnauthorized        = newError(401, 401, "登录失效，请重新登录~")
-	ErrForbidden           = newError(403, 403, "权限不足，请联系管理员开通权限~")
+	ErrUnauthorized        = newError(401, 401, "登录失效，请重新登录")
+	ErrForbidden           = newError(403, 403, "权限不足，请联系管理员开通权限")
 	ErrNotFound            = newError(404, 404, "数据不存在")
 	ErrConflict            = newError(409, 409, "资源已存在")
-	ErrInternalServerError = newError(500, 500, "服务器错误~")
+	ErrInternalServerError = newError(500, 500, "服务器错误")
 
-	// ErrUsernameAlreadyUse 表示用户名唯一性冲突。
 	ErrUsernameAlreadyUse = newError(1001, 409, "用户名已被占用")
 	ErrRoleSidExists      = newError(1002, 409, "角色 sid 已存在")
 	ErrRoleNameExists     = newError(1003, 409, "角色名已存在")
-
-	// ErrUserDisabled 表示账号已被禁用。
-	ErrUserDisabled   = newError(1004, 403, "账号已被禁用，请联系管理员")
-	ErrRefreshReused  = newError(1005, 401, "登录已失效，请重新登录")
-	ErrRefreshExpired = newError(1006, 401, "登录已过期，请重新登录")
+	ErrUserDisabled       = newError(1004, 403, "账号已被禁用，请联系管理员")
+	ErrRefreshReused      = newError(1005, 401, "登录已失效，请重新登录")
+	ErrRefreshExpired     = newError(1006, 401, "登录已过期，请重新登录")
 )

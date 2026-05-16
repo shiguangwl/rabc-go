@@ -9,7 +9,7 @@ package wire
 import (
 	"github.com/google/wire"
 	"github.com/spf13/viper"
-	"rabc-go/internal/repository"
+	"rabc-go/internal/platform"
 	"rabc-go/internal/server"
 	"rabc-go/pkg/log"
 	"rabc-go/pkg/sid"
@@ -19,12 +19,12 @@ import (
 
 // NewWire 返回一次性种子任务，调用方负责显式驱动 Start/Stop 生命周期。
 func NewWire(viperViper *viper.Viper, logger *log.Logger) (*server.SeedServer, func(), error) {
-	db, cleanup, err := repository.NewDB(viperViper, logger)
+	db, cleanup, err := platform.NewDB(viperViper, logger)
 	if err != nil {
 		return nil, nil, err
 	}
 	sidSid := sid.NewSid()
-	syncedEnforcer, cleanup2, err := repository.NewCasbinEnforcer(viperViper, logger, db)
+	syncedEnforcer, cleanup2, err := platform.NewCasbinEnforcer(viperViper, logger, db)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
@@ -38,6 +38,6 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*server.SeedServer, f
 
 // wire.go:
 
-var repositorySet = wire.NewSet(repository.NewDB, repository.NewCasbinEnforcer)
+var platformSet = wire.NewSet(platform.NewDB, platform.NewCasbinEnforcer)
 
 var serverSet = wire.NewSet(server.NewSeedServer)
