@@ -1,5 +1,82 @@
 definitions:
-  rabc-go_api_v1.AdminUserCreateRequest:
+  rabc-go_api_apiv1.APICreateRequest:
+    properties:
+      group:
+        example: 权限管理
+        type: string
+      method:
+        enum:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+        - HEAD
+        example: GET
+        type: string
+      name:
+        example: 菜单列表
+        type: string
+      path:
+        example: /v1/test
+        type: string
+    required:
+    - group
+    - method
+    - name
+    - path
+    type: object
+  rabc-go_api_apiv1.APIDataItem:
+    properties:
+      createdAt:
+        type: string
+      group:
+        type: string
+      id:
+        type: integer
+      method:
+        type: string
+      name:
+        type: string
+      path:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  rabc-go_api_apiv1.APIUpdateRequest:
+    properties:
+      group:
+        example: 权限管理
+        type: string
+      id:
+        example: 1
+        type: integer
+      method:
+        enum:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+        - HEAD
+        example: GET
+        type: string
+      name:
+        example: 菜单列表
+        type: string
+      path:
+        example: /v1/test
+        type: string
+    required:
+    - group
+    - id
+    - method
+    - name
+    - path
+    type: object
+  rabc-go_api_apiv1.AdminUserCreateRequest:
     properties:
       email:
         example: 1234@gmail.com
@@ -16,7 +93,7 @@ definitions:
         type: string
       roles:
         example:
-          - ""
+        - ""
         items:
           type: string
         maxItems: 20
@@ -25,10 +102,10 @@ definitions:
         example: 张三
         type: string
     required:
-      - password
-      - username
+    - password
+    - username
     type: object
-  rabc-go_api_v1.AdminUserDataItem:
+  rabc-go_api_apiv1.AdminUserDataItem:
     properties:
       createdAt:
         type: string
@@ -37,6 +114,8 @@ definitions:
         type: string
       id:
         type: integer
+      lastLoginAt:
+        type: string
       nickname:
         example: 小Baby
         type: string
@@ -45,7 +124,7 @@ definitions:
         type: string
       roles:
         example:
-          - ""
+        - ""
         items:
           type: string
         type: array
@@ -55,7 +134,7 @@ definitions:
         example: 张三
         type: string
     type: object
-  rabc-go_api_v1.AdminUserUpdateRequest:
+  rabc-go_api_apiv1.AdminUserUpdateRequest:
     properties:
       email:
         example: 1234@gmail.com
@@ -75,7 +154,7 @@ definitions:
         type: string
       roles:
         example:
-          - ""
+        - ""
         items:
           type: string
         type: array
@@ -83,96 +162,19 @@ definitions:
         example: 张三
         type: string
     required:
-      - id
-      - username
+    - id
+    - username
     type: object
-  rabc-go_api_v1.ApiCreateRequest:
-    properties:
-      group:
-        example: 权限管理
-        type: string
-      method:
-        enum:
-          - GET
-          - POST
-          - PUT
-          - PATCH
-          - DELETE
-          - OPTIONS
-          - HEAD
-        example: GET
-        type: string
-      name:
-        example: 菜单列表
-        type: string
-      path:
-        example: /v1/test
-        type: string
-    required:
-      - group
-      - method
-      - name
-      - path
-    type: object
-  rabc-go_api_v1.ApiDataItem:
-    properties:
-      createdAt:
-        type: string
-      group:
-        type: string
-      id:
-        type: integer
-      method:
-        type: string
-      name:
-        type: string
-      path:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  rabc-go_api_v1.ApiUpdateRequest:
-    properties:
-      group:
-        example: 权限管理
-        type: string
-      id:
-        example: 1
-        type: integer
-      method:
-        enum:
-          - GET
-          - POST
-          - PUT
-          - PATCH
-          - DELETE
-          - OPTIONS
-          - HEAD
-        example: GET
-        type: string
-      name:
-        example: 菜单列表
-        type: string
-      path:
-        example: /v1/test
-        type: string
-    required:
-      - group
-      - id
-      - method
-      - name
-      - path
-    type: object
-  rabc-go_api_v1.GetAdminUserResponse:
+  rabc-go_api_apiv1.GetAdminUserResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: "#/definitions/rabc-go_api_v1.GetAdminUserResponseData"
+        $ref: '#/definitions/rabc-go_api_apiv1.GetAdminUserResponseData'
       message:
         type: string
     type: object
-  rabc-go_api_v1.GetAdminUserResponseData:
+  rabc-go_api_apiv1.GetAdminUserResponseData:
     properties:
       createdAt:
         type: string
@@ -181,6 +183,8 @@ definitions:
         type: string
       id:
         type: integer
+      lastLoginAt:
+        type: string
       nickname:
         example: 小Baby
         type: string
@@ -189,7 +193,7 @@ definitions:
         type: string
       roles:
         example:
-          - ""
+        - ""
         items:
           type: string
         type: array
@@ -199,34 +203,34 @@ definitions:
         example: 张三
         type: string
     type: object
-  rabc-go_api_v1.GetAdminUsersResponse:
+  rabc-go_api_apiv1.GetAdminUsersResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: "#/definitions/rabc-go_api_v1.GetAdminUsersResponseData"
+        $ref: '#/definitions/rabc-go_api_apiv1.GetAdminUsersResponseData'
       message:
         type: string
     type: object
-  rabc-go_api_v1.GetAdminUsersResponseData:
+  rabc-go_api_apiv1.GetAdminUsersResponseData:
     properties:
       list:
         items:
-          $ref: "#/definitions/rabc-go_api_v1.AdminUserDataItem"
+          $ref: '#/definitions/rabc-go_api_apiv1.AdminUserDataItem'
         type: array
       total:
         type: integer
     type: object
-  rabc-go_api_v1.GetApisResponse:
+  rabc-go_api_apiv1.GetApisResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: "#/definitions/rabc-go_api_v1.GetApisResponseData"
+        $ref: '#/definitions/rabc-go_api_apiv1.GetApisResponseData'
       message:
         type: string
     type: object
-  rabc-go_api_v1.GetApisResponseData:
+  rabc-go_api_apiv1.GetApisResponseData:
     properties:
       groups:
         items:
@@ -234,60 +238,76 @@ definitions:
         type: array
       list:
         items:
-          $ref: "#/definitions/rabc-go_api_v1.ApiDataItem"
+          $ref: '#/definitions/rabc-go_api_apiv1.APIDataItem'
         type: array
       total:
         type: integer
     type: object
-  rabc-go_api_v1.GetMenuResponse:
+  rabc-go_api_apiv1.GetMenuResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: "#/definitions/rabc-go_api_v1.GetMenuResponseData"
+        $ref: '#/definitions/rabc-go_api_apiv1.GetMenuResponseData'
       message:
         type: string
     type: object
-  rabc-go_api_v1.GetMenuResponseData:
+  rabc-go_api_apiv1.GetMenuResponseData:
     properties:
       list:
         items:
-          $ref: "#/definitions/rabc-go_api_v1.MenuDataItem"
+          $ref: '#/definitions/rabc-go_api_apiv1.MenuDataItem'
         type: array
     type: object
-  rabc-go_api_v1.GetRolePermissionsData:
+  rabc-go_api_apiv1.GetRolePermissionsData:
     properties:
       list:
         items:
           type: string
         type: array
     type: object
-  rabc-go_api_v1.GetRolesResponse:
+  rabc-go_api_apiv1.GetRolesResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: "#/definitions/rabc-go_api_v1.GetRolesResponseData"
+        $ref: '#/definitions/rabc-go_api_apiv1.GetRolesResponseData'
       message:
         type: string
     type: object
-  rabc-go_api_v1.GetRolesResponseData:
+  rabc-go_api_apiv1.GetRolesResponseData:
     properties:
       list:
         items:
-          $ref: "#/definitions/rabc-go_api_v1.RoleDataItem"
+          $ref: '#/definitions/rabc-go_api_apiv1.RoleDataItem'
         type: array
       total:
         type: integer
     type: object
-  rabc-go_api_v1.GetUserPermissionsData:
+  rabc-go_api_apiv1.GetUserPermissionsData:
     properties:
       list:
         items:
           type: string
         type: array
     type: object
-  rabc-go_api_v1.LoginRequest:
+  rabc-go_api_apiv1.GetUserSessionsResponse:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/rabc-go_api_apiv1.GetUserSessionsResponseData'
+      message:
+        type: string
+    type: object
+  rabc-go_api_apiv1.GetUserSessionsResponseData:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/rabc-go_api_apiv1.UserSessionItem'
+        type: array
+    type: object
+  rabc-go_api_apiv1.LoginRequest:
     properties:
       password:
         example: "123456"
@@ -296,24 +316,36 @@ definitions:
         example: 1234@gmail.com
         type: string
     required:
-      - password
-      - username
+    - password
+    - username
     type: object
-  rabc-go_api_v1.LoginResponse:
+  rabc-go_api_apiv1.LoginResponse:
     properties:
       code:
         type: integer
       data:
-        $ref: "#/definitions/rabc-go_api_v1.LoginResponseData"
+        $ref: '#/definitions/rabc-go_api_apiv1.LoginResponseData'
       message:
         type: string
     type: object
-  rabc-go_api_v1.LoginResponseData:
+  rabc-go_api_apiv1.LoginResponseData:
     properties:
       accessToken:
         type: string
+      expiresIn:
+        description: access token 剩余秒数。
+        type: integer
+      refreshToken:
+        type: string
     type: object
-  rabc-go_api_v1.MenuCreateRequest:
+  rabc-go_api_apiv1.LogoutRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  rabc-go_api_apiv1.MenuCreateRequest:
     properties:
       component:
         type: string
@@ -341,11 +373,11 @@ definitions:
       weight:
         type: integer
     required:
-      - name
-      - path
-      - title
+    - name
+    - path
+    - title
     type: object
-  rabc-go_api_v1.MenuDataItem:
+  rabc-go_api_apiv1.MenuDataItem:
     properties:
       component:
         type: string
@@ -377,7 +409,7 @@ definitions:
       weight:
         type: integer
     type: object
-  rabc-go_api_v1.MenuUpdateRequest:
+  rabc-go_api_apiv1.MenuUpdateRequest:
     properties:
       component:
         type: string
@@ -409,12 +441,37 @@ definitions:
       weight:
         type: integer
     required:
-      - id
-      - name
-      - path
-      - title
+    - id
+    - name
+    - path
+    - title
     type: object
-  rabc-go_api_v1.Response:
+  rabc-go_api_apiv1.RefreshRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  rabc-go_api_apiv1.RefreshResponse:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/rabc-go_api_apiv1.RefreshResponseData'
+      message:
+        type: string
+    type: object
+  rabc-go_api_apiv1.RefreshResponseData:
+    properties:
+      accessToken:
+        type: string
+      expiresIn:
+        type: integer
+      refreshToken:
+        type: string
+    type: object
+  rabc-go_api_apiv1.Response:
     properties:
       code:
         type: integer
@@ -422,7 +479,7 @@ definitions:
       message:
         type: string
     type: object
-  rabc-go_api_v1.RoleCreateRequest:
+  rabc-go_api_apiv1.RoleCreateRequest:
     properties:
       name:
         example: Admin
@@ -431,10 +488,10 @@ definitions:
         example: "1"
         type: string
     required:
-      - name
-      - sid
+    - name
+    - sid
     type: object
-  rabc-go_api_v1.RoleDataItem:
+  rabc-go_api_apiv1.RoleDataItem:
     properties:
       createdAt:
         type: string
@@ -447,7 +504,7 @@ definitions:
       updatedAt:
         type: string
     type: object
-  rabc-go_api_v1.RoleUpdateRequest:
+  rabc-go_api_apiv1.RoleUpdateRequest:
     properties:
       id:
         example: 1
@@ -456,14 +513,14 @@ definitions:
         example: Admin
         type: string
     required:
-      - id
-      - name
+    - id
+    - name
     type: object
-  rabc-go_api_v1.UpdateRolePermissionRequest:
+  rabc-go_api_apiv1.UpdateRolePermissionRequest:
     properties:
       list:
         example:
-          - ""
+        - ""
         items:
           type: string
         type: array
@@ -471,8 +528,16 @@ definitions:
         example: admin
         type: string
     required:
-      - list
-      - role
+    - list
+    - role
+    type: object
+  rabc-go_api_apiv1.UserSessionItem:
+    properties:
+      exp:
+        description: Unix 秒级失效时间。
+        type: integer
+      sid:
+        type: string
     type: object
 host: localhost:8000
 info:
@@ -484,537 +549,645 @@ paths:
   /v1/admin/api:
     delete:
       consumes:
-        - application/json
+      - application/json
       description: 删除指定API
       parameters:
-        - description: API ID
-          in: query
-          name: id
-          required: true
-          type: integer
+      - description: API ID
+        in: query
+        name: id
+        required: true
+        type: integer
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 删除API
       tags:
-        - API模块
+      - API模块
     post:
       consumes:
-        - application/json
+      - application/json
       description: 创建新的API
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.ApiCreateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.APICreateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 创建API
       tags:
-        - API模块
+      - API模块
     put:
       consumes:
-        - application/json
+      - application/json
       description: 更新API信息
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.ApiUpdateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.APIUpdateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 更新API
       tags:
-        - API模块
+      - API模块
   /v1/admin/apis:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取API列表
       parameters:
-        - description: 页码
-          in: query
-          name: page
-          required: true
-          type: integer
-        - description: 每页数量
-          in: query
-          name: pageSize
-          required: true
-          type: integer
-        - description: API分组
-          in: query
-          name: group
-          type: string
-        - description: API名称
-          in: query
-          name: name
-          type: string
-        - description: API路径
-          in: query
-          name: path
-          type: string
-        - description: 请求方法
-          in: query
-          name: method
-          type: string
+      - description: 页码
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 每页数量
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      - description: API分组
+        in: query
+        name: group
+        type: string
+      - description: API名称
+        in: query
+        name: name
+        type: string
+      - description: API路径
+        in: query
+        name: path
+        type: string
+      - description: 请求方法
+        in: query
+        name: method
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetApisResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetApisResponse'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取API列表
       tags:
-        - API模块
+      - API模块
   /v1/admin/menu:
     delete:
       consumes:
-        - application/json
+      - application/json
       description: 删除指定菜单
       parameters:
-        - description: 菜单ID
-          in: query
-          name: id
-          required: true
-          type: integer
+      - description: 菜单ID
+        in: query
+        name: id
+        required: true
+        type: integer
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 删除菜单
       tags:
-        - 菜单模块
+      - 菜单模块
     post:
       consumes:
-        - application/json
+      - application/json
       description: 创建新的菜单
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.MenuCreateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.MenuCreateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 创建菜单
       tags:
-        - 菜单模块
+      - 菜单模块
     put:
       consumes:
-        - application/json
+      - application/json
       description: 更新菜单信息
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.MenuUpdateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.MenuUpdateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 更新菜单
       tags:
-        - 菜单模块
+      - 菜单模块
   /v1/admin/menus:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取管理员菜单列表
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetMenuResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetMenuResponse'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取管理员菜单
       tags:
-        - 菜单模块
+      - 菜单模块
   /v1/admin/role:
     delete:
       consumes:
-        - application/json
+      - application/json
       description: 删除指定角色
       parameters:
-        - description: 角色ID
-          in: query
-          name: id
-          required: true
-          type: integer
+      - description: 角色ID
+        in: query
+        name: id
+        required: true
+        type: integer
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 删除角色
       tags:
-        - 角色模块
+      - 角色模块
     post:
       consumes:
-        - application/json
+      - application/json
       description: 创建新的角色
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.RoleCreateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.RoleCreateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 创建角色
       tags:
-        - 角色模块
+      - 角色模块
     put:
       consumes:
-        - application/json
+      - application/json
       description: 更新角色信息
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.RoleUpdateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.RoleUpdateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 更新角色
       tags:
-        - 角色模块
+      - 角色模块
   /v1/admin/role/permission:
     put:
       consumes:
-        - application/json
+      - application/json
       description: 更新指定角色的权限列表
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.UpdateRolePermissionRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.UpdateRolePermissionRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 更新角色权限
       tags:
-        - 权限模块
+      - 权限模块
   /v1/admin/role/permissions:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取指定角色的权限列表
       parameters:
-        - description: 角色名称
-          in: query
-          name: role
-          required: true
-          type: string
+      - description: 角色名称
+        in: query
+        name: role
+        required: true
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetRolePermissionsData"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetRolePermissionsData'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取角色权限
       tags:
-        - 权限模块
+      - 权限模块
   /v1/admin/roles:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取角色列表
       parameters:
-        - description: 页码
-          in: query
-          name: page
-          required: true
-          type: integer
-        - description: 每页数量
-          in: query
-          name: pageSize
-          required: true
-          type: integer
-        - description: 角色ID
-          in: query
-          name: sid
-          type: string
-        - description: 角色名称
-          in: query
-          name: name
-          type: string
+      - description: 页码
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 每页数量
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      - description: 角色ID
+        in: query
+        name: sid
+        type: string
+      - description: 角色名称
+        in: query
+        name: name
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetRolesResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetRolesResponse'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取角色列表
       tags:
-        - 角色模块
+      - 角色模块
   /v1/admin/user:
     delete:
       consumes:
-        - application/json
+      - application/json
       description: 删除指定管理员用户
       parameters:
-        - description: 用户ID
-          in: query
-          name: id
-          required: true
-          type: integer
+      - description: 用户ID
+        in: query
+        name: id
+        required: true
+        type: integer
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 删除管理员用户
       tags:
-        - 用户模块
+      - 用户模块
     get:
       consumes:
-        - application/json
+      - application/json
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetAdminUserResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetAdminUserResponse'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取管理用户信息
       tags:
-        - 用户模块
+      - 用户模块
     post:
       consumes:
-        - application/json
+      - application/json
       description: 创建新的管理员用户
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.AdminUserCreateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.AdminUserCreateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 创建管理员用户
       tags:
-        - 用户模块
+      - 用户模块
     put:
       consumes:
-        - application/json
+      - application/json
       description: 更新管理员用户信息
       parameters:
-        - description: 参数
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.AdminUserUpdateRequest"
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.AdminUserUpdateRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.Response"
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 更新管理员用户
       tags:
-        - 用户模块
+      - 用户模块
   /v1/admin/user/permissions:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取当前用户的权限列表
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetUserPermissionsData"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetUserPermissionsData'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取用户权限
       tags:
-        - 权限模块
+      - 权限模块
+  /v1/admin/user/session:
+    delete:
+      parameters:
+      - description: 用户ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: 会话ID
+        in: query
+        name: sessionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
+      security:
+      - Bearer: []
+      summary: 踢下线单个会话
+      tags:
+      - 用户模块
+  /v1/admin/user/sessions:
+    delete:
+      parameters:
+      - description: 用户ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
+      security:
+      - Bearer: []
+      summary: 踢出用户全部会话
+      tags:
+      - 用户模块
+    get:
+      parameters:
+      - description: 用户ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.GetUserSessionsResponse'
+      security:
+      - Bearer: []
+      summary: 获取用户活跃会话
+      tags:
+      - 用户模块
   /v1/admin/users:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取管理员用户列表
       parameters:
-        - description: 页码
-          in: query
-          name: page
-          required: true
-          type: integer
-        - description: 每页数量
-          in: query
-          name: pageSize
-          required: true
-          type: integer
-        - description: 用户名
-          in: query
-          name: username
-          type: string
-        - description: 昵称
-          in: query
-          name: nickname
-          type: string
-        - description: 手机号
-          in: query
-          name: phone
-          type: string
-        - description: 邮箱
-          in: query
-          name: email
-          type: string
+      - description: 页码
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 每页数量
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      - description: 用户名
+        in: query
+        name: username
+        type: string
+      - description: 昵称
+        in: query
+        name: nickname
+        type: string
+      - description: 手机号
+        in: query
+        name: phone
+        type: string
+      - description: 邮箱
+        in: query
+        name: email
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetAdminUsersResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetAdminUsersResponse'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取管理员用户列表
       tags:
-        - 用户模块
+      - 用户模块
+  /v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: 删除当前 refresh token 对应的 session；不连坐其他 session。
+      parameters:
+      - description: params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
+      summary: 登出
+      tags:
+      - 用户模块
+  /v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: 用 refresh token 换取新 access + 新 refresh（轮换语义）；旧 refresh 立即失效。
+      parameters:
+      - description: params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.RefreshResponse'
+      summary: 刷新访问令牌
+      tags:
+      - 用户模块
   /v1/login:
     post:
       consumes:
-        - application/json
+      - application/json
       parameters:
-        - description: params
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/rabc-go_api_v1.LoginRequest"
+      - description: params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.LoginRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.LoginResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.LoginResponse'
       summary: 账号登录
       tags:
-        - 用户模块
+      - 用户模块
   /v1/menus:
     get:
       consumes:
-        - application/json
+      - application/json
       description: 获取当前用户的菜单列表
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/rabc-go_api_v1.GetMenuResponse"
+            $ref: '#/definitions/rabc-go_api_apiv1.GetMenuResponse'
       security:
-        - Bearer: []
+      - Bearer: []
       summary: 获取用户菜单
       tags:
-        - 菜单模块
+      - 菜单模块
 securityDefinitions:
   Bearer:
     in: header

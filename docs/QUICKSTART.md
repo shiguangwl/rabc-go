@@ -1,4 +1,4 @@
-# nunu-layout-admin 快速入门
+# rabc-go 快速入门
 
 > 面向 Go 生态新手的项目入门文档。读完这份文档你能：理解项目分层、掌握所有依赖框架的用法、知道怎么开发新业务功能。
 
@@ -19,7 +19,7 @@
 ## 二、项目结构
 
 ```
-nunu-layout-admin/
+rabc-go/
 ├── cmd/                    # 程序入口（每个生成一个二进制）
 │   ├── server/             # HTTP 服务主入口
 │   ├── seed/               # 初始业务数据写入（不建表）
@@ -31,17 +31,23 @@ nunu-layout-admin/
 │   └── admin.go            # 后台管理请求/响应结构体
 │
 ├── internal/               # 私有业务代码（外部模块禁止 import）
-│   ├── handler/            # 控制器层：解析请求 → 调 Service
-│   ├── service/            # 业务逻辑层：编排 Repository
-│   ├── repository/         # 数据访问层：GORM + Casbin
-│   ├── model/              # GORM 实体 + 业务常量
+│   ├── admin/rbac/         # RBAC 业务域（vertical slice）
+│   │   ├── api/            # repository + service + handler
+│   │   ├── menu/           # repository + service + handler
+│   │   ├── permission/     # repository + service + handler
+│   │   ├── policy/         # Casbin enforcer / 互斥锁 / 校验
+│   │   ├── role/           # repository + service + handler
+│   │   └── user/           # repository + service + handler + types
+│   ├── auth/               # 双 Token 鉴权与会话管理
+│   │   └── lua/            # Redis 原子脚本
+│   ├── model/              # 跨子域共享 GORM 实体 + 业务常量
 │   ├── middleware/         # Gin 中间件（CORS、JWT、RBAC、日志、签名）
 │   └── server/             # Server 接口实现（HTTP/Seed）
 │
 ├── pkg/                    # 可复用工具包（理论上可被其他项目引用）
 │   ├── app/                # 应用容器：聚合多个 Server 优雅启停
 │   ├── config/             # Viper 封装
-│   ├── jwt/                # JWT 签发/解析
+│   ├── jwt/                # JWT 签发/解析 + UserIDFromCtx
 │   ├── log/                # zap + lumberjack 日志
 │   ├── server/             # 通用 HTTP/gRPC Server 壳
 │   ├── sid/                # Sonyflake 分布式 ID
@@ -82,15 +88,15 @@ HTTP 请求
 
 | 类别      | 框架                       | 作用                          | 项目里的位置                                                  |
 | --------- | -------------------------- | ----------------------------- | ------------------------------------------------------------- |
-| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/handler`、`internal/middleware`                     |
-| ORM       | GORM v2                    | 多驱动数据库操作              | `internal/repository`                                         |
-| 权限      | Casbin                     | RBAC 策略引擎                 | `internal/middleware/rbac.go`、`internal/repository/admin.go` |
+| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/admin/rbac/*/handler.go`、`internal/middleware`                     |
+| ORM       | GORM v2                    | 多驱动数据库操作              | `internal/admin/rbac/*/repository.go`                                         |
+| 权限      | Casbin                     | RBAC 策略引擎                 | `internal/middleware/rbac.go`、`internal/admin/rbac/casbinkit/` |
 | 依赖注入  | Wire                       | 编译期生成装配代码            | `cmd/*/wire/`                                                 |
 | 配置      | Viper                      | YAML 配置加载                 | `pkg/config`                                                  |
 | 日志      | zap + lumberjack           | 结构化日志 + 滚动切割         | `pkg/log`                                                     |
 | 认证      | golang-jwt v5              | JWT 签发解析                  | `pkg/jwt`                                                     |
-| 会话      | redis/go-redis v9          | refresh token、会话索引、吊销 | `internal/repository/auth.go`、`internal/service/auth.go`     |
-| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                      | `internal/service/admin.go`                                   |
+| 会话      | redis/go-redis v9          | refresh token、会话索引、吊销 | `internal/auth/`     |
+| 密码      | golang.org/x/crypto/bcrypt | 密码哈希                      | `internal/admin/rbac/user/`                                   |
 | 分布式 ID | sonyflake                  | 雪花 ID + Base62              | `pkg/sid`                                                     |
 | API 文档  | swag                       | 注解生成 Swagger              | `docs/swagger/`（自动生成）                                   |
 | 校验      | go-playground/validator    | binding tag 校验（Gin 内置）  | `api/apiv1/admin.go`                                          |
@@ -201,7 +207,7 @@ v1 := s.Group("/v1")
 }
 ```
 
-#### 参数绑定 + 校验（`internal/handler/admin.go:35`）
+#### 参数绑定 + 校验（`internal/admin/rbac/user/handler.go`）
 
 ```go
 func (h *AdminHandler) Login(ctx *gin.Context) {
@@ -269,7 +275,7 @@ func (m *AdminUser) TableName() string { return "admin_users" }
 
 > **Go 概念**：`gorm.Model` 通过结构体嵌入达到类似继承的效果。
 
-#### 多驱动连接（`internal/repository/repository.go:77`）
+#### 多驱动连接（`internal/platform/`）
 
 ```go
 switch driver {
@@ -304,7 +310,7 @@ r.DB(ctx).Where("id = ?", id).Delete(&model.AdminUser{})
 r.DB(ctx).Where("id = ?", id).First(&m)
 ```
 
-#### 事务（`internal/repository/repository.go:43`）
+#### 事务（`internal/admin/rbac/*/service.go`）
 
 ```go
 type Transaction interface {
@@ -351,7 +357,7 @@ make seed
 
 加 `g(user, role)` 关系实现 RBAC。
 
-#### 模型定义（`internal/repository/repository.go:113`）
+#### 模型定义（`internal/model/`）
 
 ```go
 m, err := model.NewModelFromString(`
@@ -461,7 +467,7 @@ userID := claims.UserID
 
 密钥来自 `config/local.yml` 的 `security.jwt.key`。
 
-Refresh token 不写入 JWT，由 `internal/service/auth.go` 生成并只保存哈希到 Redis：
+Refresh token 不写入 JWT，由 `internal/auth/` 生成并只保存哈希到 Redis：
 
 - `POST /v1/auth/refresh`：旧 refresh 立即失效，返回新 access + 新 refresh。
 - `POST /v1/auth/logout`：删除当前 refresh 对应 session，不影响同用户其他设备。
@@ -483,7 +489,7 @@ bcrypt 自带盐和成本因子，**永远不要用 MD5/SHA1 存密码**。
 
 ### 4.6 Swagger
 
-#### Swag 文档（`internal/handler/admin.go`）
+#### Swag 文档（`internal/admin/rbac/*/handler.go`）
 
 ```go
 // Login godoc
@@ -499,92 +505,25 @@ func (h *AdminHandler) Login(ctx *gin.Context) { ... }
 
 ---
 
-## 五、业务开发实战：新增"商品"模块
+## 五、开发新业务功能
 
-按这条装配线走，你能独立写出完整功能。每一步对应一层架构，强制保持单一职责。
+每个业务功能对应 `internal/admin/rbac/<子域>/` 下的 vertical slice，自包含 repository + service + handler。
 
-| 步骤         | 文件                                  | 干什么                                                            |
-| ------------ | ------------------------------------- | ----------------------------------------------------------------- |
-| ① 模型       | `internal/model/product.go`           | 定义 `Product` struct + GORM tag                                  |
-| ② DTO        | `api/apiv1/product.go`                | 定义请求/响应结构体                                               |
-| ③ Repository | `internal/repository/product.go`      | `ProductRepository` interface + 实现                              |
-| ④ Service    | `internal/service/product.go`         | `ProductService` interface + 业务逻辑                             |
-| ⑤ Handler    | `internal/handler/product.go`         | 解析请求 → 调 service（带 swag 注解）                             |
-| ⑥ 路由       | `internal/server/http.go`             | 在 `strictAuthRouter` 加路由                                      |
-| ⑦ Wire 注入  | `cmd/server/wire/wire.go`             | 加 `NewProductRepository/Service/Handler`                         |
-| ⑧ 重生成     | shell                                 | `go tool wire ./cmd/server/wire`                                  |
-| ⑨ 建表       | `db/atlas/main.go` + `db/migrations/` | 在 `models()` 登记模型并执行 `make migrate-diff name=add_product` |
-| ⑩ 配权限     | 后台界面                              | API 管理新增 → 角色管理分配权限                                   |
+**新增子域步骤**：
 
-### 模板代码（参照 admin 模块）
+1. 在 `internal/admin/rbac/<新子域>/` 目录下新建：
+   - `repository.go` — GORM 数据访问
+   - `service.go` — 业务逻辑编排
+   - `handler.go` — HTTP 解析 + 响应
+2. 在 `api/apiv1/` 新增 DTO 文件（请求/响应结构体）
+3. 在 `internal/model/` 新增对应的 GORM 实体
+4. 在 `cmd/server/wire/wire.go` 的 `rbacSet` 中追加：`NewRepository`、`NewService`、`NewHandler`
+5. 跑 `go tool wire ./cmd/server/wire` 生成装配代码
+6. 在 `internal/server/http.go` 注册路由
+7. 在 `db/atlas/main.go` 的 `models()` 登记新实体，执行 `make migrate-diff name=xxx`
+8. 后台界面配置权限（API 管理 → 角色管理）
 
-**Repository**：
-
-```go
-type ProductRepository interface {
-    Create(ctx context.Context, m *model.Product) error
-    GetList(ctx context.Context, req *v1.GetProductsRequest) ([]model.Product, int64, error)
-}
-
-type productRepository struct{ *Repository }
-
-func NewProductRepository(r *Repository) ProductRepository {
-    return &productRepository{Repository: r}
-}
-
-func (r *productRepository) Create(ctx context.Context, m *model.Product) error {
-    return r.DB(ctx).Create(m).Error
-}
-```
-
-**Service**：
-
-```go
-type ProductService interface {
-    Create(ctx context.Context, req *v1.ProductCreateRequest) error
-}
-
-type productService struct {
-    *Service
-    productRepository repository.ProductRepository
-}
-
-func NewProductService(s *Service, repo repository.ProductRepository) ProductService {
-    return &productService{Service: s, productRepository: repo}
-}
-```
-
-**Handler**：
-
-```go
-type ProductHandler struct {
-    *Handler
-    productService service.ProductService
-}
-
-func NewProductHandler(h *Handler, s service.ProductService) *ProductHandler {
-    return &ProductHandler{Handler: h, productService: s}
-}
-```
-
-**Wire 清单更新**：
-
-```go
-var repositorySet = wire.NewSet(
-    // ...原有
-    repository.NewProductRepository,
-)
-var serviceSet = wire.NewSet(
-    // ...原有
-    service.NewProductService,
-)
-var handlerSet = wire.NewSet(
-    // ...原有
-    handler.NewProductHandler,
-)
-```
-
-更新后必须跑：`go tool wire ./cmd/server/wire`
+参照 `internal/admin/rbac/user/` 或 `internal/admin/rbac/role/` 的结构即可。
 
 ---
 
@@ -624,10 +563,10 @@ make build
 ## 七、推荐学习路径
 
 1. **跑起来**：`make init` → 按常用命令启动 MySQL/Redis、迁移、seed、server → 浏览器访问 `http://127.0.0.1:8000`，local 环境用 `admin/123456` 登录。
-2. **跟一遍 Login 全链路**：从 `internal/handler/admin.go:Login` → `internal/service/auth.go:Login` → `internal/repository/admin_user_repo.go:GetAdminUserByUsername`，理解三层是怎么传 ctx、传错误和写 refresh session 的。
+2. **跟一遍 Login 全链路**：从 `internal/admin/rbac/user/handler.go:Login` → `internal/auth/service.go:Login` → `internal/admin/rbac/user/repository.go:GetAdminUserByUsername`，理解三层是怎么传 ctx、传错误和写 refresh session 的。
 3. **看懂 Wire**：对照 `cmd/server/wire/wire.go`（清单）和 `cmd/server/wire/wire_gen.go`（生成产物），看每个 `New*` 函数的入参从哪儿来。
 4. **照葫芦画瓢**：仿照 admin 写一个简单 CRUD（比如 Article 文章），跑通"新增 API → 配权限 → 调通"完整流程。
-5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/repository/repository.go:NewCasbinEnforcer` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
+5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/admin/rbac/casbinkit/` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
 
 掌握以上 + 三层调用链，就能在这个项目上独立做 80% 业务开发。
 
