@@ -57,11 +57,6 @@ lint-full:  ## 执行全量 Go lint 债务扫描
 lint-fix:  ## 自动修复支持 autofix 的 Go lint 问题
 	$(GOLANGCI_LINT) run --path-mode=abs --fix ./...
 
-.PHONY: mock
-mock:  ## 重生成 service/repository 的 mock（来源：源文件 //go:generate 注释）
-	@mkdir -p test/mocks/service test/mocks/repository
-	go generate ./internal/...
-
 .PHONY: swag
 swag:  ## 刷新 Swagger 文档到 ./docs/swagger
 	go tool swag init -g cmd/server/main.go -o ./docs/swagger --parseDependency
