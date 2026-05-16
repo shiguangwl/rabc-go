@@ -87,7 +87,7 @@ func NewHTTPServer(
 	s.Use(
 		middleware.RequestLogMiddleware(logger, logRequestHeaders, logRequestBody, maxBodyBytes),
 		middleware.ResponseLogMiddleware(logger, logResponseBody, maxBodyBytes),
-		gin.Recovery(),
+		middleware.Recovery(),
 	)
 
 	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))

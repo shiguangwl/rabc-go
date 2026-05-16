@@ -158,7 +158,13 @@ func ResponseLogMiddleware(logger *log.Logger, logBody bool, maxBytes int) gin.H
 		// 仍发一条带 trace 的 ERROR，让告警与排查不至于丢线索。
 		if v, ok := ctx.Get(apiv1.CtxBizErrKey); ok {
 			if e, ok := v.(error); ok {
-				logger.WithContext(ctx).Error("请求处理失败", zap.Error(e))
+				errorFields := []zap.Field{zap.Error(e)}
+				if stack, ok := ctx.Get(ctxPanicStackKey); ok {
+					if b, ok := stack.([]byte); ok {
+						errorFields = append(errorFields, zap.ByteString("stack", b))
+					}
+				}
+				logger.WithContext(ctx).Error("请求处理失败", errorFields...)
 			}
 		} else if ctx.Writer.Status() >= 500 {
 			logger.WithContext(ctx).Error("请求处理失败但缺少业务错误",
