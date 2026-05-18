@@ -43,21 +43,27 @@ type actionSpec struct {
 	requiresDSN   bool
 	requiresLocal bool
 	ensureDevDB   bool
+	requiresEnv   bool
 	allDialects   bool
 }
 
 // actions 是 dbmigrate 支持的命令清单；新增命令时必须同步 buildAtlasArgs。
 var actions = map[string]actionSpec{
-	"diff":     {requiresName: true, requiresDSN: true, ensureDevDB: true},
-	"apply":    {requiresDSN: true},
-	"status":   {requiresDSN: true},
+	"diff":     {requiresName: true, requiresDSN: true, ensureDevDB: true, requiresEnv: true},
+	"apply":    {requiresDSN: true, requiresEnv: true},
+	"status":   {requiresDSN: true, requiresEnv: true},
 	"hash":     {allDialects: true},
 	"validate": {allDialects: true},
-	"lint":     {},
-	"push":     {requiresDSN: true, requiresLocal: true, ensureDevDB: true},
+	"lint":     {requiresDSN: true, ensureDevDB: true, requiresEnv: true},
+	"push":     {requiresDSN: true, requiresLocal: true, ensureDevDB: true, requiresEnv: true},
 }
 
 var migrationDialects = []string{"mysql", "postgres"}
+
+type atlasURLs struct {
+	db  string
+	dev string
+}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -91,7 +97,7 @@ func run(args []string) error {
 
 	if spec.allDialects {
 		for _, dialect := range migrationDialects {
-			if err := runAtlas(action, dialect, buildAtlasArgs(action, dialect, *name, *base)); err != nil {
+			if err := runAtlas(action, dialect, buildAtlasArgs(action, dialect, *name, *base, atlasURLs{})); err != nil {
 				return err
 			}
 		}
@@ -127,15 +133,15 @@ func run(args []string) error {
 		}
 	}
 
-	argv := buildAtlasArgs(action, dialect, *name, *base)
-	if spec.requiresDSN {
-		atlasURL, err := atlasURL(dialect, dsn)
+	var urls atlasURLs
+	if spec.requiresEnv {
+		urls, err = buildAtlasURLs(dialect, dsn)
 		if err != nil {
 			return fmt.Errorf("构建 Atlas URL 失败: %w", err)
 		}
-		argv = append(argv, "--url", atlasURL)
 	}
 
+	argv := buildAtlasArgs(action, dialect, *name, *base, urls)
 	return runAtlas(action, dialect, argv)
 }
 
@@ -232,8 +238,8 @@ func runAtlas(action, dialect string, argv []string) error {
 //
 // atlas 的 declarative schema apply 在本项目暴露为 push，避免调用方接触
 // atlas 子命令命名差异。
-func buildAtlasArgs(action, dialect, name, base string) []string {
-	env := []string{"--env", "local_" + dialect}
+func buildAtlasArgs(action, dialect, name, base string, urls atlasURLs) []string {
+	env := atlasEnvArgs(dialect, urls)
 	switch action {
 	case "diff":
 		return append([]string{"migrate", "diff", name}, env...)
@@ -252,6 +258,17 @@ func buildAtlasArgs(action, dialect, name, base string) []string {
 	default:
 		return append([]string{"migrate", action}, env...)
 	}
+}
+
+func atlasEnvArgs(dialect string, urls atlasURLs) []string {
+	args := []string{"--env", "local_" + dialect}
+	if urls.db != "" {
+		args = append(args, "--var", "db_url="+urls.db)
+	}
+	if urls.dev != "" {
+		args = append(args, "--var", "dev_url="+urls.dev)
+	}
+	return args
 }
 
 func configPath() string {
@@ -312,17 +329,47 @@ func atlasURL(dialect, dsn string) (string, error) {
 	}
 }
 
+func buildAtlasURLs(dialect, dsn string) (atlasURLs, error) {
+	dbURL, err := atlasURL(dialect, dsn)
+	if err != nil {
+		return atlasURLs{}, err
+	}
+	devURL, err := atlasDevURL(dialect, dsn)
+	if err != nil {
+		return atlasURLs{}, err
+	}
+	return atlasURLs{db: dbURL, dev: devURL}, nil
+}
+
+func atlasDevURL(dialect, dsn string) (string, error) {
+	switch dialect {
+	case "mysql":
+		return mysqlAtlasDevURL(dsn)
+	case "postgres":
+		return postgresAtlasDevURL(dsn)
+	default:
+		return "", fmt.Errorf("不支持的 Atlas 方言: %q", dialect)
+	}
+}
+
 // mysqlAtlasURL 将 go-sql-driver/mysql DSN 转为 atlas URL。
 //
 // 调用方必须传入 TCP DSN 且包含数据库名；query string 保留原始顺序与大小写，
 // 以兼容依赖参数原文的 atlas 版本。
 func mysqlAtlasURL(dsn string) (string, error) {
+	return mysqlAtlasURLWithDB(dsn, "")
+}
+
+func mysqlAtlasURLWithDB(dsn, dbName string) (string, error) {
 	cfg, err := mysql.ParseDSN(dsn)
 	if err != nil {
 		return "", fmt.Errorf("无效的 MySQL DSN: %w", err)
 	}
 	if cfg.Net != "tcp" {
 		return "", fmt.Errorf("MySQL 迁移仅支持 TCP 协议的 DSN，当前为 %q", cfg.Net)
+	}
+	if dbName != "" {
+		cfg.DBName = dbName
 	}
 	if cfg.DBName == "" {
 		return "", errors.New("无效的 MySQL DSN: 数据库名称为空")
@@ -336,6 +383,23 @@ func mysqlAtlasURL(dsn string) (string, error) {
 	if i := strings.IndexByte(dsn, '?'); i >= 0 {
 		u.RawQuery = dsn[i+1:]
 	}
+	return u.String(), nil
+}
+
+func mysqlAtlasDevURL(dsn string) (string, error) {
+	return mysqlAtlasURLWithDB(dsn, "atlas_dev")
+}
+
+func postgresAtlasDevURL(dsn string) (string, error) {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", fmt.Errorf("解析 PostgreSQL DSN 失败: %w", err)
+	}
+	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+		return "", fmt.Errorf("PostgreSQL DSN 必须使用 postgres/postgresql 协议，当前为 %q", u.Scheme)
+	}
+	u.Path = "/atlas_dev"
+	u.RawPath = ""
 	return u.String(), nil
 }
 

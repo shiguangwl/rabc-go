@@ -147,16 +147,74 @@ func TestAtlasURL(t *testing.T) {
 	}
 }
 
+func TestAtlasDevURL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		dialect string
+		dsn     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "mysql keeps connection params",
+			dialect: "mysql",
+			dsn:     "root:123456@tcp(127.0.0.1:3306)/user?charset=utf8mb4&parseTime=True&loc=Local",
+			want:    "mysql://root:123456@127.0.0.1:3306/atlas_dev?charset=utf8mb4&parseTime=True&loc=Local",
+		},
+		{
+			name:    "postgres keeps query params",
+			dialect: "postgres",
+			dsn:     "postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable",
+			want:    "postgres://postgres:123456@127.0.0.1:5432/atlas_dev?sslmode=disable",
+		},
+		{
+			name:    "mysql unix unsupported",
+			dialect: "mysql",
+			dsn:     "root:123456@unix(/tmp/mysql.sock)/user",
+			wantErr: true,
+		},
+		{
+			name:    "unsupported dialect",
+			dialect: "sqlite",
+			dsn:     "file:test.db",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := atlasDevURL(tt.dialect, tt.dsn)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("atlasDevURL() expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("atlasDevURL() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("atlasDevURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestActionSpecs(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		action      string
 		ensureDevDB bool
+		requiresEnv bool
 	}{
-		{action: "diff", ensureDevDB: true},
-		{action: "push", ensureDevDB: true},
-		{action: "apply", ensureDevDB: false},
-		{action: "status", ensureDevDB: false},
+		{action: "diff", ensureDevDB: true, requiresEnv: true},
+		{action: "push", ensureDevDB: true, requiresEnv: true},
+		{action: "apply", ensureDevDB: false, requiresEnv: true},
+		{action: "status", ensureDevDB: false, requiresEnv: true},
+		{action: "lint", ensureDevDB: true, requiresEnv: true},
+		{action: "validate", ensureDevDB: false, requiresEnv: false},
 	}
 
 	for _, tt := range tests {
@@ -164,6 +222,9 @@ func TestActionSpecs(t *testing.T) {
 			t.Parallel()
 			if actions[tt.action].ensureDevDB != tt.ensureDevDB {
 				t.Fatalf("actions[%q].ensureDevDB = %v, want %v", tt.action, actions[tt.action].ensureDevDB, tt.ensureDevDB)
+			}
+			if actions[tt.action].requiresEnv != tt.requiresEnv {
+				t.Fatalf("actions[%q].requiresEnv = %v, want %v", tt.action, actions[tt.action].requiresEnv, tt.requiresEnv)
 			}
 		})
 	}
@@ -183,12 +244,26 @@ func TestPostgresAdminDSN(t *testing.T) {
 
 func TestBuildAtlasArgs(t *testing.T) {
 	t.Parallel()
+	urls := atlasURLs{
+		db:  "mysql://root:123456@127.0.0.1:3306/user?charset=utf8mb4&parseTime=True&loc=Local",
+		dev: "mysql://root:123456@127.0.0.1:3306/atlas_dev?charset=utf8mb4&parseTime=True&loc=Local",
+	}
+	env := []string{
+		"--env", "local_mysql",
+		"--var", "db_url=mysql://root:123456@127.0.0.1:3306/user?charset=utf8mb4&parseTime=True&loc=Local",
+		"--var", "dev_url=mysql://root:123456@127.0.0.1:3306/atlas_dev?charset=utf8mb4&parseTime=True&loc=Local",
+	}
+	withEnv := func(prefix ...string) []string {
+		got := append([]string{}, prefix...)
+		return append(got, env...)
+	}
 	tests := []struct {
 		name    string
 		action  string
 		dialect string
 		mName   string
 		base    string
+		urls    atlasURLs
 		want    []string
 	}{
 		{
@@ -196,13 +271,15 @@ func TestBuildAtlasArgs(t *testing.T) {
 			action:  "diff",
 			dialect: "mysql",
 			mName:   "add_email",
-			want:    []string{"migrate", "diff", "add_email", "--env", "local_mysql"},
+			urls:    urls,
+			want:    withEnv("migrate", "diff", "add_email"),
 		},
 		{
 			name:    "apply",
 			action:  "apply",
-			dialect: "postgres",
-			want:    []string{"migrate", "apply", "--env", "local_postgres"},
+			dialect: "mysql",
+			urls:    urls,
+			want:    withEnv("migrate", "apply"),
 		},
 		{
 			name:    "validate",
@@ -220,27 +297,30 @@ func TestBuildAtlasArgs(t *testing.T) {
 			name:    "lint default latest 1",
 			action:  "lint",
 			dialect: "mysql",
-			want:    []string{"migrate", "lint", "--env", "local_mysql", "--latest", "1"},
+			urls:    urls,
+			want:    append(withEnv("migrate", "lint"), "--latest", "1"),
 		},
 		{
 			name:    "lint with git base",
 			action:  "lint",
 			dialect: "mysql",
 			base:    "origin/main",
-			want:    []string{"migrate", "lint", "--env", "local_mysql", "--git-base", "origin/main"},
+			urls:    urls,
+			want:    append(withEnv("migrate", "lint"), "--git-base", "origin/main"),
 		},
 		{
 			name:    "push maps to schema apply auto-approve",
 			action:  "push",
 			dialect: "mysql",
-			want:    []string{"schema", "apply", "--auto-approve", "--env", "local_mysql"},
+			urls:    urls,
+			want:    withEnv("schema", "apply", "--auto-approve"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := buildAtlasArgs(tt.action, tt.dialect, tt.mName, tt.base)
+			got := buildAtlasArgs(tt.action, tt.dialect, tt.mName, tt.base, tt.urls)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("buildAtlasArgs()\n  got  = %q\n  want = %q", got, tt.want)
 			}

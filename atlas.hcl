@@ -13,11 +13,17 @@
 // PostgreSQL 使用 local_postgres env 与 db/migrations/postgres 目录。
 //
 // ----------------------------------------------------------------------------
-// 数据库地址：默认指向宿主机本地数据库。
-//
-// cmd/dbmigrate 会从 APP_CONF / APP_DATA_DB_USER_DSN 读取目标库并通过 --url
-// 传给 atlas，避免在 HCL 里依赖新版函数导致旧 Atlas CLI 解析失败。
+// 数据库地址由 cmd/dbmigrate 从 APP_CONF / APP_DATA_DB_USER_DSN 读取后注入，
+// atlas.hcl 只声明 schema 来源、dev 库变量和 migration 目录。
 // ----------------------------------------------------------------------------
+
+variable "db_url" {
+  type = string
+}
+
+variable "dev_url" {
+  type = string
+}
 
 data "external_schema" "gorm" {
   program = [
@@ -30,10 +36,8 @@ data "external_schema" "gorm" {
 
 env "local_mysql" {
   src = data.external_schema.gorm.url
-  url = "mysql://root:123456@127.0.0.1:3306/user"
-  // dev DB 用单独 schema，避免 atlas 自启 docker 容器
-  // （在 OrbStack 下 docker:// URL 会超时）。cmd/dbmigrate 会为本地库自动创建。
-  dev = "mysql://root:123456@127.0.0.1:3306/atlas_dev"
+  url = var.db_url
+  dev = var.dev_url
   migration {
     dir = "file://db/migrations/mysql"
   }
@@ -46,9 +50,8 @@ env "local_mysql" {
 
 env "local_postgres" {
   src = data.external_schema.gorm.url
-  url = "postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable"
-  // dev DB 由 cmd/dbmigrate 在本地自动创建。
-  dev = "postgres://postgres:123456@127.0.0.1:5432/atlas_dev?sslmode=disable"
+  url = var.db_url
+  dev = var.dev_url
   migration {
     dir = "file://db/migrations/postgres"
   }

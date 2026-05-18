@@ -12,7 +12,7 @@
 | `db/atlas/main.go` | 按 `ATLAS_DIALECT` 把 GORM struct 翻译成目标方言 DDL 的桥接程序 |
 | `db/migrations/mysql/` | Atlas 生成并校验过的 MySQL 版本化 SQL 文件 |
 | `db/migrations/postgres/` | Atlas 生成并校验过的 PostgreSQL 版本化 SQL 文件 |
-| `atlas.hcl` | Atlas 项目配置：声明 schema 来源与 dev/migration 目录 |
+| `atlas.hcl` | Atlas 项目配置：声明 schema 来源、连接变量与 migration 目录 |
 | `cmd/seed` | 业务初始数据写入命令（默认要求空库 / `-reset` 重写） |
 
 Schema 与数据严格分离：**atlas 负责 DDL，cmd/seed 负责 DML**。
@@ -172,4 +172,5 @@ APP_DATA_DB_USER_DSN='<prod-dsn>' \
 - **默认 MySQL 不等于只支持 MySQL**：应用运行时可按 `data.db.user.driver` 切换驱动；migration 按方言隔离在 `db/migrations/mysql` 与 `db/migrations/postgres`，不能跨库混用。
 - **casbin_rule 已纳入 atlas 管理**：由 `db/atlas/main.go` 中本地 `casbinRule` 镜像 struct（列与 gorm-adapter v3.CasbinRule 对齐 + 显式声明 `idx_casbin_rule` 唯一索引）描述。运行时通过 `repository.NewCasbinEnforcer` 调用 `gormadapter.TurnOffAutoMigrate` 关掉 adapter 的隐式建表与 `CREATE UNIQUE INDEX`。升级 gorm-adapter 大版本前须先比对其 `CasbinRule` 字段是否仍兼容此镜像，不兼容时同步刷新镜像与 migration。
 - **新增需要 atlas 管理的表**：必须在 `db/atlas/main.go:models()` 显式登记，否则 atlas 不会感知。
-- **PostgreSQL 前置条件**：`atlas.hcl` 默认连接 `postgres://postgres:123456@127.0.0.1:5432/user?sslmode=disable`，配置 `data.db.user.driver=postgres` 前需确保业务 database 已存在。
+- **Atlas 连接来源**：`atlas.hcl` 不保存具体账号密码；`cmd/dbmigrate` 从 `APP_CONF` / `config/local.yml` 与 `APP_DATA_DB_USER_*` 读取业务 DSN 后注入 `db_url`，并用同一连接信息推导 `atlas_dev` 的 `dev_url`。
+- **PostgreSQL 前置条件**：配置 `data.db.user.driver=postgres` 前需确保业务 database 已存在；本地 `atlas_dev` 由 `cmd/dbmigrate` 自动创建。
