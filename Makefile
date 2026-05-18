@@ -82,11 +82,11 @@ web-build:
 
 .PHONY: server-build
 server-build: web-build
-	go build -ldflags="-s -w" -o ./bin/server ./cmd/server
+	go build -tags embed_frontend -ldflags="-s -w" -o ./bin/server ./cmd/server
 
 .PHONY: server-build-only
 server-build-only:  ## 仅编译后端，复用现有 web/dist 内嵌资源
-	go build -ldflags="-s -w" -o ./bin/server ./cmd/server
+	go build -tags embed_frontend -ldflags="-s -w" -o ./bin/server ./cmd/server
 
 .PHONY: docker-build
 docker-build:  ## 构建生产镜像；可覆盖 IMAGE 和 TAG

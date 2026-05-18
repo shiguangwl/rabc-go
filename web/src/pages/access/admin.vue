@@ -27,7 +27,7 @@ async function loadUserSessions(uid) {
     sessionsModal.list = data?.list ?? []
   }
   catch (e) {
-    console.log(e)
+    message.error('获取会话列表失败')
   }
   finally {
     sessionsModal.loading = false
@@ -54,7 +54,7 @@ async function handleRevokeAll() {
         await loadUserSessions(sessionsModal.uid)
       }
       catch (e) {
-        console.log(e)
+        message.error('踢出全部会话失败')
       }
     },
   })
@@ -67,7 +67,7 @@ async function handleKickSession(sid) {
     await loadUserSessions(sessionsModal.uid)
   }
   catch (e) {
-    console.log(e)
+    message.error('踢下线失败')
   }
 }
 
@@ -205,7 +205,6 @@ const sizeItems = ref([
     title: '紧凑',
   },
 ])
-const menuData = shallowRef([])
 const open = ref(false)
 const options = computed(() => {
   return columns.value.map((item) => {
@@ -255,7 +254,7 @@ async function init() {
     pagination.total = data.total ?? 0
   }
   catch (e) {
-    console.log(e)
+    message.error('获取用户列表失败')
   }
   finally {
     loading.value = false
@@ -308,7 +307,7 @@ async function handleDelete(record) {
     message.success('删除成功')
   }
   catch (e) {
-    console.log(e)
+    message.error('删除用户失败')
   }
   finally {
     close()
@@ -387,7 +386,7 @@ async function onSubmit() {
     }
   }
   catch (e) {
-    console.log(e)
+    message.error('保存用户失败')
   }
   finally {
     close()

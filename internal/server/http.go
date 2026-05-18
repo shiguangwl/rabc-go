@@ -90,7 +90,10 @@ func NewHTTPServer(
 		middleware.Recovery(),
 	)
 
-	s.Use(static.Serve("/", static.EmbedFolder(web.Assets(), "dist")))
+	frontendFS := static.EmbedFolder(web.Assets(), "dist")
+	if frontendFS != nil {
+		s.Use(static.Serve("/", frontendFS))
+	}
 	s.NoRoute(func(c *gin.Context) {
 		if !isSPAFallback(c.Request) {
 			apiv1.WriteResponse(c, apiv1.ErrNotFound, nil)

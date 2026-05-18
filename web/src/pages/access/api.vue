@@ -2,6 +2,7 @@
 import * as Icons from '@ant-design/icons-vue'
 import { ColumnHeightOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { createAdminApiApi, deleteAdminApiApi, getAdminApiApi, updateAdminApiApi } from '~@/api/common/admin'
+import { groupToTree } from '~@/utils/tree'
 
 const pagination = reactive({
   pageSize: 10,
@@ -138,36 +139,6 @@ const sizeItems = ref([
 const open = ref(false)
 const groupOptions = ref([])
 const defaultExpandedRowKeys = ref([])
-function formatToTree(data) {
-// 使用 Map 来分组数据
-  const groupMap = new Map()
-
-  // 遍历原始数据，按 group 分组
-  data.forEach((item) => {
-    const groupName = item.group
-    if (!groupMap.has(groupName)) {
-      groupMap.set(groupName, [])
-      if (!defaultExpandedRowKeys.value.includes(groupName)) {
-        defaultExpandedRowKeys.value.push(groupName)
-      }
-    }
-    // 将去掉 group 字段后的数据放入对应分组
-    // const { group, ...rest } = item;
-    groupMap.get(groupName).push(item)
-  })
-
-  // 转换为树形结构
-  const treeData = []
-  groupMap.forEach((children, groupName) => {
-    treeData.push({
-      key: groupName,
-      group: groupName,
-      children,
-    })
-  })
-
-  return treeData
-}
 
 async function init() {
   if (loading.value)
@@ -179,12 +150,19 @@ async function init() {
       page: pagination.current,
       pageSize: pagination.pageSize,
     })
-    dataSource.value = formatToTree(data.list) ?? []
+    defaultExpandedRowKeys.value = []
+    dataSource.value = groupToTree(data.list, {
+      groupNode: (group, children) => ({ key: group, group, children }),
+      onGroup(group) {
+        if (!defaultExpandedRowKeys.value.includes(group))
+          defaultExpandedRowKeys.value.push(group)
+      },
+    })
     pagination.total = data.total ?? 0
     groupOptions.value = data.groups ?? []
   }
   catch (e) {
-    console.log(e)
+    message.error('获取 API 列表失败')
   }
   finally {
     loading.value = false
@@ -239,7 +217,7 @@ async function onSubmit() {
     }
   }
   catch (e) {
-    console.log(e)
+    message.error('保存 API 失败')
   }
   finally {
     close()
@@ -279,7 +257,7 @@ async function handleDelete(record) {
     message.success('删除成功')
   }
   catch (e) {
-    console.log(e)
+    message.error('删除 API 失败')
   }
   finally {
     close()

@@ -11,6 +11,7 @@ import {
 } from '~@/api/common/admin'
 import { getAdminMenusApi } from '~/api/common/menu.js'
 import { useUserStore } from '~/stores/user.js'
+import { groupToTree, toTree } from '~@/utils/tree'
 
 const message = useMessage()
 const columns = shallowRef([
@@ -61,20 +62,7 @@ const formModelSearch = reactive({
   name: '',
   sid: '',
 })
-function resetFormSearch() {
-  Object.assign(formModelSearch, {
-    name: '',
-    sid: '',
-  })
-}
 const formModel = reactive({
-  id: 0,
-  name: '',
-  sid: '',
-  createdAt: '',
-  updatedAt: '',
-})
-const formModelPermission = reactive({
   id: 0,
   name: '',
   sid: '',
@@ -170,7 +158,7 @@ async function init() {
     pagination.total = data.total ?? 0
   }
   catch (e) {
-    console.log(e)
+    message.error('获取角色列表失败')
   }
   finally {
     loading.value = false
@@ -183,8 +171,8 @@ async function onSearch() {
 }
 
 async function onReset() {
-  formModel.name = ''
-  formModel.sid = ''
+  formModelSearch.name = ''
+  formModelSearch.sid = ''
   await init()
 }
 
@@ -210,7 +198,9 @@ async function handlePermission(record) {
   permissionRole.value = record
   resetForm()
   const { data } = await getAdminMenusApi({})
-  menuData.value = formatToTree(data.list) ?? []
+  menuData.value = toTree(data.list, {
+    decorate: node => ({ key: `menu:${node.path},read` }),
+  })
 
   const { data: rolePermissionsData } = await getRolePermissionsApi({
     role: record.sid,
@@ -223,71 +213,15 @@ async function handlePermission(record) {
     page: 1,
     pageSize: 10000,
   })
-  adminApis.value = apiDataFormatToTree(adminApisData.list) ?? []
+  adminApis.value = groupToTree(adminApisData.list, {
+    itemNode: item => ({
+      ...item,
+      key: `api:${item.path},${item.method}`,
+      title: item.name,
+    }),
+  })
 
   openPermission.value = true
-}
-
-function apiDataFormatToTree(data) {
-// 使用 Map 来分组数据
-  const groupMap = new Map()
-
-  // 遍历原始数据，按 group 分组
-  data.forEach((item) => {
-    const groupName = item.group
-    if (!groupMap.has(groupName)) {
-      groupMap.set(groupName, [])
-    }
-    // 将去掉 group 字段后的数据放入对应分组
-    // const { group, ...rest } = item;
-    item.key = `api:${item.path},${item.method}`
-    item.title = item.name
-    groupMap.get(groupName).push(item)
-  })
-
-  // 转换为树形结构
-  const treeData = []
-  groupMap.forEach((children, groupName) => {
-    treeData.push({
-      key: groupName,
-      title: groupName,
-      group: groupName,
-      children,
-    })
-  })
-
-  return treeData
-}
-function formatToTree(arr) {
-  // 创建节点映射
-  const map = new Map()
-  arr.forEach(item => map.set(item.id, { ...item }))
-
-  // 创建结果数组
-  const result = []
-
-  // 遍历所有节点
-  arr.forEach((item) => {
-    const node = map.get(item.id)
-    node.key = `menu:${node.path},read`
-
-    // 如果是顶级节点（parentId 为 0）或父节点不存在
-    if (item.parentId === 0 || !map.has(item.parentId)) {
-      result.push(node)
-    }
-    else {
-      // 找到父节点并添加子节点
-      const parent = map.get(item.parentId)
-      if (parent) {
-        // 如果父节点还没有 children，则初始化
-        if (!parent.children) {
-          parent.children = []
-        }
-        parent.children.push(node)
-      }
-    }
-  })
-  return result
 }
 
 async function handleDelete(record) {
@@ -301,7 +235,7 @@ async function handleDelete(record) {
     message.success('删除成功')
   }
   catch (e) {
-    console.log(e)
+    message.error('删除角色失败')
   }
   finally {
     close()
@@ -380,7 +314,7 @@ async function onSubmit() {
     }
   }
   catch (e) {
-    console.log(e)
+    message.error('保存角色失败')
   }
   finally {
     close()
@@ -402,7 +336,7 @@ async function onSubmitPermission() {
     }
   }
   catch (e) {
-    console.log(e)
+    message.error('保存角色权限失败')
   }
   finally {
     close()

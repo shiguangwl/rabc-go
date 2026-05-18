@@ -3,6 +3,7 @@ import * as Icons from '@ant-design/icons-vue'
 import { ColumnHeightOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { createMenuApi, deleteMenusApi, getAdminMenusApi, updateMenuApi } from '~@/api/common/menu'
 import { useUserStore } from '~/stores/user.js'
+import { toTree } from '~@/utils/tree'
 
 const iconList = Object.keys(Icons).filter((key) => {
   // 检查是否是有效的 Vue 组件（图标通常是函数或对象）
@@ -170,36 +171,6 @@ const options = computed(() => {
     }
   })
 })
-function formatToTree(arr) {
-  // 创建节点映射
-  const map = new Map()
-  arr.forEach(item => map.set(item.id, { ...item }))
-
-  // 创建结果数组
-  const result = []
-
-  // 遍历所有节点
-  arr.forEach((item) => {
-    const node = map.get(item.id)
-    node.key = node.id
-    // 如果是顶级节点（parentId 为 0）或父节点不存在
-    if (item.parentId === 0 || !map.has(item.parentId)) {
-      result.push(node)
-    }
-    else {
-      // 找到父节点并添加子节点
-      const parent = map.get(item.parentId)
-      if (parent) {
-        // 如果父节点还没有 children，则初始化
-        if (!parent.children) {
-          parent.children = []
-        }
-        parent.children.push(node)
-      }
-    }
-  })
-  return result
-}
 const dropdownVisible = ref(false)
 const getCheckList = computed(() => columns.value.map(item => item.dataIndex))
 const state = reactive({
@@ -214,10 +185,12 @@ async function init() {
   loading.value = true
   try {
     const { data } = await getAdminMenusApi({})
-    dataSource.value = formatToTree(data.list) ?? []
+    dataSource.value = toTree(data.list, {
+      decorate: node => ({ key: node.id }),
+    })
   }
   catch (e) {
-    console.log(e)
+    message.error('获取菜单列表失败')
   }
   finally {
     loading.value = false
@@ -257,7 +230,7 @@ async function onSubmit() {
     }
   }
   catch (e) {
-    console.log(e)
+    message.error('保存菜单失败')
   }
   finally {
     close()
@@ -299,7 +272,7 @@ async function handleDelete(record) {
     }
   }
   catch (e) {
-    console.log(e)
+    message.error('删除菜单失败')
   }
   finally {
     close()

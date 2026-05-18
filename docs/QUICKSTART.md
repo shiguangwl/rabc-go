@@ -63,7 +63,7 @@ rabc-go/
 │   └── swagger/            # Swagger 生成产物（勿手改）
 ├── deploy/                 # 远程部署配置
 ├── storage/                # 运行时日志等本地文件
-├── web/                    # Vue3 前端，构建产物由 web/embed.go 内嵌
+├── web/                    # Vue3 前端，生产构建通过 embed_frontend 标签内嵌 dist
 └── Makefile                # help/init/build/test/migrate/seed
 ```
 

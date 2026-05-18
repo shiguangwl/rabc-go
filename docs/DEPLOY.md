@@ -57,7 +57,7 @@ DOCKER_BUILDKIT=1 docker build -t rabc-go:latest .
 镜像构建会：
 
 1. 使用 `node:22-alpine` 构建 `web/dist`
-2. 使用 `golang:1.25-alpine` 编译 `cmd/server`
+2. 使用 `golang:1.25-alpine` 和 `embed_frontend` 标签编译 `cmd/server`
 3. 复制 `config/prod.yml` 到 `/app/config/prod.yml`
 4. 以非 root 用户运行 `/app/server`
 

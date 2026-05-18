@@ -31,7 +31,7 @@
 | `pkg/` | config / log / jwt 等基础设施 |
 | `db/atlas` | GORM → Atlas schema 桥接 |
 | `db/migrations/{mysql,postgres}` | 版本化 SQL |
-| `web/` | Vue3 前端，`web/dist` 由 `web/embed.go` 内嵌 |
+| `web/` | Vue3 前端，生产构建通过 `embed_frontend` 标签内嵌 `web/dist` |
 | `deploy` | 远程 Docker Compose 部署配置 |
 | `scripts/deploy.sh` | SSH 远程部署脚本 |
 
@@ -77,7 +77,7 @@ make dev
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS user;"
 make migrate-apply
 make seed
-go run ./cmd/server          # 或 make dev 热重载启动
+go run ./cmd/server          # 或 make dev 热重载启动；未加 embed_frontend 标签时不内嵌前端
 ```
 
 前端独立开发：

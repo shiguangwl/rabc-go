@@ -36,14 +36,7 @@ const rules = computed(() => {
   }
 })
 function onSubmit() {
-  formRef.value.validate().then(() => {
-    console.log('values', formState, toRaw(formState))
-  }).catch((error) => {
-    console.log('error', error)
-  })
-}
-function handleChange() {
-  console.log('change')
+  formRef.value.validate()
 }
 </script>
 
