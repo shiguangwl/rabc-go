@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"rabc-go/api/apiv1"
-	"rabc-go/internal/admin/rbac/casbinkit"
+	"rabc-go/internal/admin/iam/casbinkit"
 	"rabc-go/internal/model"
 	"rabc-go/pkg/log"
 )

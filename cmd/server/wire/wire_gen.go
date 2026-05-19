@@ -9,12 +9,12 @@ package wire
 import (
 	"github.com/google/wire"
 	"github.com/spf13/viper"
-	"rabc-go/internal/admin/rbac/api"
-	"rabc-go/internal/admin/rbac/casbinkit"
-	"rabc-go/internal/admin/rbac/menu"
-	"rabc-go/internal/admin/rbac/permission"
-	"rabc-go/internal/admin/rbac/role"
-	"rabc-go/internal/admin/rbac/user"
+	"rabc-go/internal/admin/iam/api"
+	"rabc-go/internal/admin/iam/casbinkit"
+	"rabc-go/internal/admin/iam/menu"
+	"rabc-go/internal/admin/iam/permission"
+	"rabc-go/internal/admin/iam/role"
+	"rabc-go/internal/admin/iam/user"
 	"rabc-go/internal/auth"
 	"rabc-go/internal/platform"
 	"rabc-go/internal/server"
@@ -70,7 +70,7 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 
 var platformSet = wire.NewSet(platform.NewDB, platform.NewCasbinEnforcer, platform.NewRedis)
 
-var rbacSet = wire.NewSet(casbinkit.NewRBACMu, user.NewRepo, user.NewService, user.NewHandler, role.NewRepo, role.NewService, role.NewHandler, menu.NewRepo, menu.NewService, menu.NewHandler, api.NewRepo, api.NewService, api.NewHandler, permission.NewRepo, permission.NewService, permission.NewHandler, wire.Bind(new(menu.PermissionReader), new(*permission.Repo)), wire.Bind(new(auth.UserLookup), new(*user.Repo)))
+var iamSet = wire.NewSet(casbinkit.NewRBACMu, user.NewRepo, user.NewService, user.NewHandler, role.NewRepo, role.NewService, role.NewHandler, menu.NewRepo, menu.NewService, menu.NewHandler, api.NewRepo, api.NewService, api.NewHandler, permission.NewRepo, permission.NewService, permission.NewHandler, wire.Bind(new(menu.PermissionReader), new(*permission.Repo)), wire.Bind(new(auth.UserLookup), new(*user.Repo)))
 
 var authSet = wire.NewSet(auth.LoadConfig, auth.NewRepository, auth.NewService, auth.NewHandler, wire.Bind(new(user.AuthRevoker), new(*auth.Service)))
 

@@ -4,12 +4,12 @@
 package wire
 
 import (
-	rbacapi "rabc-go/internal/admin/rbac/api"
-	"rabc-go/internal/admin/rbac/casbinkit"
-	"rabc-go/internal/admin/rbac/menu"
-	"rabc-go/internal/admin/rbac/permission"
-	"rabc-go/internal/admin/rbac/role"
-	"rabc-go/internal/admin/rbac/user"
+	iamapi "rabc-go/internal/admin/iam/api"
+	"rabc-go/internal/admin/iam/casbinkit"
+	"rabc-go/internal/admin/iam/menu"
+	"rabc-go/internal/admin/iam/permission"
+	"rabc-go/internal/admin/iam/role"
+	"rabc-go/internal/admin/iam/user"
 	"rabc-go/internal/auth"
 	"rabc-go/internal/platform"
 	"rabc-go/internal/server"
@@ -28,7 +28,7 @@ var platformSet = wire.NewSet(
 	platform.NewRedis,
 )
 
-var rbacSet = wire.NewSet(
+var iamSet = wire.NewSet(
 	casbinkit.NewRBACMu,
 
 	user.NewRepo,
@@ -40,9 +40,9 @@ var rbacSet = wire.NewSet(
 	menu.NewRepo,
 	menu.NewService,
 	menu.NewHandler,
-	rbacapi.NewRepo,
-	rbacapi.NewService,
-	rbacapi.NewHandler,
+	iamapi.NewRepo,
+	iamapi.NewService,
+	iamapi.NewHandler,
 	permission.NewRepo,
 	permission.NewService,
 	permission.NewHandler,
@@ -78,7 +78,7 @@ func newApp(
 func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
 	panic(wire.Build(
 		platformSet,
-		rbacSet,
+		iamSet,
 		authSet,
 		serverSet,
 		jwt.NewJwt,

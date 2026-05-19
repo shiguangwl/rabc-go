@@ -23,7 +23,7 @@
 | `cmd/server` | HTTP API 与内嵌前端 |
 | `cmd/seed` | 写入 RBAC 初始数据 |
 | `cmd/dbmigrate` | Atlas 命令封装 |
-| `internal/admin/rbac/<子域>` | vertical slice：repository + service + handler 同包 |
+| `internal/admin/iam/<子域>` | vertical slice：repository + service + handler 同包 |
 | `internal/auth` | 双 Token 鉴权与会话管理 |
 | `internal/model` | 跨子域共享 GORM 实体，schema 来源 |
 | `internal/middleware` | JWT / Casbin / 日志等中间件 |

@@ -89,9 +89,9 @@ HTTP 请求
 
 | 类别      | 框架                       | 作用                          | 项目里的位置                                                  |
 | --------- | -------------------------- | ----------------------------- | ------------------------------------------------------------- |
-| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/auth/handler.go`、`internal/admin/rbac/*/handler.go`、`internal/middleware` |
-| ORM       | GORM v2                    | 多驱动数据库操作              | `internal/admin/rbac/*/repository.go`                                         |
-| 权限      | Casbin                     | RBAC 策略引擎                 | `internal/middleware/rbac.go`、`internal/admin/rbac/casbinkit/` |
+| Web 框架  | Gin                        | HTTP 路由、参数绑定、中间件   | `internal/auth/handler.go`、`internal/admin/iam/*/handler.go`、`internal/middleware` |
+| ORM       | GORM v2                    | 多驱动数据库操作              | `internal/admin/iam/*/repository.go`                                         |
+| 权限      | Casbin                     | RBAC 策略引擎                 | `internal/middleware/rbac.go`、`internal/admin/iam/casbinkit/` |
 | 依赖注入  | Wire                       | 编译期生成装配代码            | `cmd/*/wire/`                                                 |
 | 配置      | Viper                      | YAML 配置加载                 | `pkg/config`                                                  |
 | 日志      | zap + lumberjack           | 结构化日志 + 滚动切割         | `pkg/log`                                                     |
@@ -347,7 +347,7 @@ r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.AdminUser{})
 r.db.WithContext(ctx).Where("id = ?", id).First(&m)
 ```
 
-#### 事务（`internal/admin/rbac/*/repository.go`）
+#### 事务（`internal/admin/iam/*/repository.go`）
 
 ```go
 err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -552,7 +552,7 @@ bcrypt 自带盐和成本因子，**永远不要用 MD5/SHA1 存密码**。
 
 ### 4.6 Swagger
 
-#### Swag 文档（`internal/auth/handler.go` 与 `internal/admin/rbac/*/handler.go`）
+#### Swag 文档（`internal/auth/handler.go` 与 `internal/admin/iam/*/handler.go`）
 
 ```go
 // Login godoc
@@ -570,11 +570,11 @@ func (h *Handler) Login(ctx *gin.Context) { ... }
 
 ## 五、开发新业务功能
 
-每个业务功能对应 `internal/admin/rbac/<子域>/` 下的 vertical slice，自包含 repository + service + handler。
+每个业务功能对应 `internal/admin/iam/<子域>/` 下的 vertical slice，自包含 repository + service + handler。
 
 **新增子域步骤**：
 
-1. 在 `internal/admin/rbac/<新子域>/` 目录下新建：
+1. 在 `internal/admin/iam/<新子域>/` 目录下新建：
    - `repository.go` — GORM 数据访问
    - `service.go` — 业务逻辑编排
    - `handler.go` — HTTP 解析 + 响应
@@ -586,7 +586,7 @@ func (h *Handler) Login(ctx *gin.Context) { ... }
 7. 在 `db/atlas/main.go` 的 `models()` 登记新实体，执行 `make migrate-diff name=xxx`
 8. 如接口需要权限控制，在后台「API 资源管理」登记接口，再到「角色管理」分配权限
 
-参照 `internal/admin/rbac/user/` 或 `internal/admin/rbac/role/` 的结构即可。
+参照 `internal/admin/iam/user/` 或 `internal/admin/iam/role/` 的结构即可。
 
 ---
 
@@ -626,10 +626,10 @@ make build
 ## 七、推荐学习路径
 
 1. **跑起来**：`make init` → 按常用命令启动 MySQL/Redis、迁移、seed、server → 浏览器访问 `http://127.0.0.1:8000`，local 环境用 `admin/123456` 登录。
-2. **跟一遍 Login 全链路**：从 `internal/auth/handler.go:Login` → `internal/auth/service.go:Login` → `internal/admin/rbac/user/repository.go:GetAdminUserByUsername`，理解 handler 怎么传 ctx、service 怎么做认证规则、Redis 怎么写 refresh session。
+2. **跟一遍 Login 全链路**：从 `internal/auth/handler.go:Login` → `internal/auth/service.go:Login` → `internal/admin/iam/user/repository.go:GetAdminUserByUsername`，理解 handler 怎么传 ctx、service 怎么做认证规则、Redis 怎么写 refresh session。
 3. **看懂 Wire**：对照 `cmd/server/wire/wire.go`（清单）和 `cmd/server/wire/wire_gen.go`（生成产物），看每个 `New*` 函数的入参从哪儿来。
 4. **照葫芦画瓢**：仿照 admin 写一个简单 CRUD（比如 Article 文章），跑通"新增 API → 配权限 → 调通"完整流程。
-5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/admin/rbac/casbinkit/` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
+5. **读 RBAC 闭环**：`internal/middleware/rbac.go` + `internal/admin/iam/casbinkit/` + `internal/server/seed.go:initialRBAC` 三处合看，理解菜单/API 双前缀策略。
 
 掌握以上 + 三层调用链，就能在这个项目上独立做 80% 业务开发。
 

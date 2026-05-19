@@ -16,11 +16,11 @@ import (
 
 	"rabc-go/api/apiv1"
 	docs "rabc-go/docs/swagger"
-	rbacapi "rabc-go/internal/admin/rbac/api"
-	"rabc-go/internal/admin/rbac/menu"
-	"rabc-go/internal/admin/rbac/permission"
-	"rabc-go/internal/admin/rbac/role"
-	"rabc-go/internal/admin/rbac/user"
+	iamapi "rabc-go/internal/admin/iam/api"
+	"rabc-go/internal/admin/iam/menu"
+	"rabc-go/internal/admin/iam/permission"
+	"rabc-go/internal/admin/iam/role"
+	"rabc-go/internal/admin/iam/user"
 	"rabc-go/internal/auth"
 	"rabc-go/internal/middleware"
 	"rabc-go/pkg/config"
@@ -45,7 +45,7 @@ func NewHTTPServer(
 	userHandler *user.Handler,
 	roleHandler *role.Handler,
 	menuHandler *menu.Handler,
-	apiHandler *rbacapi.Handler,
+	apiHandler *iamapi.Handler,
 	permHandler *permission.Handler,
 ) *http.Server {
 	if config.IsProd(conf) {

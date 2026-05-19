@@ -14,7 +14,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"gorm.io/gorm"
 
-	"rabc-go/internal/admin/rbac/casbinkit"
+	"rabc-go/internal/admin/iam/casbinkit"
 	"rabc-go/internal/model"
 	"rabc-go/pkg/log"
 )
