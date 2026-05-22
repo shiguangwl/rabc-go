@@ -4,6 +4,7 @@
 package wire
 
 import (
+	"rabc-go/internal/admin/config"
 	iamapi "rabc-go/internal/admin/iam/api"
 	"rabc-go/internal/admin/iam/casbinkit"
 	"rabc-go/internal/admin/iam/menu"
@@ -52,6 +53,12 @@ var iamSet = wire.NewSet(
 	wire.Bind(new(auth.UserLookup), new(*user.Repo)),
 )
 
+var configSet = wire.NewSet(
+	config.NewRepo,
+	config.NewService,
+	config.NewHandler,
+)
+
 var authSet = wire.NewSet(
 	auth.LoadConfig,
 	auth.NewRepository,
@@ -79,6 +86,7 @@ func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
 	panic(wire.Build(
 		platformSet,
 		iamSet,
+		configSet,
 		authSet,
 		serverSet,
 		jwt.NewJwt,

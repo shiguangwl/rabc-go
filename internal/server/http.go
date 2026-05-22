@@ -16,6 +16,7 @@ import (
 
 	"rabc-go/api/apiv1"
 	docs "rabc-go/docs/swagger"
+	adminconfig "rabc-go/internal/admin/config"
 	iamapi "rabc-go/internal/admin/iam/api"
 	"rabc-go/internal/admin/iam/menu"
 	"rabc-go/internal/admin/iam/permission"
@@ -47,6 +48,7 @@ func NewHTTPServer(
 	menuHandler *menu.Handler,
 	apiHandler *iamapi.Handler,
 	permHandler *permission.Handler,
+	configHandler *adminconfig.Handler,
 ) *http.Server {
 	if config.IsProd(conf) {
 		gin.SetMode(gin.ReleaseMode)
@@ -122,6 +124,9 @@ func NewHTTPServer(
 			noAuth.POST("/login", authHandler.Login)
 			noAuth.POST("/auth/refresh", authHandler.Refresh)
 			noAuth.POST("/auth/logout", authHandler.Logout)
+
+			// 公开配置：登录页等未登录场景读取站点名/Logo 等
+			noAuth.GET("/config/public", configHandler.GetPublicConfigs)
 		}
 
 		strict := v1.Group("/").Use(middleware.StrictAuth(jwtUtil, logger), middleware.AuthMiddleware(e))
@@ -163,6 +168,12 @@ func NewHTTPServer(
 			strict.POST("/admin/api", apiHandler.APICreate)
 			strict.PUT("/admin/api", apiHandler.APIUpdate)
 			strict.DELETE("/admin/api", apiHandler.APIDelete)
+
+			// 系统配置管理
+			strict.GET("/admin/configs", configHandler.GetConfigs)
+			strict.PUT("/admin/configs", configHandler.BatchUpdateConfig)
+			strict.POST("/admin/config", configHandler.ConfigCreate)
+			strict.DELETE("/admin/config", configHandler.ConfigDelete)
 		}
 	}
 	return s

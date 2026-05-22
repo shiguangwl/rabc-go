@@ -54,6 +54,7 @@ func models() []any {
 		&model.Menu{},
 		&model.Role{},
 		&model.API{},
+		&model.SysConfig{},
 		&casbinRule{},
 	}
 }

@@ -1,0 +1,79 @@
+[
+  {
+    "configKey": "site.name",
+    "configValue": "Nunu Admin",
+    "valueType": "string",
+    "configGroup": "站点设置",
+    "title": "站点名称",
+    "remark": "显示在浏览器标题与登录页",
+    "isPublic": true,
+    "isSystem": true,
+    "weight": 100
+  },
+  {
+    "configKey": "site.logo",
+    "configValue": "",
+    "valueType": "string",
+    "configGroup": "站点设置",
+    "title": "站点 Logo",
+    "remark": "Logo 图片 URL，留空使用默认",
+    "isPublic": true,
+    "isSystem": true,
+    "weight": 90
+  },
+  {
+    "configKey": "site.description",
+    "configValue": "基于 RBAC 的后台管理系统",
+    "valueType": "string",
+    "configGroup": "站点设置",
+    "title": "站点描述",
+    "remark": "",
+    "isPublic": true,
+    "isSystem": true,
+    "weight": 80
+  },
+  {
+    "configKey": "site.icp",
+    "configValue": "",
+    "valueType": "string",
+    "configGroup": "站点设置",
+    "title": "ICP 备案号",
+    "remark": "页脚展示，留空则不展示",
+    "isPublic": true,
+    "isSystem": true,
+    "weight": 70
+  },
+  {
+    "configKey": "user.register.enabled",
+    "configValue": "false",
+    "valueType": "bool",
+    "configGroup": "功能开关",
+    "title": "开放注册",
+    "remark": "是否允许新用户自助注册",
+    "isPublic": false,
+    "isSystem": true,
+    "weight": 100
+  },
+  {
+    "configKey": "user.login.captcha",
+    "configValue": "false",
+    "valueType": "bool",
+    "configGroup": "安全设置",
+    "title": "登录验证码",
+    "remark": "登录是否要求图形验证码",
+    "isPublic": true,
+    "isSystem": true,
+    "weight": 100
+  },
+  {
+    "configKey": "user.password.minLength",
+    "configValue": "6",
+    "valueType": "int",
+    "configGroup": "安全设置",
+    "title": "密码最小长度",
+    "remark": "新建账号与改密时校验的最小位数",
+    "isPublic": false,
+    "isSystem": true,
+    "weight": 90
+  }
+]

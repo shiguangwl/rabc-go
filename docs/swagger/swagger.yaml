@@ -165,6 +165,79 @@ definitions:
     - id
     - username
     type: object
+  rabc-go_api_apiv1.BatchUpdateConfigRequest:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/rabc-go_api_apiv1.ConfigUpdateItem'
+        maxItems: 100
+        minItems: 1
+        type: array
+    required:
+    - list
+    type: object
+  rabc-go_api_apiv1.ConfigCreateRequest:
+    properties:
+      configGroup:
+        example: 站点设置
+        maxLength: 64
+        type: string
+      configKey:
+        example: site.name
+        maxLength: 128
+        type: string
+      configValue:
+        example: Nunu Admin
+        type: string
+      isPublic:
+        example: false
+        type: boolean
+      remark:
+        example: ""
+        maxLength: 255
+        type: string
+      title:
+        example: 站点名称
+        maxLength: 128
+        type: string
+      valueType:
+        enum:
+        - string
+        - int
+        - bool
+        - json
+        example: string
+        type: string
+      weight:
+        example: 0
+        type: integer
+    required:
+    - configGroup
+    - configKey
+    - title
+    - valueType
+    type: object
+  rabc-go_api_apiv1.ConfigGroupItem:
+    properties:
+      group:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/rabc-go_api_apiv1.SysConfigItem'
+        type: array
+    type: object
+  rabc-go_api_apiv1.ConfigUpdateItem:
+    properties:
+      configKey:
+        example: site.name
+        maxLength: 128
+        type: string
+      configValue:
+        example: Nunu Admin
+        type: string
+    required:
+    - configKey
+    type: object
   rabc-go_api_apiv1.GetAdminUserResponse:
     properties:
       code:
@@ -243,6 +316,22 @@ definitions:
       total:
         type: integer
     type: object
+  rabc-go_api_apiv1.GetConfigsResponse:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/rabc-go_api_apiv1.GetConfigsResponseData'
+      message:
+        type: string
+    type: object
+  rabc-go_api_apiv1.GetConfigsResponseData:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/rabc-go_api_apiv1.ConfigGroupItem'
+        type: array
+    type: object
   rabc-go_api_apiv1.GetMenuResponse:
     properties:
       code:
@@ -257,6 +346,22 @@ definitions:
       list:
         items:
           $ref: '#/definitions/rabc-go_api_apiv1.MenuDataItem'
+        type: array
+    type: object
+  rabc-go_api_apiv1.GetPublicConfigsResponse:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/rabc-go_api_apiv1.GetPublicConfigsResponseData'
+      message:
+        type: string
+    type: object
+  rabc-go_api_apiv1.GetPublicConfigsResponseData:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/rabc-go_api_apiv1.PublicConfigItem'
         type: array
     type: object
   rabc-go_api_apiv1.GetRolePermissionsData:
@@ -446,6 +551,15 @@ definitions:
     - path
     - title
     type: object
+  rabc-go_api_apiv1.PublicConfigItem:
+    properties:
+      configKey:
+        type: string
+      configValue:
+        type: string
+      valueType:
+        type: string
+    type: object
   rabc-go_api_apiv1.RefreshRequest:
     properties:
       refreshToken:
@@ -515,6 +629,31 @@ definitions:
     required:
     - id
     - name
+    type: object
+  rabc-go_api_apiv1.SysConfigItem:
+    properties:
+      configGroup:
+        type: string
+      configKey:
+        type: string
+      configValue:
+        type: string
+      id:
+        type: integer
+      isPublic:
+        type: boolean
+      isSystem:
+        type: boolean
+      remark:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+      valueType:
+        type: string
+      weight:
+        type: integer
     type: object
   rabc-go_api_apiv1.UpdateRolePermissionRequest:
     properties:
@@ -659,6 +798,92 @@ paths:
       summary: 获取API列表
       tags:
       - API模块
+  /v1/admin/config:
+    delete:
+      consumes:
+      - application/json
+      description: 删除自定义配置项，内置配置不允许删除
+      parameters:
+      - description: 配置ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
+      security:
+      - Bearer: []
+      summary: 删除配置
+      tags:
+      - 系统配置
+    post:
+      consumes:
+      - application/json
+      description: 新增自定义配置项
+      parameters:
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.ConfigCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
+      security:
+      - Bearer: []
+      summary: 创建配置
+      tags:
+      - 系统配置
+  /v1/admin/configs:
+    get:
+      consumes:
+      - application/json
+      description: 按分组聚合返回全部系统配置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.GetConfigsResponse'
+      security:
+      - Bearer: []
+      summary: 获取系统配置
+      tags:
+      - 系统配置
+    put:
+      consumes:
+      - application/json
+      description: 按分组一次性提交多个配置项的值，整批校验通过才落库
+      parameters:
+      - description: 参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rabc-go_api_apiv1.BatchUpdateConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.Response'
+      security:
+      - Bearer: []
+      summary: 批量更新配置
+      tags:
+      - 系统配置
   /v1/admin/menu:
     delete:
       consumes:
@@ -1150,6 +1375,21 @@ paths:
       summary: 刷新访问令牌
       tags:
       - 用户模块
+  /v1/config/public:
+    get:
+      consumes:
+      - application/json
+      description: 获取允许未登录访问的配置，供登录页等场景使用
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rabc-go_api_apiv1.GetPublicConfigsResponse'
+      summary: 获取公开配置
+      tags:
+      - 系统配置
   /v1/login:
     post:
       consumes:

@@ -64,7 +64,7 @@ func NewSeedServer(
 
 // rbacTables 列出需要在 reset 时 truncate 的业务表名。
 // 表名硬编码而非反射 model 取，避免 truncate 误及未预期的表。
-var rbacTables = []string{"admin_users", "menu", "roles", "api", "casbin_rule"}
+var rbacTables = []string{"admin_users", "menu", "roles", "api", "casbin_rule", "sys_config"}
 
 func (m *SeedServer) Start(ctx context.Context) error {
 	if m.conf.GetBool("seed.reset") {
@@ -251,6 +251,7 @@ func (m *SeedServer) runInitialDataWithDB(ctx context.Context, db *gorm.DB, e ca
 		{"initialAdminUser", func(ctx context.Context) error { return m.initialAdminUser(ctx, db) }},
 		{"initialMenuData", func(ctx context.Context) error { return m.initialMenuData(ctx, db) }},
 		{"initialApisData", func(ctx context.Context) error { return m.initialApisData(ctx, db) }},
+		{"initialConfigData", func(ctx context.Context) error { return m.initialConfigData(ctx, db) }},
 		{"initialRBAC", func(ctx context.Context) error { return m.initialRBAC(ctx, db, e) }},
 	}
 	for _, step := range steps {
@@ -409,9 +410,24 @@ func (*SeedServer) initialApisData(ctx context.Context, db *gorm.DB) error {
 		{Group: "权限模块", Name: "创建API", Path: "/v1/admin/api", Method: http.MethodPost},
 		{Group: "权限模块", Name: "更新API", Path: "/v1/admin/api", Method: http.MethodPut},
 		{Group: "权限模块", Name: "删除API", Path: "/v1/admin/api", Method: http.MethodDelete},
+
+		// /v1/config/public 免鉴权，不登记为 Casbin API 资源
+		{Group: "系统配置", Name: "获取系统配置", Path: "/v1/admin/configs", Method: http.MethodGet},
+		{Group: "系统配置", Name: "批量更新配置", Path: "/v1/admin/configs", Method: http.MethodPut},
+		{Group: "系统配置", Name: "创建配置", Path: "/v1/admin/config", Method: http.MethodPost},
+		{Group: "系统配置", Name: "删除配置", Path: "/v1/admin/config", Method: http.MethodDelete},
 	}
 
 	return db.WithContext(ctx).Create(&initialApis).Error
+}
+
+func (m *SeedServer) initialConfigData(ctx context.Context, db *gorm.DB) error {
+	configList := make([]model.SysConfig, 0)
+	if err := json.Unmarshal([]byte(seed.ConfigJSON), &configList); err != nil {
+		m.log.Error("解析系统配置种子数据失败", zap.Error(err))
+		return err
+	}
+	return db.WithContext(ctx).Create(&configList).Error
 }
 
 func (m *SeedServer) initialMenuData(ctx context.Context, db *gorm.DB) error {

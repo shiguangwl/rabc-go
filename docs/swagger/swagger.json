@@ -187,6 +187,145 @@
                 }
             }
         },
+        "/v1/admin/config": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "新增自定义配置项",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统配置"
+                ],
+                "summary": "创建配置",
+                "parameters": [
+                    {
+                        "description": "参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.ConfigCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除自定义配置项，内置配置不允许删除",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统配置"
+                ],
+                "summary": "删除配置",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "配置ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/configs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按分组聚合返回全部系统配置",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统配置"
+                ],
+                "summary": "获取系统配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.GetConfigsResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按分组一次性提交多个配置项的值，整批校验通过才落库",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统配置"
+                ],
+                "summary": "批量更新配置",
+                "parameters": [
+                    {
+                        "description": "参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.BatchUpdateConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/menu": {
             "put": {
                 "security": [
@@ -973,6 +1112,29 @@
                 }
             }
         },
+        "/v1/config/public": {
+            "get": {
+                "description": "获取允许未登录访问的配置，供登录页等场景使用",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统配置"
+                ],
+                "summary": "获取公开配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/rabc-go_api_apiv1.GetPublicConfigsResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/login": {
             "post": {
                 "consumes": [
@@ -1264,6 +1426,106 @@
                 }
             }
         },
+        "rabc-go_api_apiv1.BatchUpdateConfigRequest": {
+            "type": "object",
+            "required": [
+                "list"
+            ],
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/rabc-go_api_apiv1.ConfigUpdateItem"
+                    }
+                }
+            }
+        },
+        "rabc-go_api_apiv1.ConfigCreateRequest": {
+            "type": "object",
+            "required": [
+                "configGroup",
+                "configKey",
+                "title",
+                "valueType"
+            ],
+            "properties": {
+                "configGroup": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "example": "站点设置"
+                },
+                "configKey": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "example": "site.name"
+                },
+                "configValue": {
+                    "type": "string",
+                    "example": "Nunu Admin"
+                },
+                "isPublic": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "remark": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": ""
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "example": "站点名称"
+                },
+                "valueType": {
+                    "type": "string",
+                    "enum": [
+                        "string",
+                        "int",
+                        "bool",
+                        "json"
+                    ],
+                    "example": "string"
+                },
+                "weight": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "rabc-go_api_apiv1.ConfigGroupItem": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rabc-go_api_apiv1.SysConfigItem"
+                    }
+                }
+            }
+        },
+        "rabc-go_api_apiv1.ConfigUpdateItem": {
+            "type": "object",
+            "required": [
+                "configKey"
+            ],
+            "properties": {
+                "configKey": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "example": "site.name"
+                },
+                "configValue": {
+                    "type": "string",
+                    "example": "Nunu Admin"
+                }
+            }
+        },
         "rabc-go_api_apiv1.GetAdminUserResponse": {
             "type": "object",
             "properties": {
@@ -1382,6 +1644,31 @@
                 }
             }
         },
+        "rabc-go_api_apiv1.GetConfigsResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/rabc-go_api_apiv1.GetConfigsResponseData"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "rabc-go_api_apiv1.GetConfigsResponseData": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rabc-go_api_apiv1.ConfigGroupItem"
+                    }
+                }
+            }
+        },
         "rabc-go_api_apiv1.GetMenuResponse": {
             "type": "object",
             "properties": {
@@ -1403,6 +1690,31 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/rabc-go_api_apiv1.MenuDataItem"
+                    }
+                }
+            }
+        },
+        "rabc-go_api_apiv1.GetPublicConfigsResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/rabc-go_api_apiv1.GetPublicConfigsResponseData"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "rabc-go_api_apiv1.GetPublicConfigsResponseData": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rabc-go_api_apiv1.PublicConfigItem"
                     }
                 }
             }
@@ -1688,6 +2000,20 @@
                 }
             }
         },
+        "rabc-go_api_apiv1.PublicConfigItem": {
+            "type": "object",
+            "properties": {
+                "configKey": {
+                    "type": "string"
+                },
+                "configValue": {
+                    "type": "string"
+                },
+                "valueType": {
+                    "type": "string"
+                }
+            }
+        },
         "rabc-go_api_apiv1.RefreshRequest": {
             "type": "object",
             "required": [
@@ -1790,6 +2116,44 @@
                 "name": {
                     "type": "string",
                     "example": "Admin"
+                }
+            }
+        },
+        "rabc-go_api_apiv1.SysConfigItem": {
+            "type": "object",
+            "properties": {
+                "configGroup": {
+                    "type": "string"
+                },
+                "configKey": {
+                    "type": "string"
+                },
+                "configValue": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isPublic": {
+                    "type": "boolean"
+                },
+                "isSystem": {
+                    "type": "boolean"
+                },
+                "remark": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "valueType": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
                 }
             }
         },

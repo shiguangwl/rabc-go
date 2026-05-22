@@ -10,3 +10,8 @@ import _ "embed"
 //
 //go:embed menu.json
 var MenuJSON string
+
+// ConfigJSON 是系统配置内置项数据，编译期 embed 进二进制。
+//
+//go:embed config.json
+var ConfigJSON string

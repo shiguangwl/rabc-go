@@ -72,4 +72,9 @@ var (
 	ErrUserDisabled       = newError(1004, 403, "账号已被禁用，请联系管理员")
 	ErrRefreshReused      = newError(1005, 401, "登录已失效，请重新登录")
 	ErrRefreshExpired     = newError(1006, 401, "登录已过期，请重新登录")
+
+	ErrConfigKeyExists       = newError(1301, 409, "配置键已存在")
+	ErrConfigKeyNotFound     = newError(1302, 404, "配置项不存在")
+	ErrConfigInvalidValue    = newError(1303, 400, "配置值与类型不匹配")
+	ErrConfigSystemProtected = newError(1304, 403, "内置配置不允许该操作")
 )
