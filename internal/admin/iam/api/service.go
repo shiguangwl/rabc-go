@@ -16,14 +16,18 @@ type Service struct {
 }
 
 func (s *Service) GetApis(ctx context.Context, req *apiv1.GetApisRequest) (*apiv1.GetApisResponseData, error) {
-	req.Normalize()
-	list, total, err := s.repo.GetApis(ctx, Query{
-		Pagination: req.Pagination,
-		Group:      req.Group,
-		Name:       req.Name,
-		Path:       req.Path,
-		Method:     req.Method,
-	})
+	q := Query{
+		All:    req.All,
+		Group:  req.Group,
+		Name:   req.Name,
+		Path:   req.Path,
+		Method: req.Method,
+	}
+	if !req.All {
+		req.Normalize()
+		q.Pagination = req.Pagination
+	}
+	list, total, err := s.repo.GetApis(ctx, q)
 	if err != nil {
 		return nil, err
 	}

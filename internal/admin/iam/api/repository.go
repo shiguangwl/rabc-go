@@ -52,7 +52,12 @@ func (r *Repo) GetApis(ctx context.Context, q Query) ([]model.API, int64, error)
 	if err := scope.Count(&total).Error; err != nil {
 		return nil, total, err
 	}
-	if err := scope.Offset(q.Offset()).Limit(q.Limit()).Order("group_name ASC").Find(&list).Error; err != nil {
+	query := scope.Order("group_name ASC")
+	// All=true（角色权限的 API 树等场景）需要完整列表，跳过分页。
+	if !q.All {
+		query = query.Offset(q.Offset()).Limit(q.Limit())
+	}
+	if err := query.Find(&list).Error; err != nil {
 		return nil, total, err
 	}
 	return list, total, nil

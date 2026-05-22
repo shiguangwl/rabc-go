@@ -210,8 +210,7 @@ async function handlePermission(record) {
   checkedKeysMenu.value = rolePermissions.value.filter(item => item.startsWith('menu:'))
 
   const { data: adminApisData } = await getAdminApiApi({
-    page: 1,
-    pageSize: 10000,
+    all: true,
   })
   adminApis.value = groupToTree(adminApisData.list, {
     itemNode: item => ({

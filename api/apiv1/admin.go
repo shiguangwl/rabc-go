@@ -174,8 +174,12 @@ type RoleUpdateRequest struct {
 type RoleDeleteRequest struct {
 	ID uint `form:"id" binding:"required" example:"1"`
 }
+
+// GetApisRequest 中 All=true 时忽略分页，返回全部 API 资源，
+// 供角色权限分配的 API 树等需要完整列表的场景使用。
 type GetApisRequest struct {
 	Pagination
+	All    bool   `form:"all" example:"false"`
 	Group  string `form:"group" example:"权限管理"`
 	Name   string `form:"name" example:"菜单列表"`
 	Path   string `form:"path" example:"/v1/test"`

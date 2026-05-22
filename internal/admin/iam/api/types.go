@@ -8,6 +8,8 @@ import "rabc-go/api/apiv1"
 
 type Query struct {
 	apiv1.Pagination
+	// All=true 时跳过 Offset/Limit，返回全部匹配行。
+	All    bool
 	Group  string
 	Name   string
 	Path   string
