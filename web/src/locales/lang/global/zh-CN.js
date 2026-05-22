@@ -109,6 +109,7 @@ export default {
   'menu.access.api': '接口管理',
   'menu.access.user': '普通用户',
   'menu.access.admin': '管理账号',
+  'menu.access.config': '系统配置',
   'menu.list': '列表页',
   'menu.list.table-list': '查询表格',
   'menu.list.basic-list': '标准列表',

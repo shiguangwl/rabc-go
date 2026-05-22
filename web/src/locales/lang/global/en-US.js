@@ -109,6 +109,7 @@ export default {
   'menu.access.api': 'API',
   'menu.access.user': 'User',
   'menu.access.admin': 'Admin',
+  'menu.access.config': 'System Config',
   'menu.list': 'List',
   'menu.list.table-list': 'Search Table',
   'menu.list.basic-list': 'Basic List',

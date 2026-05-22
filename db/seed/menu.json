@@ -180,6 +180,15 @@
     "locale": "menu.access.api"
   },
   {
+    "id": 54,
+    "parentId": 15,
+    "path": "/access/config",
+    "title": "系统配置",
+    "name": "AccessConfig",
+    "component": "/access/config",
+    "locale": "menu.access.config"
+  },
+  {
     "id": 19,
     "parentId": 0,
     "title": "异常页",
